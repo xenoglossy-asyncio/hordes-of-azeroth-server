@@ -1,6 +1,8 @@
 #ifndef MANGOS_BONKCODEX_H
 #define MANGOS_BONKCODEX_H
 
+#include "Common.h"
+
 #include <cstdint>
 #include <string>
 
