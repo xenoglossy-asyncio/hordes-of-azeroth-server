@@ -3,6 +3,7 @@
 #include "AccountMgr.h"
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
+#include "BonkStrings.h"
 #include "Chat.h"
 #include "Database/DatabaseEnv.h"
 #include "DynamicObject.h"
@@ -57,9 +58,9 @@ namespace
         return s_removedAccounts.count(accountId) != 0;
     }
 
-    void SendAway(Player* guest, char const* reason)
+    void SendAway(Player* guest, BonkString reason)
     {
-        ChatHandler(guest).SendSysMessage(reason);
+        ChatHandler(guest).SendSysMessage(guest->GetBonkPlayer()->GetString(reason).c_str());
         ObjectGuid const guid = guest->GetObjectGuid();
         guest->m_Events.AddLambdaEventAtOffset([guid]
         {
@@ -185,7 +186,7 @@ void BonkCoop::JoinHostGroup(Player* guest)
         return;
     if (WasRemoved(guest->GetSession()->GetAccountId()))
     {
-        SendAway(guest, "The host removed you from this game.");
+        SendAway(guest, BONK_STRING_COOP_REMOVED);
         return;
     }
     if (guest->GetGroup())
@@ -195,7 +196,7 @@ void BonkCoop::JoinHostGroup(Player* guest)
         return;
     if (host->GetBonkPlayer() && host->GetBonkPlayer()->IsIronman())
     {
-        SendAway(guest, "The host is playing an ironman character, and ironman characters play solo only.");
+        SendAway(guest, BONK_STRING_COOP_HOST_IRONMAN);
         return;
     }
     Group* group = host->GetGroup();
@@ -212,7 +213,7 @@ void BonkCoop::JoinHostGroup(Player* guest)
     }
     if (group && ClassTaken(group, guest))
     {
-        SendAway(guest, "Your class is already in this group. Make a character of another class.");
+        SendAway(guest, BONK_STRING_COOP_CLASS_TAKEN);
         return;
     }
     if (!group)
@@ -258,7 +259,7 @@ void BonkCoop::OnUninvited(ObjectGuid guid)
         std::lock_guard<std::mutex> guard(s_removedLock);
         s_removedAccounts.insert(guest->GetSession()->GetAccountId());
     }
-    SendAway(guest, "The host removed you from this game.");
+    SendAway(guest, BONK_STRING_COOP_REMOVED);
 }
 
 void BonkCoop::DeleteGuestAccounts()

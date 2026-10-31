@@ -1132,7 +1132,7 @@ bool BonkRun::Begin(std::string& error)
         BonkRun const* hostRun = host ? host->GetBonkPlayer()->GetRun() : nullptr;
         if (!hostRun || hostRun->IsOver())
         {
-            error = "The host's run has ended.";
+            error = m_player->GetBonkPlayer()->GetString(BONK_STRING_COOP_HOST_RUN_ENDED);
             return false;
         }
         first = &hostRun->GetStageMap();
@@ -5425,7 +5425,7 @@ void BonkRun::EnterNextStage()
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     if (IsCoopGuest())
     {
-        bonk->Notify("The host takes the group to the next stage.");
+        bonk->Notify(BONK_STRING_COOP_HOST_NEXT_STAGE);
         return;
     }
     if (!m_offer.empty())
@@ -5518,7 +5518,7 @@ void BonkRun::EndWithHost()
         Exit();
         return;
     }
-    m_player->GetBonkPlayer()->Notify("The host ended the run.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_COOP_HOST_ENDED_RUN);
     Finish(true);
 }
 
@@ -5529,7 +5529,7 @@ void BonkRun::EndInWipe()
         Exit();
         return;
     }
-    m_player->GetBonkPlayer()->Notify("Your whole group is down. The run is over.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_COOP_GROUP_WIPED);
     Finish(false);
 }
 
@@ -13160,7 +13160,7 @@ void BonkRun::ResolveChoiceForGroup()
         Pick(urand(1, uint32(m_offer.size())), error);
     else
         return;
-    m_player->GetBonkPlayer()->Notify("Time's up, so a choice was made for you.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_COOP_CHOICE_TIMED_OUT);
 }
 
 void BonkRun::ApplyPause(bool paused)

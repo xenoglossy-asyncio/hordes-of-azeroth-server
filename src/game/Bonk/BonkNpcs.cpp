@@ -428,12 +428,17 @@ bool GOGossipSelect_go_bonk_vault(Player* player, GameObject* go, uint32 sender,
 
 bool GossipHello_npc_bonk_coop(Player* player, Creature* creature)
 {
+    BonkPlayer const* bonk = player->GetBonkPlayer();
     bool const host = BonkCoop::IsGroupHost(player);
-    std::string const change = host ? " (click to change)" : "";
-    std::string const pause = BonkCoop::SharesPause(player) ? "Pausing: shared. Everyone waits while someone picks." : "Pausing: off. Nobody waits while someone picks.";
-    std::string const xp = BonkCoop::SharesXp(player) ? "XP: shared. Everyone levels together." : "XP: individual. Everyone keeps their own XP; magnets are off.";
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, (pause + change).c_str(), GOSSIP_SENDER_MAIN, COOP_ACTION_PAUSE);
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, (xp + change).c_str(), GOSSIP_SENDER_MAIN, COOP_ACTION_XP);
+    auto item = [bonk, host](BonkString setting)
+    {
+        std::string const text = bonk->GetString(setting);
+        return host ? bonk->GetString(BONK_STRING_COOP_SETTING_CHANGE, { text }) : text;
+    };
+    std::string const pause = item(BonkCoop::SharesPause(player) ? BONK_STRING_COOP_SETTING_PAUSE_SHARED : BONK_STRING_COOP_SETTING_PAUSE_OFF);
+    std::string const xp = item(BonkCoop::SharesXp(player) ? BONK_STRING_COOP_SETTING_XP_SHARED : BONK_STRING_COOP_SETTING_XP_OWN);
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, pause.c_str(), GOSSIP_SENDER_MAIN, COOP_ACTION_PAUSE);
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, xp.c_str(), GOSSIP_SENDER_MAIN, COOP_ACTION_XP);
     player->SEND_GOSSIP_MENU(BONK_TEXT_COOP, creature->GetObjectGuid());
     return true;
 }
@@ -443,7 +448,7 @@ bool GossipSelect_npc_bonk_coop(Player* player, Creature* creature, uint32 , uin
     if (!BonkCoop::IsGroupHost(player))
     {
         player->CLOSE_GOSSIP_MENU();
-        player->GetBonkPlayer()->Notify("Only the host can change the group settings.");
+        player->GetBonkPlayer()->Notify(BONK_STRING_COOP_ONLY_HOST_SETTINGS);
         return true;
     }
     if (action == COOP_ACTION_PAUSE)

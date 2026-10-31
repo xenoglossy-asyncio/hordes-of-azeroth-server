@@ -181,10 +181,6 @@ namespace
             run->EndInWipe();
     }
 
-    std::string StartText(BonkTier const& tier, BonkRunChoice const& choice)
-    {
-        return "The host wants to start " + tier.name + " " + std::to_string(tier.GetBandLevel(choice.level)) + ".";
-    }
 
     bool Done(ReadyCheck const& check)
     {
@@ -221,14 +217,14 @@ namespace
                 continue;
             if (answer.second != ANSWER_YES)
             {
-                host->GetBonkPlayer()->Notify(std::string(guest->GetName()) + " wasn't ready and stays in town.");
+                host->GetBonkPlayer()->Notify(BONK_STRING_COOP_NOT_READY, { guest->GetName() });
                 continue;
             }
             std::string guestError;
             if (!guest->GetBonkPlayer()->StartGuestRun(*check.tier, choice, host, guestError))
             {
                 guest->GetBonkPlayer()->Notify(guestError);
-                host->GetBonkPlayer()->Notify(std::string(guest->GetName()) + " couldn't join the run: " + guestError);
+                host->GetBonkPlayer()->Notify(BONK_STRING_COOP_COULDNT_JOIN, { guest->GetName(), guestError });
                 continue;
             }
             ++players;
@@ -335,7 +331,7 @@ bool BonkCoop::RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoi
     for (ReadyCheck const& check : s_checks)
         if (check.host == host->GetObjectGuid())
         {
-            host->GetBonkPlayer()->Notify("Your group is still answering.");
+            host->GetBonkPlayer()->Notify(BONK_STRING_COOP_STILL_ANSWERING);
             return true;
         }
 
@@ -343,14 +339,15 @@ bool BonkCoop::RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoi
     check.host = host->GetObjectGuid();
     check.tier = &tier;
     check.choice = choice;
-    std::string const text = StartText(tier, choice);
     for (Player* guest : guests)
     {
         check.answers[guest->GetObjectGuid()] = ANSWER_WAITING;
-        guest->GetBonkPlayer()->SendAddon("coopready~" + text + "~" + std::to_string(READY_CHECK_MS / IN_MILLISECONDS));
+        BonkPlayer* bonk = guest->GetBonkPlayer();
+        std::string const text = bonk->GetString(BONK_STRING_COOP_HOST_WANTS_START, { bonk->GetLevelName(choice.level) });
+        bonk->SendAddon("coopready~" + text + "~" + std::to_string(READY_CHECK_MS / IN_MILLISECONDS));
     }
     s_checks.push_back(check);
-    host->GetBonkPlayer()->Notify("Asking your group if they're ready.");
+    host->GetBonkPlayer()->Notify(BONK_STRING_COOP_ASKING_READY);
     return true;
 }
 
@@ -390,7 +387,7 @@ void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage
     {
         ++group->second.pool;
         for (Player* member : GroupMembers(host))
-            member->GetBonkPlayer()->Notify("Stage cleared! Your group gains a revive.");
+            member->GetBonkPlayer()->Notify(BONK_STRING_COOP_STAGE_REVIVE);
     }
 }
 
@@ -441,7 +438,7 @@ uint32 BonkCoop::RejoinWaitMs()
 
 namespace
 {
-    void TellSettingChanged(Player* host, std::string const& line)
+    void TellSettingChanged(Player* host, BonkString line)
     {
         for (Player* member : GroupMembers(host))
             member->GetBonkPlayer()->Notify(line);
@@ -481,16 +478,14 @@ void BonkCoop::SetSharedPause(Player* host, bool shared)
 {
     s_settings[host->GetObjectGuid()].sharedPause = shared;
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s sets pausing to %s", host->GetName(), shared ? "shared" : "none");
-    TellSettingChanged(host, shared ? "The host turned on shared pause: everyone waits while someone picks. It applies from the next run."
-        : "The host turned off pausing: nobody waits while someone picks. It applies from the next run.");
+    TellSettingChanged(host, shared ? BONK_STRING_COOP_PAUSE_TURNED_ON : BONK_STRING_COOP_PAUSE_TURNED_OFF);
 }
 
 void BonkCoop::SetSharedXp(Player* host, bool shared)
 {
     s_settings[host->GetObjectGuid()].sharedXp = shared;
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s sets XP to %s", host->GetName(), shared ? "shared" : "individual");
-    TellSettingChanged(host, shared ? "The host turned on shared XP: everyone levels together. It applies from the next run."
-        : "The host turned on individual XP: everyone keeps their own XP, and magnets are off. It applies from the next run.");
+    TellSettingChanged(host, shared ? BONK_STRING_COOP_XP_TURNED_SHARED : BONK_STRING_COOP_XP_TURNED_OWN);
 }
 
 bool BonkCoop::IsAway(Player const* player)
@@ -506,10 +501,8 @@ void BonkCoop::OnDisconnected(Player* player)
         return;
     run->SetAway(true);
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s lost the connection, run held for %u s", player->GetName(), REJOIN_WAIT_MS / IN_MILLISECONDS);
-    std::string const line = std::string(player->GetName()) + " lost the connection. Their run waits " +
-        std::to_string(REJOIN_WAIT_MS / IN_MILLISECONDS / MINUTE) + " minutes for them to rejoin.";
     for (Player* member : OtherMembers(player))
-        member->GetBonkPlayer()->Notify(line);
+        member->GetBonkPlayer()->Notify(BONK_STRING_COOP_LOST_CONNECTION, { player->GetName(), std::to_string(REJOIN_WAIT_MS / IN_MILLISECONDS / MINUTE) });
 }
 
 void BonkCoop::OnReconnected(Player* player)
@@ -519,9 +512,8 @@ void BonkCoop::OnReconnected(Player* player)
         return;
     run->SetAway(false);
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s rejoined the run", player->GetName());
-    std::string const line = std::string(player->GetName()) + " is back.";
     for (Player* member : OtherMembers(player))
-        member->GetBonkPlayer()->Notify(line);
+        member->GetBonkPlayer()->Notify(BONK_STRING_COOP_IS_BACK, { player->GetName() });
 }
 
 void BonkCoop::ShareExperience(Player* collector, float levelFraction)
@@ -649,11 +641,9 @@ bool BonkCoop::Down(Player* player)
     for (Player* member : GroupMembers(host))
     {
         if (member == player)
-            member->GetBonkPlayer()->Notify(downed.spectator ? "You are down, and your group has no revives left." :
-                "You are down! Stay close to your group so they can revive you.");
+            member->GetBonkPlayer()->Notify(downed.spectator ? BONK_STRING_COOP_YOU_DOWN_NO_REVIVES : BONK_STRING_COOP_YOU_DOWN);
         else
-            member->GetBonkPlayer()->Notify(downed.spectator ? name + " is down, and your group has no revives left." :
-                name + " is down! Stand next to them to revive them.");
+            member->GetBonkPlayer()->Notify(downed.spectator ? BONK_STRING_COOP_MEMBER_DOWN_NO_REVIVES : BONK_STRING_COOP_MEMBER_DOWN, { name });
     }
     group.sendTimer = DOWNED_SEND_MS;
     if (!AnyoneStanding(host))
@@ -709,9 +699,13 @@ void BonkCoop::UpdateDowned(uint32 diff)
                     --group.pool;
                     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s revived %s, pool %u/%u", reviver->GetName(), downedPlayer->GetName(), group.pool, group.cap);
                     downedPlayer->GetBonkPlayer()->GetRun()->ReviveFromGroup(REVIVE_HEALTH);
-                    std::string const left = group.pool == 1 ? "1 revive left." : std::to_string(group.pool) + " revives left.";
                     for (Player* member : members)
-                        member->GetBonkPlayer()->Notify(std::string(reviver->GetName()) + " revived " + downedPlayer->GetName() + "! " + left);
+                    {
+                        if (group.pool == 1)
+                            member->GetBonkPlayer()->Notify(BONK_STRING_COOP_REVIVED_ONE_LEFT, { reviver->GetName(), downedPlayer->GetName() });
+                        else
+                            member->GetBonkPlayer()->Notify(BONK_STRING_COOP_REVIVED_LEFT, { reviver->GetName(), downedPlayer->GetName(), std::to_string(group.pool) });
+                    }
                     it = group.downed.erase(it);
                     group.sendTimer = DOWNED_SEND_MS;
                     continue;
@@ -726,7 +720,7 @@ void BonkCoop::UpdateDowned(uint32 diff)
                     downed.spectator = true;
                     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s bled out", downedPlayer->GetName());
                     for (Player* member : members)
-                        member->GetBonkPlayer()->Notify(std::string(downedPlayer->GetName()) + " bled out and watches the rest of the run.");
+                        member->GetBonkPlayer()->Notify(BONK_STRING_COOP_BLED_OUT, { downedPlayer->GetName() });
                     group.sendTimer = DOWNED_SEND_MS;
                 }
             }
