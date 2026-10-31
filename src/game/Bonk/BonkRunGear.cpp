@@ -1290,10 +1290,10 @@ void BonkRun::SendVault() const
     if (!bonk->IsAddonReady())
         return;
     bonk->SendAddon("vaultclear");
-    std::string sent;
-    for (auto const& piece : m_pillarSent)
-        sent += (sent.empty() ? "" : ",") + std::to_string(piece.first) + ":" + std::to_string(piece.second);
-    bonk->SendAddon("vaultsent~" + sent);
+    bonk->SendAddon("vaultsent");
+    for (PillarSentPiece const& piece : m_pillarSent)
+        bonk->SendAddon("vaultsentitem~" + std::to_string(piece.entry) + "~" + std::to_string(piece.floor) + "~" +
+            std::to_string(piece.tier) + "~" + piece.lines + "~" + piece.extra);
     std::string chosen;
     for (VaultFind const& find : GetVaultFinds())
     {
@@ -1354,13 +1354,22 @@ bool BonkRun::SendHomeFromPillar(uint32 guidLow, std::string& error)
     bool const worn = item->IsEquipped();
     BonkFoundGear found;
     bool const wasFound = sBonkFound.Get(item->GetGUIDLow(), found);
+    PillarSentPiece sent;
+    sent.entry = foundEntry;
+    sent.floor = m_stage;
+    sent.tier = BonkFound::GetItemTier(item);
+    if (wasFound)
+    {
+        sent.lines = BonkFound::DescribeLines(found, sent.tier);
+        sent.extra = BonkFound::DescribeExtra(item, sent.tier);
+    }
     UntrackRunGear(guid);
     m_vault.erase(std::remove(m_vault.begin(), m_vault.end(), guid), m_vault.end());
     m_player->DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
     if (worn)
         UpdateGear();
     MailKeptPiece(keepEntry, GetString(BONK_STRING_MAIL_PILLAR_BODY, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) }), wasFound ? &found : nullptr);
-    m_pillarSent.emplace_back(foundEntry, m_stage);
+    m_pillarSent.push_back(sent);
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     bonk->Notify(BONK_STRING_PILLAR_SENT_HOME_ITS_WAITING, { name });
