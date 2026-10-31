@@ -4,6 +4,7 @@
 #include "BonkPlayer.h"
 #include "BonkRun.h"
 #include "Group.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 
@@ -36,9 +37,8 @@ namespace
             return members;
         for (Group::MemberSlot const& slot : group->GetMemberSlots())
             if (slot.guid != player->GetObjectGuid())
-                if (Player* member = sObjectMgr.GetPlayer(slot.guid))
-                    if (member->IsInWorld())
-                        members.push_back(member);
+                if (Player* member = ObjectAccessor::FindPlayerNotInWorld(slot.guid))
+                    members.push_back(member);
         return members;
     }
 

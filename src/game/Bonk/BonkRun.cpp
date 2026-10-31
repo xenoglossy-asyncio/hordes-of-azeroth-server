@@ -1104,7 +1104,7 @@ bool BonkRun::Begin(std::string& error)
     BonkMap const* first = nullptr;
     if (IsCoopGuest())
     {
-        Player* host = sObjectMgr.GetPlayer(m_coopHost);
+        Player* host = ObjectAccessor::FindPlayerNotInWorld(m_coopHost);
         BonkRun const* hostRun = host ? host->GetBonkPlayer()->GetRun() : nullptr;
         if (!hostRun || hostRun->IsOver())
         {
@@ -1354,7 +1354,7 @@ namespace
 
 bool BonkRun::PlaceNearHost(float& x, float& y, float& z, float& o) const
 {
-    Player* host = sObjectMgr.GetPlayer(m_coopHost);
+    Player* host = ObjectAccessor::FindPlayerNotInWorld(m_coopHost);
     BonkRun const* hostRun = host ? host->GetBonkPlayer()->GetRun() : nullptr;
     if (!hostRun)
         return false;
