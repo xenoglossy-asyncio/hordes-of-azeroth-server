@@ -971,6 +971,7 @@ void BonkPlayer::OnLogout()
     ClearAuras();
     m_addonReady = false;
     sBonkQuests.Save(GetProgressAccount());
+    BonkCoop::OnLogout(m_player);
 
     WriteHeroScreenStats();
 }

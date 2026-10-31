@@ -100,6 +100,17 @@ void BonkCoop::JoinHostGroup(Player* guest)
         return;
     }
     Group* group = host->GetGroup();
+    if (group)
+    {
+        std::vector<ObjectGuid> away;
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+            if (slot.guid != host->GetObjectGuid() && !sObjectMgr.GetPlayer(slot.guid))
+                away.push_back(slot.guid);
+        for (ObjectGuid const& guid : away)
+            if (Group* current = host->GetGroup())
+                Player::RemoveFromGroup(current, guid);
+        group = host->GetGroup();
+    }
     if (group && ClassTaken(group, guest))
     {
         SendAway(guest, "Your class is already in this group. Make a character of another class.");
@@ -118,6 +129,14 @@ void BonkCoop::JoinHostGroup(Player* guest)
     if (group->IsFull())
         return;
     group->AddMember(guest->GetObjectGuid(), guest->GetName());
+}
+
+void BonkCoop::OnLogout(Player* player)
+{
+    if (!IsGuestAccount(player))
+        return;
+    if (Group* group = player->GetGroup())
+        Player::RemoveFromGroup(group, player->GetObjectGuid());
 }
 
 void BonkCoop::OnUninvited(ObjectGuid guid)
