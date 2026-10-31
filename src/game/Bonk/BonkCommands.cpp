@@ -797,6 +797,28 @@ bool ChatHandler::HandleBonkNoticeCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleBonkModeCommand(char* args)
+{
+    BonkPlayer* bonk = m_session->GetPlayer()->GetBonkPlayer();
+    char* which = ExtractArg(&args);
+    char* confirm = ExtractArg(&args);
+    std::string const mode = which ? which : "";
+    if (mode != "regular" && mode != "uncapped")
+    {
+        SendSysMessage(bonk->GetString(BONK_STRING_GEAR_MODE_USAGE).c_str());
+        bonk->SendGearMode();
+        return true;
+    }
+    std::string error;
+    if (!bonk->ChooseGearMode(mode == "uncapped" ? BONK_GEAR_MODE_UNCAPPED : BONK_GEAR_MODE_REGULAR, confirm && std::string(confirm) == "confirm", error))
+    {
+        SendSysMessage(error.c_str());
+        SetSentErrorMessage(true);
+        return false;
+    }
+    return true;
+}
+
 bool ChatHandler::HandleBonkLangCommand(char* args)
 {
     Player* player = m_session->GetPlayer();

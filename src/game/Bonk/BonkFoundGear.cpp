@@ -1,9 +1,11 @@
 #include "BonkFoundGear.h"
 #include "BonkLocale.h"
+#include "BonkPlayer.h"
 #include "BonkStrings.h"
 #include "Database/DatabaseEnv.h"
 #include "Item.h"
 #include "Log.h"
+#include "Player.h"
 #include "Policies/SingletonImp.h"
 #include "Utilities/Random.h"
 
@@ -219,9 +221,9 @@ uint32 BonkFound::GetItemTier(Item const* item)
     if (!item)
         return 0;
     BonkFoundGear found;
-    if (sBonkFound.Get(item->GetGUIDLow(), found) && found.tier)
-        return found.tier;
-    return BonkMgr::GetGearTier(item->GetEntry());
+    uint32 const tier = sBonkFound.Get(item->GetGUIDLow(), found) && found.tier ? found.tier : BonkMgr::GetGearTier(item->GetEntry());
+    Player const* owner = item->GetOwner();
+    return owner ? std::min(tier, owner->GetBonkPlayer()->GetTierCap()) : tier;
 }
 
 uint32 BonkFound::GetUpgradeCost(uint32 tier)
@@ -296,16 +298,17 @@ void BonkFound::AddWornStats(Item const* item, float* passives)
     if (!item || !sBonkFound.Get(item->GetGUIDLow(), found))
         return;
     uint32 const entryTier = BonkMgr::GetGearTier(item->GetEntry());
-    if (found.tier > entryTier && entryTier)
+    uint32 const tier = GetItemTier(item);
+    if (tier > entryTier && entryTier)
         if (BonkItemStat const* stat = sBonkMgr.GetItemStat(item->GetEntry()))
         {
-            float const extra = BonkGearTierScale(found.tier) / BonkGearTierScale(entryTier) - 1.0f;
+            float const extra = BonkGearTierScale(tier) / BonkGearTierScale(entryTier) - 1.0f;
             for (uint8 effect = 0; effect < MAX_BONK_PASSIVE_EFFECT; ++effect)
                 if (IsGrowingStat(effect))
                     passives[effect] += stat->stats[effect] * extra;
         }
     for (BonkFoundLine const& line : found.lines)
-        passives[line.effect] += LineValue(line, found.tier);
+        passives[line.effect] += LineValue(line, tier);
 }
 
 std::string BonkFound::DescribeLines(BonkFoundGear const& found, uint32 tier)

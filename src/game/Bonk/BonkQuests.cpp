@@ -800,6 +800,8 @@ void BonkQuests::SendLog(Player* player, std::string const& npc)
         if (!Counts(player, quest))
             continue;
         Progress const& entry = progress[quest.id];
+        if (IsHiddenUntilDone(quest) && !entry.completed)
+            continue;
         std::string rewardIcon;
         std::string const reward = DescribeReward(quest, &rewardIcon, bonk->GetLocale());
         bonk->SendAddon("q~" + std::to_string(quest.id) + "~" + bonk->Localize(BONK_FIELD_QUEST_NAME, quest.id, quest.name) + "~" +
@@ -828,6 +830,8 @@ std::vector<std::string> BonkQuests::DescribeAll(Player* player) const
         if (!Counts(player, quest))
             continue;
         Progress const& entry = progress[quest.id];
+        if (IsHiddenUntilDone(quest) && !entry.completed)
+            continue;
         std::string icon;
         std::string const reward = DescribeReward(quest, &icon);
         lines.push_back(quest.name + (entry.completed ? " (done): " : " " + std::to_string(GetShownProgress(quest, entry)) + "/" +

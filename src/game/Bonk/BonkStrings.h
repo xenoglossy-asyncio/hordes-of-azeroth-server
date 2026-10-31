@@ -862,6 +862,17 @@ enum BonkString : uint32
     BONK_STRING_USE_HEARTHSTONE_TO_SEND_HOME            = 919,
     BONK_STRING_HEARTH_VAULT_READY                      = 920,
     BONK_STRING_WAIT_FOR_HEARTH_RING                    = 921,
+    BONK_STRING_GEAR_MODE_NOW_REGULAR                   = 922,
+    BONK_STRING_GEAR_MODE_REGULAR_REFUND                = 923,
+    BONK_STRING_GEAR_MODE_NOW_UNCAPPED                  = 924,
+    BONK_STRING_GEAR_MODE_ALREADY_REGULAR               = 925,
+    BONK_STRING_GEAR_MODE_ALREADY_UNCAPPED              = 926,
+    BONK_STRING_GEAR_MODE_CANT_GO_BACK                  = 927,
+    BONK_STRING_GEAR_MODE_CONFIRM_UNCAPPED              = 928,
+    BONK_STRING_GEAR_MODE_NOT_DURING_RUN                = 929,
+    BONK_STRING_GEAR_MODE_USAGE                         = 930,
+    BONK_STRING_GEAR_TIER_IS_HIGHEST                    = 931,
+    BONK_STRING_RULE_GEAR_MODES                         = 932,
 };
 
 struct BonkStringText

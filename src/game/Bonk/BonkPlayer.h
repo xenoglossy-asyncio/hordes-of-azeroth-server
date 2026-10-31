@@ -28,6 +28,16 @@ enum BonkQuestReward : uint8;
 enum BonkUpgradeUtility : uint8;
 enum BonkString : uint32;
 enum BonkTextField : uint8;
+
+uint32 const BONK_UNCAPPED_TIER_CAP = 0xFFFFFFFF;
+
+enum BonkGearMode : uint8
+{
+    BONK_GEAR_MODE_UNSET    = 0,
+    BONK_GEAR_MODE_REGULAR  = 1,
+    BONK_GEAR_MODE_UNCAPPED = 2,
+};
+
 struct BonkMap;
 struct BonkMasteryBonuses;
 struct BonkMasteryNode;
@@ -89,6 +99,10 @@ class BonkPlayer
         void AddScrap(uint32 points);
         void SendQuartermaster() const;
         uint32 GetUpgradeCeiling() const;
+        uint32 GetTierCap() const;
+        bool IsUncapped() const { return m_gearMode == BONK_GEAR_MODE_UNCAPPED; }
+        void SendGearMode() const;
+        bool ChooseGearMode(BonkGearMode mode, bool confirmed, std::string& error);
         std::vector<Item*> GetUpgradableGear() const;
         void SendFoundUpgrades() const;
         bool UpgradeFoundGear(uint32 guidLow, std::string& error);
@@ -371,6 +385,9 @@ class BonkPlayer
         uint32 m_otherEffects = 100;
         float m_leashDistance = 0.0f;
         bool m_gearNoticePending = false;
+        BonkGearMode m_gearMode = BONK_GEAR_MODE_REGULAR;
+        void LoadGearMode();
+        uint32 ClampGearAboveCap();
         LocaleConstant m_locale = LOCALE_enUS;
         mutable bool m_zoneArtSent = false;
         void SendZoneArt() const;

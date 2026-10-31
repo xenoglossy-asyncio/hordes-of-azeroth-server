@@ -159,12 +159,12 @@ namespace
 
 uint32 BonkRun::GetDropTier() const
 {
-    return std::min(m_difficultyLevel, BONK_GEAR_TIERS);
+    return std::min(m_difficultyLevel, m_player->GetBonkPlayer()->GetTierCap());
 }
 
-uint32 BonkRun::GetLevelDropTier(BonkTier const& tier, uint32 bandLevel)
+uint32 BonkRun::GetLevelDropTier(BonkTier const& tier, uint32 bandLevel, uint32 tierCap)
 {
-    return std::min(tier.firstLevel + std::max(1u, bandLevel) - 1, BONK_GEAR_TIERS);
+    return std::min(tier.firstLevel + std::max(1u, bandLevel) - 1, tierCap);
 }
 
 uint8 BonkRun::RollGearQuality() const
@@ -206,7 +206,7 @@ bool BonkRun::MakeTierPiece(uint8 quality, PendingGear& piece) const
     std::vector<uint32> choices, weapons, trinkets;
     for (uint32 kind : BonkMgr::GetGearKindsFor(m_player->GetClassMask()))
     {
-        uint32 const entry = BonkMgr::GetGearEntry(kind, quality, piece.gear.tier);
+        uint32 const entry = BonkMgr::GetGearEntry(kind, quality, std::min(piece.gear.tier, BONK_GEAR_TIERS));
         if (!entry)
             continue;
         if (kind >= BONK_GEAR_FIRST_TRINKET)
@@ -257,7 +257,7 @@ void BonkRun::AddEliteScrap()
 bool BonkRun::MakeLegendary(PendingGear& piece) const
 {
     piece.gear = BonkFound::Roll(GetDropTier(), ITEM_QUALITY_LEGENDARY, m_levelRow.rollFloor);
-    std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), piece.gear.tier);
+    std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), std::min(piece.gear.tier, BONK_GEAR_TIERS));
     if (legendaries.empty())
         return false;
     piece.entry = legendaries[urand(0, uint32(legendaries.size() - 1))];

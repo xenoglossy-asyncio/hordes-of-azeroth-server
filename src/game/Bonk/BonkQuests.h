@@ -56,6 +56,7 @@ enum BonkQuestType : uint8
     BONK_QUEST_DEATHS         = 37,
     BONK_QUEST_DOT_KILLS      = 38,
     BONK_QUEST_DASHES         = 39,
+    BONK_QUEST_VETERAN        = 40,
     MAX_BONK_QUEST_TYPE
 };
 
@@ -129,6 +130,7 @@ class BonkQuests
         bool IsLocked(uint32 account, BonkQuestReward type, uint32 id) const;
         bool IsDisabled(uint32 account, BonkQuestReward type, uint32 id) const;
         bool IsInPool(uint32 account, BonkQuestReward type, uint32 id) const { return !IsLocked(account, type, id) && !IsDisabled(account, type, id); }
+        static bool IsHiddenUntilDone(BonkQuest const& quest) { return quest.type == BONK_QUEST_VETERAN; }
         static bool IsTogglable(BonkQuestReward type) { return type == BONK_REWARD_CARD || type == BONK_REWARD_GLYPH; }
         bool SetDisabled(uint32 account, BonkQuestReward type, uint32 id, bool disabled, uint32 slots, std::string& error,
             LocaleConstant locale = LOCALE_enUS);

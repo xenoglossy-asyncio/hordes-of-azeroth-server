@@ -186,6 +186,7 @@ void BonkPlayer::OnLogin()
 
     LoadPurchases();
     LoadMastery();
+    LoadGearMode();
     LoadStarter();
     sBonkQuests.OnLogin(m_player);
     ReconcileMastery();
@@ -2250,7 +2251,110 @@ void BonkPlayer::SendQuartermaster() const
 
 uint32 BonkPlayer::GetUpgradeCeiling() const
 {
-    return std::min(BONK_GEAR_TIERS, std::max(1u, GetAccountBestLevel()));
+    return std::min(GetTierCap(), std::max(1u, GetAccountBestLevel()));
+}
+
+uint32 BonkPlayer::GetTierCap() const
+{
+    return IsUncapped() ? BONK_UNCAPPED_TIER_CAP : BONK_GEAR_TIERS;
+}
+
+void BonkPlayer::LoadGearMode()
+{
+    m_gearMode = BONK_GEAR_MODE_REGULAR;
+    std::unique_ptr<QueryResult> result = CharacterDatabase.PQuery("SELECT `mode` FROM `bonk_character_mode` WHERE `guid` = %u", m_player->GetGUIDLow());
+    if (result && result->Fetch()[0].GetUInt8() <= BONK_GEAR_MODE_UNCAPPED)
+        m_gearMode = BonkGearMode(result->Fetch()[0].GetUInt8());
+}
+
+void BonkPlayer::SendGearMode() const
+{
+    static char const* const MODE_KEYS[] = { "unset", "regular", "uncapped" };
+    std::string line = std::string("gearmode~") + MODE_KEYS[m_gearMode];
+    if (m_gearMode == BONK_GEAR_MODE_UNSET)
+    {
+        uint32 pieces = 0;
+        uint32 refund = 0;
+        std::unique_ptr<QueryResult> result = CharacterDatabase.PQuery("SELECT f.`tier` FROM `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` "
+            "WHERE i.`owner_guid` = %u AND f.`tier` > %u", m_player->GetGUIDLow(), BONK_GEAR_TIERS);
+        if (result)
+        {
+            do
+            {
+                ++pieces;
+                for (uint32 tier = BONK_GEAR_TIERS; tier < result->Fetch()[0].GetUInt32(); ++tier)
+                    refund += BonkFound::GetUpgradeCost(tier);
+            } while (result->NextRow());
+        }
+        line += "~" + std::to_string(pieces) + "~" + std::to_string(refund);
+    }
+    SendAddon(line);
+}
+
+uint32 BonkPlayer::ClampGearAboveCap()
+{
+    uint32 refund = 0;
+    std::unique_ptr<QueryResult> result = CharacterDatabase.PQuery("SELECT f.`item_guid` FROM `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` "
+        "WHERE i.`owner_guid` = %u AND f.`tier` > %u", m_player->GetGUIDLow(), BONK_GEAR_TIERS);
+    if (!result)
+        return 0;
+    do
+    {
+        uint32 const itemGuid = result->Fetch()[0].GetUInt32();
+        BonkFoundGear found;
+        if (!sBonkFound.Get(itemGuid, found))
+            continue;
+        for (uint32 tier = BONK_GEAR_TIERS; tier < found.tier; ++tier)
+            refund += BonkFound::GetUpgradeCost(tier);
+        found.tier = BONK_GEAR_TIERS;
+        sBonkFound.Set(itemGuid, found);
+    } while (result->NextRow());
+    CharacterDatabase.PExecute("UPDATE `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` SET f.`tier` = %u WHERE i.`owner_guid` = %u AND f.`tier` > %u",
+        BONK_GEAR_TIERS, m_player->GetGUIDLow(), BONK_GEAR_TIERS);
+    return refund;
+}
+
+bool BonkPlayer::ChooseGearMode(BonkGearMode mode, bool confirmed, std::string& error)
+{
+    if (GetRun())
+    {
+        error = GetString(BONK_STRING_GEAR_MODE_NOT_DURING_RUN);
+        return false;
+    }
+    if (mode == m_gearMode)
+    {
+        error = GetString(mode == BONK_GEAR_MODE_UNCAPPED ? BONK_STRING_GEAR_MODE_ALREADY_UNCAPPED : BONK_STRING_GEAR_MODE_ALREADY_REGULAR);
+        return false;
+    }
+    if (m_gearMode == BONK_GEAR_MODE_UNCAPPED)
+    {
+        error = GetString(BONK_STRING_GEAR_MODE_CANT_GO_BACK);
+        return false;
+    }
+    if (mode == BONK_GEAR_MODE_UNCAPPED && !confirmed)
+    {
+        error = GetString(BONK_STRING_GEAR_MODE_CONFIRM_UNCAPPED);
+        return false;
+    }
+
+    bool const veteran = m_gearMode == BONK_GEAR_MODE_UNSET;
+    uint32 const refund = mode == BONK_GEAR_MODE_REGULAR ? ClampGearAboveCap() : 0;
+    m_gearMode = mode;
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_character_mode` (`guid`, `mode`) VALUES (%u, %u)", m_player->GetGUIDLow(), uint32(mode));
+    Notify(mode == BONK_GEAR_MODE_UNCAPPED ? BONK_STRING_GEAR_MODE_NOW_UNCAPPED : BONK_STRING_GEAR_MODE_NOW_REGULAR);
+    if (refund)
+    {
+        AddScrap(refund);
+        Notify(BONK_STRING_GEAR_MODE_REGULAR_REFUND, { std::to_string(refund) });
+    }
+    if (veteran)
+        sBonkQuests.OnProgress(m_player, BONK_QUEST_VETERAN, 0, 1);
+    SendGearMode();
+    SendQuartermaster();
+    SendFoundUpgrades();
+    SendFoundItems();
+    SendStats();
+    return true;
 }
 
 std::vector<Item*> BonkPlayer::GetUpgradableGear() const
@@ -2413,6 +2517,11 @@ bool BonkPlayer::UpgradeFoundGear(uint32 guidLow, std::string& error)
     }
     uint32 const tier = BonkFound::GetItemTier(item);
     uint32 const cost = BonkFound::GetUpgradeCost(tier);
+    if (tier >= GetTierCap())
+    {
+        error = GetString(BONK_STRING_GEAR_TIER_IS_HIGHEST, { std::to_string(GetTierCap()) });
+        return false;
+    }
     if (tier >= GetUpgradeCeiling())
     {
         error = GetString(BONK_STRING_CLEAR_LEVEL_TO_RAISE, { GetLevelName(tier + 1), BonkFound::DescribeTier(tier + 1, m_locale) });
@@ -2516,6 +2625,7 @@ void BonkPlayer::SendUpdateNotices()
 {
     if (m_gearNoticePending)
         SendAddon("notice~gear");
+    SendGearMode();
 }
 
 void BonkPlayer::SeeGearNotice()
@@ -3038,7 +3148,7 @@ void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bo
         SendAddon("level~" + std::to_string(tier.id) + "~" + std::to_string(band) + "~" + Percent((health - 1.0f) * 100.0f) + "~" +
             Percent((damage - 1.0f) * 100.0f) + "~" + Percent(veterans) + "~" + std::to_string(affixes) + "~" + Percent((level.reward - 1.0f) * 100.0f) + "~" +
             Chance(legendary) + "~" + Chance(epic) + "~" + Chance(blue) + "~" + Chance(green) + "~" + Chance(std::max(0.0f, 100.0f - legendary - epic - blue - green)) +
-            "~" + (band <= best ? "1" : "0") + "~" + std::to_string(BonkRun::GetLevelDropTier(tier, band)));
+            "~" + (band <= best ? "1" : "0") + "~" + std::to_string(BonkRun::GetLevelDropTier(tier, band, GetTierCap())));
     }
 }
 

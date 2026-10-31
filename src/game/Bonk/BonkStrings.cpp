@@ -859,6 +859,17 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_USE_HEARTHSTONE_TO_SEND_HOME,            "Use a Hearthstone to send a piece home." },
         { BONK_STRING_HEARTH_VAULT_READY,                      "The ring is full. Open the vault beside it to send 1 piece home." },
         { BONK_STRING_WAIT_FOR_HEARTH_RING,                    "Wait for the ring to fill first." },
+        { BONK_STRING_GEAR_MODE_NOW_REGULAR,                   "Your character is Regular. Gear stops at Tier 10." },
+        { BONK_STRING_GEAR_MODE_REGULAR_REFUND,                "Pieces above Tier 10 are now Tier 10, and {1} Scrap came back." },
+        { BONK_STRING_GEAR_MODE_NOW_UNCAPPED,                  "Your character is Uncapped. Mythic levels keep raising the tier of your gear." },
+        { BONK_STRING_GEAR_MODE_ALREADY_REGULAR,               "Your character is already Regular." },
+        { BONK_STRING_GEAR_MODE_ALREADY_UNCAPPED,              "Your character is already Uncapped." },
+        { BONK_STRING_GEAR_MODE_CANT_GO_BACK,                  "An Uncapped character can't become Regular again." },
+        { BONK_STRING_GEAR_MODE_CONFIRM_UNCAPPED,              "Uncapped can't be undone and leaves the leaderboard. Type .bonk mode uncapped confirm to convert." },
+        { BONK_STRING_GEAR_MODE_NOT_DURING_RUN,                "You can't change gear mode during a run." },
+        { BONK_STRING_GEAR_MODE_USAGE,                         "Type .bonk mode regular or .bonk mode uncapped." },
+        { BONK_STRING_GEAR_TIER_IS_HIGHEST,                    "Tier {1} is the highest tier." },
+        { BONK_STRING_RULE_GEAR_MODES,                         "Regular characters keep every item at Tier 10 at most and go on the leaderboard. Uncapped characters get Tier 9 + N from Mythic N with no limit, and their Scrap upgrades follow their highest level cleared; they stay off the leaderboard. A Regular character can become Uncapped at any time from the character window, never the other way." },
     };
     return texts;
 }
