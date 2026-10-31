@@ -1,6 +1,7 @@
 #include "BonkCoop.h"
 
 #include "AccountMgr.h"
+#include "BonkPlayer.h"
 #include "Chat.h"
 #include "Database/DatabaseEnv.h"
 #include "Group.h"
@@ -93,6 +94,11 @@ void BonkCoop::JoinHostGroup(Player* guest)
     Player* host = FindHost();
     if (!host)
         return;
+    if (host->GetBonkPlayer() && host->GetBonkPlayer()->IsIronman())
+    {
+        SendAway(guest, "The host is playing an ironman character, and ironman characters play solo only.");
+        return;
+    }
     Group* group = host->GetGroup();
     if (group && ClassTaken(group, guest))
     {

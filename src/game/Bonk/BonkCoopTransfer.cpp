@@ -268,7 +268,7 @@ namespace
         if (!low)
             return "error There is no character called " + name + ".";
         if (IsIronman(low))
-            return "error Ironman characters can't play co-op yet.";
+            return "error Ironman characters play solo only.";
         if (Player* online = sObjectMgr.GetPlayer(ObjectGuid(HIGHGUID_PLAYER, low)))
         {
             online->SaveToDB();
