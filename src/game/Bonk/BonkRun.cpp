@@ -9291,7 +9291,7 @@ float BonkRun::GetPetBiteDamage(OwnedWeapon const& owned, BonkPetFamily const& f
 {
     float rate = IN_MILLISECONDS / float(family.attackMs);
     for (BonkPetAbility const& ability : family.abilities)
-        if (ability.kind == BONK_PET_ABILITY_STRIKE || ability.kind == BONK_PET_ABILITY_PULSE)
+        if (ability.kind != BONK_PET_ABILITY_DASH)
             rate += ability.damage * IN_MILLISECONDS / float(ability.cooldownMs);
     uint32 const spellMs = std::max(500u, owned.weapon.tickMs);
     return GetWeaponDamage(owned) * IN_MILLISECONDS / float(spellMs) / rate * GetDemonDamageScale() * GetSummonTalentScale(owned);
