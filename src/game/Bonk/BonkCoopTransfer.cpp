@@ -218,6 +218,35 @@ namespace
         return "";
     }
 
+    void DiscardHeldBank(uint32 guid)
+    {
+        std::string bagList;
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery(
+            "SELECT `item_guid` FROM `character_inventory` WHERE `guid` = %u AND `bag` = 0 AND `slot` >= %u AND `slot` < %u",
+            guid, uint32(BANK_SLOT_BAG_START), uint32(BANK_SLOT_BAG_END)));
+        if (result)
+        {
+            do
+                bagList += (bagList.empty() ? "" : ",") + std::to_string(result->Fetch()[0].GetUInt32());
+            while (result->NextRow());
+        }
+        std::string itemList;
+        result = CharacterDatabase.PQuery(
+            "SELECT `item_guid` FROM `character_inventory` WHERE `guid` = %u AND ((`bag` = 0 AND `slot` >= %u AND `slot` < %u)%s%s%s)",
+            guid, uint32(BANK_SLOT_ITEM_START), uint32(BANK_SLOT_BAG_END),
+            bagList.empty() ? "" : " OR `bag` IN (", bagList.c_str(), bagList.empty() ? "" : ")");
+        if (result)
+        {
+            do
+                itemList += (itemList.empty() ? "" : ",") + std::to_string(result->Fetch()[0].GetUInt32());
+            while (result->NextRow());
+        }
+        if (itemList.empty())
+            return;
+        CharacterDatabase.DirectPExecute("DELETE FROM `item_instance` WHERE `guid` IN (%s)", itemList.c_str());
+        CharacterDatabase.DirectPExecute("DELETE FROM `character_inventory` WHERE `item_guid` IN (%s)", itemList.c_str());
+    }
+
     bool CharacterRowExists(uint32 guid)
     {
         std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT 1 FROM `characters` WHERE `guid` = %u", guid));
@@ -259,7 +288,7 @@ namespace
             return "error The character couldn't be loaded (" + std::to_string(uint32(loaded)) + ").";
         if (!ImportAccountRows(ReadFile(ACCOUNT_FILE), accountId))
             return "error The account progress couldn't be loaded.";
-        return "ok " + std::to_string(guid) + " " + name;
+        return "ok 0 " + name;
     }
 
     std::string Import(std::string const& username, std::string const& name, uint32 replaceGuid)
@@ -281,6 +310,7 @@ namespace
         {
             if (AccountOfCharacter(replaceGuid) != accountId)
                 return "error That character belongs to another account.";
+            DiscardHeldBank(replaceGuid);
             Player::DeleteFromDB(old, accountId, true, true);
         }
         s_pending = Pending();
@@ -310,7 +340,7 @@ namespace
             return "error The old copy of the character couldn't be removed.";
         }
         s_pending.active = false;
-        return Load(s_pending.accountId, s_pending.name, s_pending.guid);
+        return Load(s_pending.accountId, s_pending.name, 0);
     }
 
     std::string Handle(std::string const& request)

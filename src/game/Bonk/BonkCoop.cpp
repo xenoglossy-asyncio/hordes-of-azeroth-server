@@ -17,6 +17,11 @@
 namespace
 {
     char const* const GUEST_ACCOUNT_PREFIX = "HOAC";
+    char const* const GUEST_ACCOUNT_TABLES[] = {
+        "bonk_account", "bonk_account_bank", "bonk_account_disabled", "bonk_account_floor", "bonk_account_found", "bonk_account_mastery",
+        "bonk_account_mastery_node", "bonk_account_mastery_preset", "bonk_account_mastery_preset_active", "bonk_account_quest",
+        "bonk_account_starter", "bonk_account_talent", "bonk_account_tier", "bonk_account_unlock", "bonk_account_upgrade",
+    };
     uint32 const REMOVE_DELAY_MS = 3000;
 
     std::mutex s_removedLock;
@@ -132,7 +137,14 @@ void BonkCoop::DeleteGuestAccounts()
         while (result->NextRow());
     }
     for (uint32 accountId : guests)
+    {
+        CharacterDatabase.DirectPExecute("DELETE i, ci FROM `character_inventory` ci JOIN `characters` c ON c.`guid` = ci.`guid` "
+            "JOIN `item_instance` i ON i.`guid` = ci.`item_guid` WHERE c.`account` = %u", accountId);
         sAccountMgr.DeleteAccount(accountId);
+        CharacterDatabase.DirectPExecute("DELETE i FROM `item_instance` i JOIN `bonk_account_bank` b ON b.`item_guid` = i.`guid` WHERE b.`account` = %u", accountId);
+        for (char const* table : GUEST_ACCOUNT_TABLES)
+            CharacterDatabase.DirectPExecute("DELETE FROM `%s` WHERE `account` = %u", table, accountId);
+    }
     if (!guests.empty())
         sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: removed %u guest accounts from earlier games", uint32(guests.size()));
 }
