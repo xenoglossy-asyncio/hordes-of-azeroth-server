@@ -28,7 +28,7 @@ namespace
         return dx * dx + dy * dy;
     }
 
-    char const* const KIND_NAMES[MAX_BONK_OBJECTIVE_KIND] = { "shrine", "vendor", "event", "extract", "chest", "boss", "miniboss" };
+    char const* const KIND_NAMES[MAX_BONK_OBJECTIVE_KIND] = { "shrine", "vendor", "event", "", "chest", "boss", "miniboss" };
 
     bool HasPillar(BonkObjective const& objective)
     {

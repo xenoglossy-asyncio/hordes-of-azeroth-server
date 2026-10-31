@@ -1636,9 +1636,6 @@ void BonkRun::StartStage()
     m_pendingCasts.clear();
     m_heldShotSources.clear();
     m_telegraphs.Dismiss(m_player);
-    DespawnPillar();
-    m_stageMiniBosses = 0;
-    m_pillarRaised = false;
     m_objectives.Clear(m_player);
     m_spawnPoints.Reset(m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ());
     ResetShrines();
@@ -1884,6 +1881,8 @@ void BonkRun::UpdateOffers()
         OfferUpgrades(OFFER_CHEST);
     else if (!m_pendingGear.empty())
         OfferGear();
+    else if (m_hearthSendPending)
+        OpenHearthSend();
     else if (m_pendingLevels && m_sandbox && m_sandboxQuietLevels)
         m_pendingLevels = 0;
     else if (m_pendingLevels)
@@ -2252,7 +2251,6 @@ void BonkRun::UpdateSpawns(uint32 diff)
         {
             m_bossSpawned = true;
             m_player->GetBonkPlayer()->Notify(BONK_STRING_ARRIVED, { m_player->GetBonkPlayer()->GetLocalName(mob) });
-            MaybeSpawnPillar();
         }
     }
 
@@ -3831,6 +3829,7 @@ void BonkRun::SetCoopPlayers(uint32 players, bool sharedPause, bool sharedXp)
     m_coopNoPause = !sharedPause;
     m_coopOwnXp = !sharedXp;
     ApplyPause(WantsPause());
+    m_player->GetBonkPlayer()->SendAddon(std::string("coopnopause~") + (m_coopNoPause ? "1" : "0"));
     sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
         "Bonk coop: %s runs with %u players (stage %u, %s, %s, class %u, %s, pause %s, xp %s)", m_player->GetName(), m_coopPlayers, m_stage,
         m_map.key.c_str(), m_tier.key.c_str(), uint32(m_player->GetClass()), IsCoopGuest() ? "guest" : "host",
@@ -5111,7 +5110,6 @@ void BonkRun::DespawnObjects()
     }
     DespawnVault();
     DespawnEnchanter();
-    DespawnPillar();
     ClearDropLooks();
     m_chests.clear();
     m_chestOpenedBy.clear();
@@ -5350,8 +5348,6 @@ void BonkRun::OpenPortal(Creature* boss)
         if ((IsMythic() || m_tier.key == "heroic") && (!last || m_tier.finale))
             PlaceEnchanter(portal->GetPositionX() - BONK_VAULT_SIDE * std::cos(side), portal->GetPositionY() - BONK_VAULT_SIDE * std::sin(side),
                 portal->GetPositionZ(), m_player->GetAngle(portal) + M_PI_F);
-        MaybeSpawnPillarAt(portal->GetPositionX() + 2.0f * BONK_VAULT_SIDE * std::cos(side),
-            portal->GetPositionY() + 2.0f * BONK_VAULT_SIDE * std::sin(side), portal->GetPositionZ());
     }
 
     if (!last)
@@ -11321,8 +11317,6 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
     OnHiddenKilled(mob);
     if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && mob->GetObjectGuid() != hiddenBoss && ++m_glyphMiniBosses == 1)
         DropGlyph(mob);
-    if (kind == BONK_SPAWN_MINIBOSS && mob->GetObjectGuid() != hiddenBoss)
-        CountStageMiniBoss();
 
     if (mob->GetObjectGuid() == m_bossGuid)
     {

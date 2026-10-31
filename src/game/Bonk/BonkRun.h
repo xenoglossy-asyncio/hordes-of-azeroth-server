@@ -299,11 +299,9 @@ class BonkRun
             std::string extra;
         };
         bool IsOwnVault(GameObject const* vault) const;
-        bool IsOwnPillar(GameObject const* pillar) const;
         void OpenVault();
-        void OpenPillar();
         void CloseVault();
-        bool SendHomeFromPillar(uint32 guidLow, std::string& error);
+        bool SendHomeFromHearth(uint32 guidLow, std::string& error);
         bool PutInVault(uint32 guidLow, std::string& error);
         bool TakeFromVault(uint32 guidLow, std::string& error);
         std::vector<VaultFind> GetVaultFinds() const;
@@ -1235,18 +1233,7 @@ class BonkRun
         void DespawnVault();
         void SendVault() const;
         bool CheckVaultReach(std::string& error) const;
-        bool CheckPillarReach(std::string& error) const;
-        bool IsPillarStage() const;
-        void CountStageMiniBoss();
-        void MaybeSpawnPillar();
-        void MaybeSpawnPillarAt(float x, float y, float baseZ);
-        bool RaisePillarAt(float x, float y, float z);
-        void DespawnPillar();
-        ObjectGuid m_pillarGuid;
-        uint32 m_pillarObjective = 0;
-        bool m_pillarRaised = false;
-        bool m_pillarMode = false;
-        struct PillarSentPiece
+        struct SentHomePiece
         {
             uint32 entry = 0;
             uint32 stage = 0;
@@ -1254,8 +1241,7 @@ class BonkRun
             std::string lines;
             std::string extra;
         };
-        std::vector<PillarSentPiece> m_pillarSent;
-        uint32 m_stageMiniBosses = 0;
+        std::vector<SentHomePiece> m_sentHome;
         ObjectGuid FindRunGear(uint32 guidLow) const;
         bool IsInVault(ObjectGuid const& guid) const;
         uint32 GetGearGold(uint8 quality) const;
@@ -1275,15 +1261,15 @@ class BonkRun
         void PauseHearth(bool paused);
         void ShowHearthRing();
         void SendHearthBar(bool inside);
-        void LeaveHeroBehind();
         bool IsHeroInHearthRing() const;
         void EndHearth();
-        uint32 GetHearthMs() const;
+        void OpenHearthSend();
         bool m_hearthDropped = false;
         bool m_hearthActive = false;
+        bool m_hearthSendPending = false;
+        bool m_hearthSending = false;
         uint32 m_hearthMs = 0;
         uint32 m_hearthSendMs = 0;
-        uint32 m_hearthLeavingMs = 0;
         bool m_hearthShown = false;
         bool m_hearthInside = false;
         float m_hearthX = 0.0f, m_hearthY = 0.0f, m_hearthZ = 0.0f;

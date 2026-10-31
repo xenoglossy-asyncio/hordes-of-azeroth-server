@@ -1,3 +1,4 @@
+#include "Bag.h"
 #include "BonkCoop.h"
 #include "BonkCodex.h"
 #include "BonkEnchant.h"
@@ -424,7 +425,7 @@ bool ChatHandler::HandleBonkVaultCommand(char* args)
     std::string error;
     bool done = false;
     if (!strcmp(action, "send"))
-        done = run->SendHomeFromPillar(guidLow, error);
+        done = run->SendHomeFromHearth(guidLow, error);
     else if (!strcmp(action, "put"))
         done = run->PutInVault(guidLow, error);
     else
@@ -559,6 +560,22 @@ bool ChatHandler::HandleBonkGearCommand(char* args)
         std::string error;
         if (!m_session->GetPlayer()->GetBonkPlayer()->GiveTestFoundGear(tier, lines, error))
             m_session->GetPlayer()->GetBonkPlayer()->Notify(error);
+        return true;
+    }
+    if (tab == "testhearth" && GetAccessLevel() >= SEC_GAMEMASTER)
+    {
+        Player* player = m_session->GetPlayer();
+        BonkRun* run = player->GetBonkPlayer()->GetRun();
+        Item* stone = nullptr;
+        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END && !stone; ++slot)
+            if (Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                if (item->GetEntry() == BONK_ITEM_HEARTHSTONE)
+                    stone = item;
+        for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END && !stone; ++bag)
+            if (Bag* container = dynamic_cast<Bag*>(player->GetItemByPos(INVENTORY_SLOT_BAG_0, bag)))
+                stone = container->GetItemByEntry(BONK_ITEM_HEARTHSTONE);
+        if (!stone || !run->UseItem(stone))
+            SendSysMessage("You need a Hearthstone in a run.");
         return true;
     }
     if (tab == "enchant open" || tab == "enchant discard" || tab.compare(0, 13, "enchant pick ") == 0 || tab.compare(0, 13, "enchant roll ") == 0)
@@ -960,14 +977,14 @@ bool ChatHandler::HandleBonkObjectiveCommand(char* args)
     BonkObjectiveKind kind = BONK_OBJECTIVE_SHRINE;
     if (!kindArg || !ParseBonkObjectiveKind(kindArg, kind))
     {
-        SendSysMessage("Usage: .bonk objective shrine|vendor|event|extract [seconds] | clear");
+        SendSysMessage("Usage: .bonk objective shrine|vendor|event [seconds] | clear");
         SetSentErrorMessage(true);
         return false;
     }
     uint32 seconds = 0;
     ExtractUInt32(&args, seconds);
 
-    char const* const labels[MAX_BONK_OBJECTIVE_KIND] = { "Shrine", "Goblin Merchant", "Event", "Extraction Point" };
+    char const* const labels[MAX_BONK_OBJECTIVE_KIND] = { "Shrine", "Goblin Merchant", "Event" };
     BonkSpot spot;
     bool const atSpot = run->TakeSpawnPoint(120.0f, 250.0f, spot);
     if (!atSpot)

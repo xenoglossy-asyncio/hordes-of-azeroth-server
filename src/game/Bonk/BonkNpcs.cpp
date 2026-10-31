@@ -352,37 +352,6 @@ bool GOHello_go_bonk_vault(Player* player, GameObject* go)
     return true;
 }
 
-bool GOHello_go_bonk_pillar(Player* player, GameObject* go)
-{
-    BonkRun* run = player->GetBonkPlayer()->GetRun();
-    if (!run || !run->IsOwnPillar(go))
-        return true;
-
-    if (player->GetBonkPlayer()->IsAddonReady())
-    {
-        run->OpenPillar();
-        return true;
-    }
-
-    for (BonkRun::VaultFind const& find : run->GetVaultFinds())
-        if (ItemPrototype const* proto = sObjectMgr.GetItemPrototype(find.entry))
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, (std::string("Send home now: ") + proto->Name1).c_str(), SENDER_VAULT_PUT, find.guid.GetCounter());
-    player->SEND_GOSSIP_MENU(BONK_TEXT_VAULT, go->GetObjectGuid());
-    return true;
-}
-
-bool GOGossipSelect_go_bonk_pillar(Player* player, GameObject* go, uint32 , uint32 action)
-{
-    BonkRun* run = player->GetBonkPlayer()->GetRun();
-    player->CLOSE_GOSSIP_MENU();
-    if (!run || !run->IsOwnPillar(go))
-        return true;
-    std::string error;
-    if (!run->SendHomeFromPillar(action, error))
-        player->GetBonkPlayer()->Notify(error);
-    return true;
-}
-
 bool GOGossipSelect_go_bonk_vault(Player* player, GameObject* go, uint32 sender, uint32 action)
 {
     BonkRun* run = player->GetBonkPlayer()->GetRun();
@@ -496,11 +465,5 @@ void AddSC_bonk_npcs()
     newscript->Name = "go_bonk_vault";
     newscript->pGOHello = &GOHello_go_bonk_vault;
     newscript->pGOGossipSelect = &GOGossipSelect_go_bonk_vault;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "go_bonk_pillar";
-    newscript->pGOHello = &GOHello_go_bonk_pillar;
-    newscript->pGOGossipSelect = &GOGossipSelect_go_bonk_pillar;
     newscript->RegisterSelf();
 }

@@ -66,7 +66,6 @@ namespace
     float const BONK_MAILBOX_GLOW_RANGE = 100.0f;
 
     uint32 const BONK_ITEM_STARTER_BAG = 900225;
-    uint32 const BONK_ITEM_RUN_HEARTHSTONE = 900230;
     uint32 const BONK_ITEM_OLD_ARROWS = 900226;
     uint32 const BONK_ITEM_OLD_BULLETS = 900227;
 
@@ -196,8 +195,8 @@ void BonkPlayer::OnLogin()
     ClearAuras();
     m_campCheckPending = true;
     ClearInterruptedRunItems();
-    if (m_player->HasItemCount(BONK_ITEM_RUN_HEARTHSTONE, 1, true))
-        m_player->DestroyItemCount(BONK_ITEM_RUN_HEARTHSTONE, 255, true, false, true);
+    if (m_player->HasItemCount(BONK_ITEM_HEARTHSTONE, 1, true))
+        m_player->DestroyItemCount(BONK_ITEM_HEARTHSTONE, 255, true, false, true);
     for (uint32 ammo : { BONK_ITEM_OLD_ARROWS, BONK_ITEM_OLD_BULLETS })
         if (uint32 const count = m_player->GetItemCount(ammo, true))
             m_player->DestroyItemCount(ammo, count, true, false, true);
