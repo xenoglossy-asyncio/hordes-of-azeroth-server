@@ -111,6 +111,26 @@ uint32 BonkCoop::CampSeat(Player const* player)
     return seat;
 }
 
+namespace
+{
+    std::vector<ObjectGuid> MemberGuids(Group const* group)
+    {
+        std::vector<ObjectGuid> guids;
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+            guids.push_back(slot.guid);
+        return guids;
+    }
+
+    void RefreshCoopNpc(std::vector<ObjectGuid> const& members)
+    {
+        for (ObjectGuid const& guid : members)
+            if (Player* member = sObjectMgr.GetPlayer(guid))
+                if (member->IsInWorld())
+                    if (Creature* npc = member->FindNearestCreature(BONK_COOP_NPC, BONK_COOP_NPC_RANGE, true))
+                        member->UpdateVisibilityOf(member, npc);
+    }
+}
+
 void BonkCoop::JoinHostGroup(Player* guest)
 {
     if (!IsGuestAccount(guest))
@@ -160,6 +180,7 @@ void BonkCoop::JoinHostGroup(Player* guest)
     if (group->IsFull())
         return;
     group->AddMember(guest->GetObjectGuid(), guest->GetName());
+    RefreshCoopNpc(MemberGuids(group));
 }
 
 void BonkCoop::OnLogout(Player* player)
@@ -173,7 +194,11 @@ void BonkCoop::OnLogout(Player* player)
         s_seats.erase(player->GetObjectGuid());
     }
     if (Group* group = player->GetGroup())
+    {
+        std::vector<ObjectGuid> const members = MemberGuids(group);
         Player::RemoveFromGroup(group, player->GetObjectGuid());
+        RefreshCoopNpc(members);
+    }
 }
 
 void BonkCoop::OnUninvited(ObjectGuid guid)

@@ -142,7 +142,7 @@ class BonkRun
         bool IsAway() const { return m_away; }
         void EndWithHost();
         void EndInWipe();
-        void SetCoopPlayers(uint32 players);
+        void SetCoopPlayers(uint32 players, bool sharedPause, bool sharedXp);
         uint32 GetCoopPlayers() const { return m_coopPlayers; }
         void ShareExperience(float levelFraction);
         bool OffersChest(ObjectGuid chest, Player* opener) const;
@@ -1448,6 +1448,8 @@ class BonkRun
         uint32 m_stage = 1;
         ObjectGuid m_coopHost;
         uint32 m_coopPlayers = 1;
+        bool m_coopNoPause = false;
+        bool m_coopOwnXp = false;
         float GetCoopHealthScale(BonkSpawnKind kind) const;
         float m_stageX = 0.0f, m_stageY = 0.0f, m_stageZ = 0.0f;
         void ClearStageObjects();
@@ -1462,7 +1464,7 @@ class BonkRun
         bool m_followPending = false;
         BonkMap m_followMap;
         uint32 m_followStage = 0;
-        bool WantsPause() const { return m_ownPaused || m_groupHeld || m_away; }
+        bool WantsPause() const { return (m_ownPaused && !m_coopNoPause) || m_groupHeld || m_away; }
         void ApplyPause(bool paused);
         bool m_wentHome = false;
 

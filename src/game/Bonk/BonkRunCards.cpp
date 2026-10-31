@@ -180,6 +180,8 @@ float BonkRun::GetCardPower(Unit const* victim) const
 
 bool BonkRun::IsCardInPool(BonkCard const& card) const
 {
+    if (m_coopOwnXp && card.effect == BONK_CARD_MAGNET)
+        return false;
     return card.inChests && sBonkQuests.IsInPool(m_player->GetBonkPlayer()->GetProgressAccount(), BONK_REWARD_CARD, card.id);
 }
 

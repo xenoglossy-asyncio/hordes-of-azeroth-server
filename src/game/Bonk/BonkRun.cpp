@@ -3819,12 +3819,16 @@ float BonkRun::GetCoopHealthScale(BonkSpawnKind kind) const
     return 1.0f + perPlayer * float(m_coopPlayers - 1);
 }
 
-void BonkRun::SetCoopPlayers(uint32 players)
+void BonkRun::SetCoopPlayers(uint32 players, bool sharedPause, bool sharedXp)
 {
     m_coopPlayers = std::max(1u, players);
+    m_coopNoPause = !sharedPause;
+    m_coopOwnXp = !sharedXp;
+    ApplyPause(WantsPause());
     sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
-        "Bonk coop: %s runs with %u players (stage %u, %s, %s, class %u, %s)", m_player->GetName(), m_coopPlayers, m_stage, m_map.key.c_str(),
-        m_tier.key.c_str(), uint32(m_player->GetClass()), IsCoopGuest() ? "guest" : "host");
+        "Bonk coop: %s runs with %u players (stage %u, %s, %s, class %u, %s, pause %s, xp %s)", m_player->GetName(), m_coopPlayers, m_stage,
+        m_map.key.c_str(), m_tier.key.c_str(), uint32(m_player->GetClass()), IsCoopGuest() ? "guest" : "host",
+        sharedPause ? "shared" : "none", sharedXp ? "shared" : "individual");
 }
 
 uint32 BonkRun::GetSpawnHealth(BonkSpawnKind kind, BonkArchetype archetype, float creatureMultiplier) const
@@ -4942,10 +4946,10 @@ uint32 BonkRun::GetChestPrice() const
 
 void BonkRun::SpawnPowerup(WorldObject const* at)
 {
-    bool const magnetPlaced = !m_powerupObjectives.empty();
-    auto allowed = [magnetPlaced](BonkPowerup const& powerup)
+    bool const magnetBlocked = !m_powerupObjectives.empty() || m_coopOwnXp;
+    auto allowed = [magnetBlocked](BonkPowerup const& powerup)
     {
-        return !magnetPlaced || powerup.effect != BONK_POWERUP_MAGNET;
+        return !magnetBlocked || powerup.effect != BONK_POWERUP_MAGNET;
     };
     std::vector<BonkPowerup> const& powerups = sBonkMgr.GetPowerups();
     uint32 totalWeight = 0;

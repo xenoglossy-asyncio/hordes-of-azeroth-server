@@ -75,6 +75,26 @@ namespace
     };
 
     std::map<ObjectGuid, GroupRun> s_groups;
+
+    struct GroupSettings
+    {
+        bool sharedPause = true;
+        bool sharedXp = true;
+    };
+
+    std::map<ObjectGuid, GroupSettings> s_settings;
+
+    ObjectGuid SettingsHostOf(Player const* player)
+    {
+        Group const* group = player->GetGroup();
+        return group ? group->GetLeaderGuid() : player->GetObjectGuid();
+    }
+
+    GroupSettings SettingsOf(Player const* player)
+    {
+        auto found = s_settings.find(SettingsHostOf(player));
+        return found != s_settings.end() ? found->second : GroupSettings();
+    }
     std::map<ObjectGuid, std::set<ObjectGuid>> s_hiddenObjects;
 
     std::vector<Player*> OtherMembers(Player* player)
@@ -422,6 +442,60 @@ uint32 BonkCoop::RejoinWaitMs()
     return REJOIN_WAIT_MS;
 }
 
+namespace
+{
+    void TellSettingChanged(Player* host, std::string const& line)
+    {
+        for (Player* member : GroupMembers(host))
+            member->GetBonkPlayer()->Notify(line);
+    }
+}
+
+bool BonkCoop::IsInCoopGroup(Player const* player)
+{
+    if (IsGuestAccount(player))
+        return true;
+    Group const* group = player->GetGroup();
+    if (!group)
+        return false;
+    for (Group::MemberSlot const& slot : group->GetMemberSlots())
+        if (Player* member = ObjectAccessor::FindPlayerNotInWorld(slot.guid))
+            if (IsGuestAccount(member))
+                return true;
+    return false;
+}
+
+bool BonkCoop::IsGroupHost(Player const* player)
+{
+    return !IsGuestAccount(player) && SettingsHostOf(player) == player->GetObjectGuid();
+}
+
+bool BonkCoop::SharesPause(Player const* player)
+{
+    return SettingsOf(player).sharedPause;
+}
+
+bool BonkCoop::SharesXp(Player const* player)
+{
+    return SettingsOf(player).sharedXp;
+}
+
+void BonkCoop::SetSharedPause(Player* host, bool shared)
+{
+    s_settings[host->GetObjectGuid()].sharedPause = shared;
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s sets pausing to %s", host->GetName(), shared ? "shared" : "none");
+    TellSettingChanged(host, shared ? "The host turned on shared pause: everyone waits while someone picks. It applies from the next run."
+        : "The host turned off pausing: nobody waits while someone picks. It applies from the next run.");
+}
+
+void BonkCoop::SetSharedXp(Player* host, bool shared)
+{
+    s_settings[host->GetObjectGuid()].sharedXp = shared;
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s sets XP to %s", host->GetName(), shared ? "shared" : "individual");
+    TellSettingChanged(host, shared ? "The host turned on shared XP: everyone levels together. It applies from the next run."
+        : "The host turned on individual XP: everyone keeps their own XP, and magnets are off. It applies from the next run.");
+}
+
 bool BonkCoop::IsAway(Player const* player)
 {
     BonkRun* run = player->GetBonkPlayer() ? player->GetBonkPlayer()->GetRun() : nullptr;
@@ -546,9 +620,12 @@ void BonkCoop::BeginGroupRun(Player* host, uint32 players)
     group = GroupRun();
     group.cap = players + 1;
     group.pool = group.cap;
+    GroupSettings const settings = SettingsOf(host);
+    group.sharedPause = settings.sharedPause;
+    group.sharedXp = settings.sharedXp;
     for (Player* member : GroupMembers(host))
         if (BonkRun* run = member->GetBonkPlayer()->GetRun())
-            run->SetCoopPlayers(players);
+            run->SetCoopPlayers(players, group.sharedPause, group.sharedXp);
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s starts a group run, %u players, pool %u", host->GetName(), players, group.pool);
     SendDowned(group, GroupMembers(host));
 }

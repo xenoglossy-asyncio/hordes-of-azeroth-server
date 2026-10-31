@@ -329,6 +329,28 @@ bool ChatHandler::HandleBonkShardsCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleBonkCoopSettingsCommand(char* args)
+{
+    Player* player = m_session->GetPlayer();
+    char* setting = ExtractLiteralArg(&args);
+    if (!setting)
+        return false;
+    if (!BonkCoop::IsGroupHost(player))
+    {
+        SendSysMessage("Only the host can change the group settings.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+    std::string const which = setting;
+    if (which == "pause")
+        BonkCoop::SetSharedPause(player, !BonkCoop::SharesPause(player));
+    else if (which == "xp")
+        BonkCoop::SetSharedXp(player, !BonkCoop::SharesXp(player));
+    else
+        return false;
+    return true;
+}
+
 bool ChatHandler::HandleBonkPortalCommand(char*)
 {
     BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();

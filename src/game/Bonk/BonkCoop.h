@@ -22,6 +22,12 @@ namespace BonkCoop
     void OnDisconnected(Player* player);
     void OnReconnected(Player* player);
     bool IsAway(Player const* player);
+    bool IsInCoopGroup(Player const* player);
+    bool IsGroupHost(Player const* player);
+    bool SharesPause(Player const* player);
+    bool SharesXp(Player const* player);
+    void SetSharedPause(Player* host, bool shared);
+    void SetSharedXp(Player* host, bool shared);
     void DeleteGuestAccounts();
     void Update(uint32 diff);
     bool RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoice const& choice);

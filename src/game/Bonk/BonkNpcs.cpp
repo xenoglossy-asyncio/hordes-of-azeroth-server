@@ -1,4 +1,5 @@
 #include "BonkCodex.h"
+#include "BonkCoop.h"
 #include "BonkLocale.h"
 #include "BonkMastery.h"
 #include "BonkMgr.h"
@@ -24,6 +25,10 @@ namespace
     uint32 const BONK_TEXT_VAULT_EMPTY   = 900010;
     uint32 const BONK_TEXT_VAULT         = 900011;
     uint32 const BONK_TEXT_TIER_VENDOR   = 900015;
+    uint32 const BONK_TEXT_COOP          = 900190;
+
+    uint32 const COOP_ACTION_PAUSE = GOSSIP_ACTION_INFO_DEF + 1;
+    uint32 const COOP_ACTION_XP    = GOSSIP_ACTION_INFO_DEF + 2;
 
     uint32 const MASTERY_ACTION_RESPEC = GOSSIP_ACTION_INFO_DEF - 1;
 
@@ -424,9 +429,43 @@ bool GOGossipSelect_go_bonk_vault(Player* player, GameObject* go, uint32 sender,
     return GOHello_go_bonk_vault(player, go);
 }
 
+bool GossipHello_npc_bonk_coop(Player* player, Creature* creature)
+{
+    bool const host = BonkCoop::IsGroupHost(player);
+    std::string const change = host ? " (click to change)" : "";
+    std::string const pause = BonkCoop::SharesPause(player) ? "Pausing: shared. Everyone waits while someone picks." : "Pausing: off. Nobody waits while someone picks.";
+    std::string const xp = BonkCoop::SharesXp(player) ? "XP: shared. Everyone levels together." : "XP: individual. Everyone keeps their own XP; magnets are off.";
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, (pause + change).c_str(), GOSSIP_SENDER_MAIN, COOP_ACTION_PAUSE);
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, (xp + change).c_str(), GOSSIP_SENDER_MAIN, COOP_ACTION_XP);
+    player->SEND_GOSSIP_MENU(BONK_TEXT_COOP, creature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_bonk_coop(Player* player, Creature* creature, uint32 , uint32 action)
+{
+    if (!BonkCoop::IsGroupHost(player))
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->GetBonkPlayer()->Notify("Only the host can change the group settings.");
+        return true;
+    }
+    if (action == COOP_ACTION_PAUSE)
+        BonkCoop::SetSharedPause(player, !BonkCoop::SharesPause(player));
+    else if (action == COOP_ACTION_XP)
+        BonkCoop::SetSharedXp(player, !BonkCoop::SharesXp(player));
+    player->PlayerTalkClass->ClearMenus();
+    return GossipHello_npc_bonk_coop(player, creature);
+}
+
 void AddSC_bonk_npcs()
 {
     Script* newscript;
+
+    newscript = new Script;
+    newscript->Name = "npc_bonk_coop";
+    newscript->pGossipHello = &GossipHello_npc_bonk_coop;
+    newscript->pGossipSelect = &GossipSelect_npc_bonk_coop;
+    newscript->RegisterSelf();
 
     newscript = new Script;
     newscript->Name = "npc_bonk_run_master";

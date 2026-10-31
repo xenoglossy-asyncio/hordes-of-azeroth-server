@@ -594,6 +594,8 @@ bool BonkPlayer::CanSeeTownObject(uint32 entry, bool gameObject) const
         return IsTierCleared("heroic");
     if (gameObject && entry == BONK_DECK_OBJECT)
         return m_accountHasRun;
+    if (!gameObject && entry == BONK_COOP_NPC)
+        return BonkCoop::IsInCoopGroup(m_player);
     return true;
 }
 

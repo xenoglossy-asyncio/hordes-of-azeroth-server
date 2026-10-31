@@ -290,6 +290,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "shards",         SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkShardsCommand,          "", nullptr },
         { "skip",           SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkSkipCommand,            "", nullptr },
         { "portal",         SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkPortalCommand,          "", nullptr },
+        { "coopsettings",   SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkCoopSettingsCommand,    "", nullptr },
         { "god",            SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkGodCommand,             "", nullptr },
         { "card",           SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkCardCommand,            "", nullptr },
         { "evolve",         SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkEvolveCommand,          "", nullptr },
