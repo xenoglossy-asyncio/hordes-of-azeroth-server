@@ -66,6 +66,7 @@ namespace
         uint32 sendTimer = 0;
         bool wiped = false;
         bool sharedPause = true;
+        bool sharedXp = true;
         uint32 waitSendMs = 0;
         std::string lastWait;
         std::map<ObjectGuid, Downed> downed;
@@ -400,6 +401,19 @@ std::vector<Player*> BonkCoop::RunGroupOf(Player* player)
     if (!host)
         return { player };
     return GroupMembers(host);
+}
+
+void BonkCoop::ShareExperience(Player* collector, float levelFraction)
+{
+    if (levelFraction <= 0.0f || !collector->GetGroup())
+        return;
+    auto found = s_groups.find(HostOf(collector));
+    if (found == s_groups.end() || !found->second.sharedXp)
+        return;
+    for (Player* member : RunGroupOf(collector))
+        if (member != collector)
+            if (BonkRun* run = member->GetBonkPlayer()->GetRun())
+                run->ShareExperience(levelFraction);
 }
 
 void BonkCoop::HideObjectFor(ObjectGuid object, ObjectGuid player)

@@ -10490,6 +10490,21 @@ void BonkRun::GiveStartLevels()
     }
 }
 
+void BonkRun::GiveCollectedExperience(uint32 xp)
+{
+    uint32 const next = GetNextLevelXp();
+    GiveExperience(xp);
+    if (next)
+        BonkCoop::ShareExperience(m_player, float(xp) / float(next));
+}
+
+void BonkRun::ShareExperience(float levelFraction)
+{
+    if (m_state != STATE_RUNNING && m_state != STATE_PORTAL)
+        return;
+    GiveExperience(uint32(std::ceil(GetNextLevelXp() * levelFraction)));
+}
+
 void BonkRun::GiveExperience(uint32 xp)
 {
     uint32 const maxLevel = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
@@ -10786,7 +10801,7 @@ void BonkRun::UpdateOrbs(uint32 diff)
     m_orbSweepAtMs = now;
 
     if (collected)
-        GiveExperience(collected);
+        GiveCollectedExperience(collected);
 }
 
 void BonkRun::PullAllOrbs()
@@ -10847,7 +10862,7 @@ void BonkRun::CollectAllOrbs()
     m_orbsSinceXpSent += uint32(m_orbs.size());
     DespawnOrbs();
     if (collected)
-        GiveExperience(collected);
+        GiveCollectedExperience(collected);
 }
 
 Creature* BonkRun::SummonCaravan(uint32 entry, float x, float y, float z, float orientation)
@@ -11260,6 +11275,83 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
     bool const eventPaysChest = eventGroup || (m_miniEventActive && mob->GetObjectGuid() == m_miniEvent.target);
     OnMiniEventTargetKilled(mob);
 
+    BonkRun* rewarded = GetKillRewardRun(killer);
+    rewarded->RewardKill(mob, kind, killer, eventGroup);
+    auto const arrival = m_bossArrivals.find(mob->GetObjectGuid());
+    if (arrival != m_bossArrivals.end())
+    {
+        sBonkQuests.OnBossFight(m_player, kind, (m_totalMs - arrival->second.ms) / IN_MILLISECONDS, !m_hurt || m_lastHurtMs < arrival->second.ms,
+            uint32(m_player->GetHealthPercent()));
+        LogBossFight(mob, kind, arrival->second);
+        m_bossArrivals.erase(arrival);
+    }
+    if (kind == BONK_SPAWN_BOSS)
+        sBonkQuests.OnBossKilled(m_player, m_tier.id, m_stage, m_elapsedMs / IN_MILLISECONDS);
+
+    if (kind != BONK_SPAWN_NORMAL)
+    {
+        if (!eventPaysChest && !m_sandbox)
+        {
+            DropChest(mob, kind);
+            DropGear(mob, kind);
+        }
+        OnAffixedDeath(mob);
+        rewarded->SendMobDead(mob, true);
+        if (rewarded != this)
+            SendMobDead(mob, true);
+    }
+    else if (IsPlatedMob(mob))
+    {
+        rewarded->SendMobDead(mob, false);
+        if (rewarded != this)
+            SendMobDead(mob, false);
+    }
+
+    ObjectGuid const hiddenBoss = m_hidden.boss;
+    OnHiddenKilled(mob);
+    if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && mob->GetObjectGuid() != hiddenBoss && ++m_glyphMiniBosses == 1)
+        DropGlyph(mob);
+    if (kind == BONK_SPAWN_MINIBOSS && mob->GetObjectGuid() != hiddenBoss)
+        CountFloorMiniBoss();
+
+    if (mob->GetObjectGuid() == m_bossGuid)
+    {
+        if (m_stoneBoss)
+            GiveExperience(GetNextLevelXp());
+        if (IsGlyphBossFloor())
+            DropGlyph(mob);
+        OpenPortal(mob);
+    }
+}
+
+bool BonkRun::IsPlatedMob(Creature const* mob)
+{
+    BonkMobAI const* ai = dynamic_cast<BonkMobAI const*>(mob->AI());
+    return ai && ai->GetPlateKind();
+}
+
+BonkRun* BonkRun::GetKillRewardRun(Unit* killer)
+{
+    Player* player = killer ? killer->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+    if (!player || player == m_player || player->GetMapId() != m_player->GetMapId())
+        return this;
+    if (!m_player->GetGroup() || !m_player->GetGroup()->IsMember(player->GetObjectGuid()))
+        return this;
+    BonkRun* run = player->GetBonkPlayer()->GetRun();
+    return run && run->m_state == STATE_RUNNING ? run : this;
+}
+
+void BonkRun::SendMobDead(Creature const* mob, bool named) const
+{
+    if (named)
+        m_player->GetBonkPlayer()->SendAddon("mobdead~" + std::string(mob->GetName()) + "~" + std::to_string(mob->GetPlateId()) + "~" +
+            BonkMobAI::GetUnitGuidText(mob));
+    else
+        m_player->GetBonkPlayer()->SendAddon("mobdead~~" + std::to_string(mob->GetPlateId()) + "~" + BonkMobAI::GetUnitGuidText(mob));
+}
+
+void BonkRun::RewardKill(Creature* mob, BonkSpawnKind kind, Unit* killer, bool eventGroup)
+{
     ++m_kills;
     SpreadFrom(mob);
     SpreadKeywords(mob);
@@ -11272,16 +11364,6 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
     QueueChainExecution(mob, killingSpell);
     float heading;
     sBonkQuests.OnKill(m_player, kind, killingSpell, mob->GetCreatureType(), mob->GetEntry(), !GetHeading(heading));
-    auto const arrival = m_bossArrivals.find(mob->GetObjectGuid());
-    if (arrival != m_bossArrivals.end())
-    {
-        sBonkQuests.OnBossFight(m_player, kind, (m_totalMs - arrival->second.ms) / IN_MILLISECONDS, !m_hurt || m_lastHurtMs < arrival->second.ms,
-            uint32(m_player->GetHealthPercent()));
-        LogBossFight(mob, kind, arrival->second);
-        m_bossArrivals.erase(arrival);
-    }
-    if (kind == BONK_SPAWN_BOSS)
-        sBonkQuests.OnBossKilled(m_player, m_tier.id, m_stage, m_elapsedMs / IN_MILLISECONDS);
     SoulSiphon(killingSpell);
     if (kind == BONK_SPAWN_MINIBOSS)
         m_masteryXp += uint32(m_tier.masteryXpMiniboss * GetBonkMapRewardPercent(m_map.type) / 100 * GetAmbitionReward(kind));
@@ -11319,42 +11401,12 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
             xp *= 2;
         DropOrb(mob, xp, colour);
     }
-
-    if (kind != BONK_SPAWN_NORMAL)
-    {
-        if (!eventPaysChest && !m_sandbox)
-        {
-            DropChest(mob, kind);
-            DropGear(mob, kind);
-        }
-        OnAffixedDeath(mob);
-        m_player->GetBonkPlayer()->SendAddon("mobdead~" + std::string(mob->GetName()) + "~" + std::to_string(mob->GetPlateId()) + "~" +
-            BonkMobAI::GetUnitGuidText(mob));
-    }
-    else if (mobAI && mobAI->GetPlateKind())
-        m_player->GetBonkPlayer()->SendAddon("mobdead~~" + std::to_string(mob->GetPlateId()) + "~" + BonkMobAI::GetUnitGuidText(mob));
-
     if (!m_sandbox)
         DropShards(mob, kind);
     DropHeal(mob, kind);
     if (kind == BONK_SPAWN_ELITE && GetGlyph(BONK_GLYPH_SCAVENGER) && !eventGroup)
         SpawnPowerup(mob);
     OnGlyphKill(mob, kind);
-    ObjectGuid const hiddenBoss = m_hidden.boss;
-    OnHiddenKilled(mob);
-    if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && mob->GetObjectGuid() != hiddenBoss && ++m_glyphMiniBosses == 1)
-        DropGlyph(mob);
-    if (kind == BONK_SPAWN_MINIBOSS && mob->GetObjectGuid() != hiddenBoss)
-        CountFloorMiniBoss();
-
-    if (mob->GetObjectGuid() == m_bossGuid)
-    {
-        if (m_stoneBoss)
-            GiveExperience(GetNextLevelXp());
-        if (IsGlyphBossFloor())
-            DropGlyph(mob);
-        OpenPortal(mob);
-    }
 }
 
 void BonkRun::SpeakBossLine(Creature const* boss, BonkBossLine line) const

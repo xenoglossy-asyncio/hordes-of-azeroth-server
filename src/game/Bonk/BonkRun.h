@@ -138,6 +138,7 @@ class BonkRun
         void FollowToStage(BonkMap const& map, uint32 stage);
         void EndWithHost();
         void EndInWipe();
+        void ShareExperience(float levelFraction);
         bool OffersChest(ObjectGuid chest, Player* opener) const;
         uint32 OpenChestFor(GameObject* chest, Player* opener);
         void ReviveFromGroup(float health);
@@ -945,6 +946,11 @@ class BonkRun
         void AwardMastery();
 
         void GiveExperience(uint32 xp);
+        void GiveCollectedExperience(uint32 xp);
+        BonkRun* GetKillRewardRun(Unit* killer);
+        static bool IsPlatedMob(Creature const* mob);
+        void RewardKill(Creature* mob, BonkSpawnKind kind, Unit* killer, bool eventGroup);
+        void SendMobDead(Creature const* mob, bool named) const;
         uint32 GetNextLevelXp() const;
         void SendRunXp() const;
         mutable uint32 m_orbsSinceXpSent = 0;
