@@ -13058,6 +13058,8 @@ void BonkRun::SetPaused(bool paused)
             hold(beast.guid, false);
         for (RisenSkeleton const& risen : m_skeletons)
             hold(risen.guid, false);
+        for (WarlockMinion const& minion : m_warlockMinions)
+            hold(minion.guid, false);
         if (!paused)
             ResumeCharges();
     }
