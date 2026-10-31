@@ -329,8 +329,13 @@ std::string BonkFound::DescribeLines(BonkFoundGear const& found, uint32 tier)
 
 std::string BonkFound::DescribeExtra(Item const* item, uint32 tier)
 {
-    uint32 const entryTier = item ? BonkMgr::GetGearTier(item->GetEntry()) : 0;
-    BonkItemStat const* stat = item ? sBonkMgr.GetItemStat(item->GetEntry()) : nullptr;
+    return item ? DescribeExtra(item->GetEntry(), tier) : std::string();
+}
+
+std::string BonkFound::DescribeExtra(uint32 entry, uint32 tier)
+{
+    uint32 const entryTier = BonkMgr::GetGearTier(entry);
+    BonkItemStat const* stat = sBonkMgr.GetItemStat(entry);
     if (!stat || !entryTier || tier <= entryTier)
         return std::string();
     float const extra = BonkGearTierScale(tier) / BonkGearTierScale(entryTier) - 1.0f;

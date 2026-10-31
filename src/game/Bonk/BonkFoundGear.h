@@ -65,6 +65,7 @@ namespace BonkFound
     void AddWornStats(Item const* item, float* passives);
     std::string DescribeLines(BonkFoundGear const& found, uint32 tier);
     std::string DescribeExtra(Item const* item, uint32 tier);
+    std::string DescribeExtra(uint32 entry, uint32 tier);
     void Remember(Item const* item, BonkFoundGear const& found);
 }
 

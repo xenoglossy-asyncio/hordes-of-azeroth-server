@@ -694,7 +694,7 @@ void BonkRun::SendGearOffer() const
     bool const blockedByTwoHander = slot == EQUIPMENT_SLOT_OFFHAND && m_player->IsTwoHandUsed();
     uint32 const replaced = wornIn(blockedByTwoHander ? uint8(EQUIPMENT_SLOT_MAINHAND) : slot);
     std::string const slotChoice = twoSlots ? "~" + std::to_string(choices[0]) + "~" + std::to_string(choices[1]) + "~" +
-        std::to_string(wornIn(choices[1])) : std::string();
+        std::to_string(wornIn(choices[1])) : std::string("~~~");
 
     uint32 const valor = GetGearSalvage(m_gearOfferEntry);
     BonkPlayer* bonk = m_player->GetBonkPlayer();
@@ -703,7 +703,8 @@ void BonkRun::SendGearOffer() const
         std::string const found = m_gearOffer.found ?
             std::to_string(m_gearOffer.gear.tier) + "~" + BonkFound::DescribeLines(m_gearOffer.gear, m_gearOffer.gear.tier) : std::string("0~");
         bonk->SendAddon("gearoffer~" + std::to_string(m_gearOfferEntry) + "~" + std::to_string(replaced) + "~" + std::to_string(valor) + "~" +
-            std::to_string(proto->Quality) + "~" + found + slotChoice);
+            std::to_string(proto->Quality) + "~" + found + slotChoice + "~" +
+            (m_gearOffer.found ? BonkFound::DescribeExtra(m_gearOfferEntry, m_gearOffer.gear.tier) : std::string()));
         return;
     }
 
