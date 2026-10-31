@@ -41,8 +41,6 @@ enum BonkTextField : uint8
     BONK_FIELD_UPGRADE_NAME               = 26,
     BONK_FIELD_UPGRADE_DESCRIPTION        = 27,
     BONK_FIELD_ARCHETYPE_NAME             = 28,
-    BONK_FIELD_ITEM_SET_NAME              = 29,
-    BONK_FIELD_ITEM_SET_BONUS_DESCRIPTION = 30,
     BONK_FIELD_HIDDEN_NAME                = 31,
     BONK_FIELD_HIDDEN_YELL                = 32,
     BONK_FIELD_HIDDEN_FOUND_TEXT          = 33,

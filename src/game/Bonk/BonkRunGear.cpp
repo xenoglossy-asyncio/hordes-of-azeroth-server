@@ -101,19 +101,9 @@ namespace
         BonkPlayer* m_bonk;
     };
 
-    float const BONK_GEAR_CHANCE_ELITE     = 20.0f;
     float const BONK_TIER_DROP_BOSS        = 100.0f;
     float const BONK_TIER_DROP_MINIBOSS    = 25.0f;
     float const BONK_TIER_DROP_MINIBOSS_AHEAD = 50.0f;
-    float const BONK_GEAR_CHANCE_PER_AFFIX = 5.0f;
-    float const BONK_EPIC_BOSS_CHANCE      = 5.0f;
-    float const BONK_EPIC_PER_LEVEL        = 2.0f;
-    float const BONK_EPIC_MAX_CHANCE       = 25.0f;
-    float const BONK_EPIC_MINIBOSS_SHARE   = 0.3f;
-    uint32 const BONK_LEGENDARY_FIRST_LEVEL = 6;
-    float const BONK_GEAR_LEGENDARY_CHANCE = 1.0f;
-    float const BONK_GEAR_LEGENDARY_PER_LEVEL = 0.5f;
-    float const BONK_GEAR_LEGENDARY_MAX_CHANCE = 3.5f;
     float const BONK_INVASION_UPGRADE_CHANCE = 50.0f;
     uint32 const BONK_SCRAP_ELITE_BASE = 1;
     uint32 const BONK_SCRAP_ELITE_LEVELS_PER_POINT = 4;
@@ -124,29 +114,6 @@ namespace
     float const BONK_PILLAR_NEAR_MIN       = 40.0f;
     float const BONK_PILLAR_REACH          = 8.0f;
     char const* const BONK_PILLAR_ICON     = "INV_Misc_Rune_01";
-
-    struct GearOdds
-    {
-        uint8 lowQuality;
-        uint8 lowShare;
-        uint8 highQuality;
-        uint8 rareShare;
-    };
-    GearOdds const BONK_GEAR_ODDS_NORMAL[3] = { { ITEM_QUALITY_NORMAL, 100, ITEM_QUALITY_NORMAL, 0 },
-                                                { ITEM_QUALITY_NORMAL, 100, ITEM_QUALITY_NORMAL, 0 },
-                                                { ITEM_QUALITY_NORMAL, 100, ITEM_QUALITY_NORMAL, 0 } };
-    GearOdds const BONK_GEAR_ODDS_HEROIC[3] = { { ITEM_QUALITY_NORMAL, 70, ITEM_QUALITY_UNCOMMON, 0 },
-                                                { ITEM_QUALITY_NORMAL, 30, ITEM_QUALITY_UNCOMMON, 0 },
-                                                { ITEM_QUALITY_UNCOMMON, 100, ITEM_QUALITY_UNCOMMON, 15 } };
-
-    float EpicChance(BonkTier const& tier, uint32 bandLevel, BonkSpawnKind kind)
-    {
-        if (tier.key != "mythic" || (kind != BONK_SPAWN_BOSS && kind != BONK_SPAWN_MINIBOSS))
-            return 0.0f;
-        float const boss = std::min(BONK_EPIC_MAX_CHANCE, BONK_EPIC_BOSS_CHANCE + BONK_EPIC_PER_LEVEL * float(bandLevel - 1));
-        return kind == BONK_SPAWN_BOSS ? boss : boss * BONK_EPIC_MINIBOSS_SHARE;
-    }
-
 
     float GetSalvageShare(uint8 quality)
     {
@@ -169,19 +136,6 @@ namespace
             case ITEM_QUALITY_RARE:     return 0.25f;
             case ITEM_QUALITY_EPIC:     return 0.5f;
             default:                    return 1.0f;
-        }
-    }
-
-    BonkString GetQualityName(uint8 quality)
-    {
-        switch (quality)
-        {
-            case ITEM_QUALITY_POOR:      return BONK_STRING_QUALITY_POOR;
-            case ITEM_QUALITY_UNCOMMON:  return BONK_STRING_QUALITY_UNCOMMON;
-            case ITEM_QUALITY_RARE:      return BONK_STRING_QUALITY_RARE;
-            case ITEM_QUALITY_EPIC:      return BONK_STRING_QUALITY_EPIC;
-            case ITEM_QUALITY_LEGENDARY: return BONK_STRING_QUALITY_LEGENDARY;
-            default:                     return BONK_STRING_QUALITY_COMMON;
         }
     }
 
@@ -215,32 +169,31 @@ namespace
     }
 }
 
-float BonkRun::BossLegendaryChance(BonkTier const& tier, uint32 bandLevel)
-{
-    if (tier.key != "mythic" || bandLevel < BONK_LEGENDARY_FIRST_LEVEL)
-        return 0.0f;
-    return std::min(BONK_GEAR_LEGENDARY_MAX_CHANCE, BONK_GEAR_LEGENDARY_CHANCE + BONK_GEAR_LEGENDARY_PER_LEVEL * float(bandLevel - BONK_LEGENDARY_FIRST_LEVEL));
-}
-
-float BonkRun::BossEpicChance(BonkTier const& tier, uint32 bandLevel)
-{
-    return EpicChance(tier, bandLevel, BONK_SPAWN_BOSS);
-}
-
 uint32 BonkRun::GetDropTier() const
 {
-    return std::min(m_difficultyLevel, BONK_STOCK_TIER_MAX);
+    return std::min(m_difficultyLevel, BONK_GEAR_TIERS);
 }
 
-uint8 BonkRun::RollGearQuality(BonkSpawnKind kind) const
+uint32 BonkRun::GetLevelDropTier(BonkTier const& tier, uint32 bandLevel)
 {
-    GearOdds const* odds = m_tier.key == "heroic" ? BONK_GEAR_ODDS_HEROIC : BONK_GEAR_ODDS_NORMAL;
-    GearOdds const& row = odds[kind == BONK_SPAWN_BOSS ? 2 : kind == BONK_SPAWN_MINIBOSS ? 1 : 0];
-    uint8 quality = urand(1, 100) <= row.lowShare ? row.lowQuality : row.highQuality;
-    if (row.rareShare && m_stage > 1 && roll_chance_f(row.rareShare))
-        quality = ITEM_QUALITY_RARE;
-    uint8 const cap = m_tier.key == "heroic" ? ITEM_QUALITY_RARE : ITEM_QUALITY_UNCOMMON;
-    if (IsChallenge() && quality < cap && (!IsInvasion() || roll_chance_f(BONK_INVASION_UPGRADE_CHANCE)))
+    return std::min(tier.firstLevel + std::max(1u, bandLevel) - 1, BONK_GEAR_TIERS);
+}
+
+uint8 BonkRun::RollGearQuality() const
+{
+    float roll = frand(0.0f, 100.0f);
+    uint8 quality = ITEM_QUALITY_NORMAL;
+    for (auto const& odds : { std::make_pair(ITEM_QUALITY_EPIC, m_levelRow.epicChance), std::make_pair(ITEM_QUALITY_RARE, m_levelRow.blueChance),
+        std::make_pair(ITEM_QUALITY_UNCOMMON, m_levelRow.greenChance) })
+    {
+        if (roll < odds.second)
+        {
+            quality = odds.first;
+            break;
+        }
+        roll -= odds.second;
+    }
+    if (IsChallenge() && quality < ITEM_QUALITY_EPIC && (!IsInvasion() || roll_chance_f(BONK_INVASION_UPGRADE_CHANCE)))
         ++quality;
     return quality;
 }
@@ -249,40 +202,28 @@ void BonkRun::DropTierPiece(Creature const* mob, BonkSpawnKind kind)
 {
     if (m_sandbox || m_gearDrops.size() >= BONK_MAX_GEAR_DROPS)
         return;
-    if (kind == BONK_SPAWN_ELITE)
-    {
-        AddEliteScrap();
-        return;
-    }
     bool const ahead = GetDropTier() >= m_player->GetBonkPlayer()->GetStockTier();
     float const miniBoss = ahead ? BONK_TIER_DROP_MINIBOSS_AHEAD : BONK_TIER_DROP_MINIBOSS;
     float const chance = kind == BONK_SPAWN_BOSS ? BONK_TIER_DROP_BOSS : kind == BONK_SPAWN_MINIBOSS ? miniBoss : 0.0f;
     if (!roll_chance_f(chance))
         return;
-    if (kind == BONK_SPAWN_BOSS && roll_chance_f(BossLegendaryChance(m_tier, GetBandLevel())) && DropLegendary(mob))
+    if (kind == BONK_SPAWN_BOSS && roll_chance_f(m_levelRow.legendaryChance) && DropLegendary(mob))
         return;
-    PlaceTierPiece(mob, roll_chance_f(EpicChance(m_tier, GetBandLevel(), kind)));
+    PlaceTierPiece(mob, RollGearQuality());
 }
 
-bool BonkRun::MakeTierPiece(bool epic, PendingGear& piece) const
+bool BonkRun::MakeTierPiece(uint8 quality, PendingGear& piece) const
 {
-    piece.found = true;
-    piece.gear = BonkFound::Roll(GetDropTier());
-    if (epic && piece.gear.lines.empty())
-        piece.gear = BonkFound::Make(piece.gear.tier, 1);
-    uint32 const tier = std::min(BONK_TIER_GEAR_TIERS, piece.gear.tier);
-    std::vector<uint32> choices;
-    for (uint32 slot = 0; slot < BONK_TIER_GEAR_SLOTS; ++slot)
-        if (uint32 const entry = BonkMgr::GetTierGearEntry(m_player->GetClass(), tier, slot))
-            choices.push_back(entry);
-    std::vector<uint32> weapons, trinkets;
-    for (uint32 entry : BonkMgr::GetMythicGearFor(m_player->GetClassMask(), tier))
+    piece.gear = BonkFound::Roll(GetDropTier(), quality, m_levelRow.rollFloor);
+    std::vector<uint32> choices, weapons, trinkets;
+    for (uint32 kind : BonkMgr::GetGearKindsFor(m_player->GetClassMask()))
     {
-        uint32 kind, entryTier;
-        BonkMgr::ReadMythicGearEntry(entry, kind, entryTier);
-        if (kind >= BONK_MYTHIC_GEAR_FIRST_TRINKET)
+        uint32 const entry = BonkMgr::GetGearEntry(kind, quality, piece.gear.tier);
+        if (!entry)
+            continue;
+        if (kind >= BONK_GEAR_FIRST_TRINKET)
             trinkets.push_back(entry);
-        else if (kind < BONK_MYTHIC_GEAR_FIRST_ACCESSORY)
+        else if (kind >= BONK_GEAR_FIRST_WEAPON && kind < BONK_GEAR_FIRST_ACCESSORY)
             weapons.push_back(entry);
         else
             choices.push_back(entry);
@@ -294,18 +235,16 @@ bool BonkRun::MakeTierPiece(bool epic, PendingGear& piece) const
     if (choices.empty())
         return false;
     piece.entry = choices[urand(0, uint32(choices.size() - 1))];
-    if (epic)
-        piece.entry = BonkMgr::GetEpicGearEntry(piece.entry);
     return true;
 }
 
-bool BonkRun::PlaceTierPiece(Creature const* mob, bool epic)
+bool BonkRun::PlaceTierPiece(Creature const* mob, uint8 quality)
 {
     PendingGear piece;
-    if (!MakeTierPiece(epic, piece))
+    if (!MakeTierPiece(quality, piece))
         return false;
     ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
-    if (!proto || !PlaceGearDrop(mob, piece, proto->Quality, epic ? LOOT_BAG_EPIC : LOOT_BAG_TIER))
+    if (!proto || !PlaceGearDrop(mob, piece, proto->Quality))
         return false;
     m_player->GetBonkPlayer()->Notify(BONK_STRING_ITEM_DROPPED_WITH_DETAILS, { m_player->GetBonkPlayer()->GetItemName(proto), DescribeFoundDrop(piece.gear) });
     return true;
@@ -323,45 +262,25 @@ std::string BonkRun::DescribeFoundDrop(BonkFoundGear const& found) const
 
 void BonkRun::AddEliteScrap()
 {
-    if (IsMythic() && !m_sandbox)
-        m_eliteScrap += BONK_SCRAP_ELITE_BASE + GetBandLevel() / BONK_SCRAP_ELITE_LEVELS_PER_POINT;
+    if (!m_sandbox)
+        m_eliteScrap += BONK_SCRAP_ELITE_BASE + m_difficultyLevel / BONK_SCRAP_ELITE_LEVELS_PER_POINT;
 }
 
 bool BonkRun::MakeLegendary(PendingGear& piece) const
 {
-    piece.found = true;
-    piece.gear = BonkFound::Roll(GetDropTier());
-    std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), std::min(BONK_TIER_GEAR_TIERS, piece.gear.tier));
+    piece.gear = BonkFound::Roll(GetDropTier(), ITEM_QUALITY_LEGENDARY, m_levelRow.rollFloor);
+    std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), piece.gear.tier);
     if (legendaries.empty())
         return false;
     piece.entry = legendaries[urand(0, uint32(legendaries.size() - 1))];
     return true;
 }
 
-bool BonkRun::MakePlainGear(uint8 rolled, PendingGear& piece, uint8& quality) const
+bool BonkRun::MakeBagPiece(uint8 quality, PendingGear& piece) const
 {
-    uint32 const classMask = m_player->GetClassMask();
-    std::vector<BonkGear const*> pool;
-    for (int32 tryQuality = rolled; tryQuality >= ITEM_QUALITY_POOR && pool.empty(); --tryQuality)
-        for (auto const& itr : sBonkMgr.GetGear())
-            if (itr.second.quality == tryQuality && (itr.second.allowableClass & classMask) && itr.second.DropsOn(m_tier.id))
-                pool.push_back(&itr.second);
-    if (pool.empty())
-        return false;
-    BonkGear const* gear = pool[urand(0, uint32(pool.size() - 1))];
-    piece = PendingGear(gear->entry);
-    quality = gear->quality;
-    return true;
-}
-
-bool BonkRun::MakeBagPiece(uint8 bag, uint8 quality, PendingGear& piece) const
-{
-    if (bag == LOOT_BAG_LEGENDARY)
-        return MakeLegendary(piece) || MakeTierPiece(true, piece);
-    if (bag == LOOT_BAG_TIER || bag == LOOT_BAG_EPIC)
-        return MakeTierPiece(bag == LOOT_BAG_EPIC, piece);
-    uint8 made = 0;
-    return MakePlainGear(quality, piece, made);
+    if (quality == ITEM_QUALITY_LEGENDARY)
+        return MakeLegendary(piece) || MakeTierPiece(ITEM_QUALITY_EPIC, piece);
+    return MakeTierPiece(quality, piece);
 }
 
 bool BonkRun::DropLegendary(Creature const* mob)
@@ -370,24 +289,17 @@ bool BonkRun::DropLegendary(Creature const* mob)
     if (!MakeLegendary(piece))
         return false;
     ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
-    if (!proto || !PlaceGearDrop(mob, piece, ITEM_QUALITY_LEGENDARY, LOOT_BAG_LEGENDARY))
+    if (!proto || !PlaceGearDrop(mob, piece, ITEM_QUALITY_LEGENDARY))
         return true;
     m_player->GetBonkPlayer()->Notify(BONK_STRING_ITEM_DROPPED_WITH_DETAILS, { m_player->GetBonkPlayer()->GetItemName(proto), DescribeFoundDrop(piece.gear) });
     return true;
 }
 
-bool BonkRun::GetKeepInfo(uint32 entry, uint32& keepEntry, uint8& quality) const
+bool BonkRun::GetGearQuality(uint32 entry, uint8& quality) const
 {
-    if (BonkGear const* gear = sBonkMgr.GetGear(entry))
-    {
-        keepEntry = gear->keepEntry;
-        quality = gear->quality;
-        return keepEntry != 0;
-    }
     ItemPrototype const* proto = BonkMgr::GetGearTier(entry) ? sObjectMgr.GetItemPrototype(entry) : nullptr;
     if (!proto)
         return false;
-    keepEntry = entry;
     quality = uint8(proto->Quality);
     return true;
 }
@@ -413,7 +325,7 @@ float BonkRun::GetScrapMultiplier() const
 
 uint32 BonkRun::GetScrapPoints(Item const* item) const
 {
-    if (!IsMythic() || m_sandbox || !item)
+    if (m_sandbox || !item)
         return 0;
     return BonkFound::GetScrapValue(item);
 }
@@ -460,7 +372,7 @@ void BonkRun::GetOwnedTiers(uint32 entry, uint32& bestTier, bool& owned) const
                     consider(mailed.itemId);
 }
 
-bool BonkRun::PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality, uint8 bag)
+bool BonkRun::PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality)
 {
     float const angle = frand(0.0f, 2.0f * M_PI_F);
     float x = mob->GetPositionX() + 2.0f * std::cos(angle);
@@ -486,11 +398,10 @@ bool BonkRun::PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8
         "Bonk drop: %s gets item %u from a %s at run minute %.2f (stage %u, %s, %s, class %u): quality %u, tier %u, %u bonus stats",
         m_player->GetName(), piece.entry, kind == BONK_SPAWN_BOSS ? "boss" : kind == BONK_SPAWN_MINIBOSS ? "mini-boss" : kind == BONK_SPAWN_ELITE ? "elite" : "normal",
         GetRunMinutes(), m_stage, m_map.key.c_str(), m_tier.key.c_str(), uint32(m_player->GetClass()), uint32(quality),
-        piece.found ? piece.gear.tier : 0u, piece.found ? uint32(piece.gear.lines.size()) : 0u);
+        piece.gear.tier, uint32(piece.gear.lines.size()));
     GearDrop drop;
     drop.guid = go->GetObjectGuid();
     drop.piece = piece;
-    drop.bag = bag;
     drop.quality = quality;
     drop.marker = PlaceLootBeam(go, quality, drop.core, drop.swirl);
     for (Player* member : BonkCoop::RunGroupOf(m_player))
@@ -543,7 +454,7 @@ void BonkRun::GiveBagTo(Player* member, GearDrop& drop)
     }
     BonkRun* run = member->GetBonkPlayer()->GetRun();
     PendingGear piece;
-    if (!run || !run->MakeBagPiece(drop.bag, drop.quality, piece))
+    if (!run || !run->MakeBagPiece(drop.quality, piece))
         return;
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s takes %s's loot bag, item %u", member->GetName(), m_player->GetName(), piece.entry);
     run->m_pendingGear.push_back(piece);
@@ -641,27 +552,10 @@ void BonkRun::DropGear(Creature const* mob, BonkSpawnKind kind)
 {
     if (!BonkCoop::InGroupRun(m_player))
         MaybeDropHearthstone(kind);
-    if (kind == BONK_SPAWN_NORMAL || m_gearDrops.size() >= BONK_MAX_GEAR_DROPS)
-        return;
     if (kind == BONK_SPAWN_ELITE)
-    {
-        BonkMobAI const* ai = dynamic_cast<BonkMobAI const*>(mob->AI());
-        float const chance = BONK_GEAR_CHANCE_ELITE + BONK_GEAR_CHANCE_PER_AFFIX * (ai ? ai->GetAffixCount() : 0);
-        if (!roll_chance_f(chance))
-            return;
-    }
-    if (IsMythic())
-    {
+        AddEliteScrap();
+    else if (kind != BONK_SPAWN_NORMAL)
         DropTierPiece(mob, kind);
-        return;
-    }
-
-    PendingGear piece;
-    uint8 quality = 0;
-    if (!MakePlainGear(RollGearQuality(kind), piece, quality))
-        return;
-    if (PlaceGearDrop(mob, piece, quality, LOOT_BAG_PLAIN))
-        m_player->GetBonkPlayer()->Notify(BONK_STRING_GEAR_DROPPED, { GetString(GetQualityName(quality)) });
 }
 
 void BonkRun::UpdateGearDrops(uint32 diff)
@@ -723,28 +617,10 @@ void BonkRun::CollectAllGear()
 
 uint32 BonkRun::GetGearSalvage(uint32 entry) const
 {
-    uint32 keepEntry = 0;
     uint8 quality = ITEM_QUALITY_UNCOMMON;
-    GetKeepInfo(entry, keepEntry, quality);
+    GetGearQuality(entry, quality);
     float const scrapper = 1.0f + GetUtility(BONK_UTILITY_SCRAPPER) / 100.0f;
     return std::max(1u, uint32(GetChestCost() * GetSalvageShare(quality) * scrapper + 0.5f));
-}
-
-void BonkRun::SettlePendingGear()
-{
-    if (m_stress.on)
-        return;
-    for (auto itr = m_pendingGear.begin(); itr != m_pendingGear.end();)
-    {
-        NoteGearFound(itr->entry);
-        if (!IsWorseThanWorn(itr->entry))
-        {
-            ++itr;
-            continue;
-        }
-        AutoSalvageGear(itr->entry);
-        itr = m_pendingGear.erase(itr);
-    }
 }
 
 void BonkRun::OfferGear()
@@ -756,44 +632,6 @@ void BonkRun::OfferGear()
     m_pendingGear.erase(m_pendingGear.begin());
     SetPaused(true);
     SendGearOffer();
-}
-
-void BonkRun::NoteGearFound(uint32 entry)
-{
-    BonkGear const* gear = m_sandbox ? nullptr : sBonkMgr.GetGear(entry);
-    if (!gear || !gear->keepEntry || gear->quality > ITEM_QUALITY_RARE)
-        return;
-    ItemPrototype const* proto = sObjectMgr.GetItemPrototype(gear->keepEntry);
-    if (!proto || !m_player->GetBonkPlayer()->RecordGearFound(gear->keepEntry))
-        return;
-    m_player->GetBonkPlayer()->Notify(BONK_STRING_NEW_FIND_IS_NOW_ON, { m_player->GetBonkPlayer()->GetItemName(proto) });
-}
-
-bool BonkRun::IsWorseThanWorn(uint32 entry) const
-{
-    BonkGear const* gear = m_sandbox ? nullptr : sBonkMgr.GetGear(entry);
-    if (!gear || gear->quality > ITEM_QUALITY_RARE)
-        return false;
-    std::vector<uint8> const slots = GetGearSlotChoices(entry);
-    if (slots.empty())
-        return false;
-    for (uint8 slot : slots)
-    {
-        Item const* worn = m_player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
-        if (!worn || worn->GetProto()->Quality <= gear->quality)
-            return false;
-    }
-    return true;
-}
-
-void BonkRun::AutoSalvageGear(uint32 entry)
-{
-    ItemPrototype const* proto = sObjectMgr.GetItemPrototype(entry);
-    uint32 const valor = GetGearSalvage(entry);
-    GainValor(valor);
-    m_player->GetBonkPlayer()->Notify(proto ? BONK_STRING_SALVAGED_ITEM_WEAR_BETTER : BONK_STRING_SALVAGED_GEAR_WEAR_BETTER,
-        { proto ? m_player->GetBonkPlayer()->GetItemName(proto) : std::string(), std::to_string(valor) });
-    SendState();
 }
 
 void BonkRun::SendGearOffer() const
@@ -819,11 +657,10 @@ void BonkRun::SendGearOffer() const
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     if (bonk->IsAddonReady())
     {
-        std::string const found = m_gearOffer.found ?
-            std::to_string(m_gearOffer.gear.tier) + "~" + BonkFound::DescribeLines(m_gearOffer.gear, m_gearOffer.gear.tier) : std::string("0~");
         bonk->SendAddon("gearoffer~" + std::to_string(m_gearOfferEntry) + "~" + std::to_string(replaced) + "~" + std::to_string(valor) + "~" +
-            std::to_string(proto->Quality) + "~" + found + slotChoice + "~" +
-            (m_gearOffer.found ? BonkFound::DescribeExtra(m_gearOfferEntry, m_gearOffer.gear.tier) : std::string()));
+            std::to_string(proto->Quality) + "~" + std::to_string(m_gearOffer.gear.tier) + "~" +
+            BonkFound::DescribeLines(m_gearOffer.gear, m_gearOffer.gear.tier) + slotChoice + "~" +
+            BonkFound::DescribeExtra(m_gearOfferEntry, m_gearOffer.gear.tier));
         return;
     }
 
@@ -908,7 +745,7 @@ Item* BonkRun::StoreRunGear(PendingGear const& piece, std::string& error)
     Item* item = m_player->StoreNewItem(dest, entry, true);
     if (!item)
         error = GetString(BONK_STRING_ITEM_COULDNT_BE_CREATED, { name });
-    else if (piece.found)
+    else
         BonkFound::Remember(item, piece.gear);
     return item;
 }
@@ -1012,7 +849,6 @@ void BonkRun::ResolveRunGear(bool extract)
     struct KeptPiece
     {
         uint32 entry = 0;
-        bool found = false;
         BonkFoundGear gear;
     };
     std::vector<KeptPiece> kept;
@@ -1021,16 +857,14 @@ void BonkRun::ResolveRunGear(bool extract)
         Item* item = m_player->GetItemByGuid(guid);
         if (!item)
             continue;
-        uint32 keepEntry = 0;
         uint8 quality = ITEM_QUALITY_UNCOMMON;
-        if (GetKeepInfo(item->GetEntry(), keepEntry, quality) || sBonkMgr.GetGear(item->GetEntry()))
+        if (GetGearQuality(item->GetEntry(), quality))
         {
-            bool const goesHome = keepEntry && IsInVault(guid);
-            if (goesHome)
+            if (IsInVault(guid))
             {
                 KeptPiece piece;
-                piece.entry = keepEntry;
-                piece.found = sBonkFound.Get(item->GetGUIDLow(), piece.gear);
+                piece.entry = item->GetEntry();
+                sBonkFound.Get(item->GetGUIDLow(), piece.gear);
                 kept.push_back(piece);
             }
             else
@@ -1067,7 +901,7 @@ void BonkRun::ResolveRunGear(bool extract)
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
         if (!proto)
             continue;
-        MailKeptPiece(piece.entry, GetString(BONK_STRING_MAIL_EXTRACTED_BODY, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) }), piece.found ? &piece.gear : nullptr);
+        MailKeptPiece(piece.entry, GetString(BONK_STRING_MAIL_EXTRACTED_BODY, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) }), &piece.gear);
         bonk->Notify(BONK_STRING_YOU_EXTRACTED_ITS_WAITING_IN, { m_player->GetBonkPlayer()->GetItemName(proto) });
         bonk->AnnounceMailAtCamp();
     }
@@ -1295,12 +1129,11 @@ bool BonkRun::IsInVault(ObjectGuid const& guid) const
 
 ObjectGuid BonkRun::FindRunGear(uint32 guidLow) const
 {
-    uint32 keepEntry = 0;
     uint8 quality = 0;
     for (ObjectGuid const& guid : m_runGear)
         if (guid.GetCounter() == guidLow)
             if (Item const* item = m_player->GetItemByGuid(guid))
-                if (GetKeepInfo(item->GetEntry(), keepEntry, quality))
+                if (GetGearQuality(item->GetEntry(), quality))
                     return guid;
     return ObjectGuid();
 }
@@ -1311,9 +1144,8 @@ std::vector<BonkRun::VaultFind> BonkRun::GetVaultFinds() const
     for (ObjectGuid const& guid : m_runGear)
     {
         Item const* item = m_player->GetItemByGuid(guid);
-        uint32 keepEntry = 0;
         uint8 quality = 0;
-        if (!item || !GetKeepInfo(item->GetEntry(), keepEntry, quality))
+        if (!item || !GetGearQuality(item->GetEntry(), quality))
             continue;
         VaultFind find;
         find.guid = guid;
@@ -1330,7 +1162,7 @@ std::vector<BonkRun::VaultFind> BonkRun::GetVaultFinds() const
             find.lines = BonkFound::DescribeLines(found, find.tier);
             find.extra = BonkFound::DescribeExtra(item, find.tier);
         }
-        GetOwnedTiers(keepEntry, find.bestOwnedTier, find.owned);
+        GetOwnedTiers(item->GetEntry(), find.bestOwnedTier, find.owned);
         finds.push_back(find);
     }
     return finds;
@@ -1461,9 +1293,8 @@ bool BonkRun::SendHomeFromPillar(uint32 guidLow, std::string& error)
         return false;
     ObjectGuid const guid = FindRunGear(guidLow);
     Item* item = guid.IsEmpty() ? nullptr : m_player->GetItemByGuid(guid);
-    uint32 keepEntry = 0;
     uint8 quality = 0;
-    if (!item || !GetKeepInfo(item->GetEntry(), keepEntry, quality))
+    if (!item || !GetGearQuality(item->GetEntry(), quality))
     {
         error = GetString(BONK_STRING_THAT_ISNT_SOMETHING_YOU_FOUND);
         return false;
@@ -1488,7 +1319,7 @@ bool BonkRun::SendHomeFromPillar(uint32 guidLow, std::string& error)
     m_player->DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
     if (worn)
         UpdateGear();
-    MailKeptPiece(keepEntry, GetString(BONK_STRING_MAIL_PILLAR_BODY, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) }), wasFound ? &found : nullptr);
+    MailKeptPiece(foundEntry, GetString(BONK_STRING_MAIL_PILLAR_BODY, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) }), wasFound ? &found : nullptr);
     m_pillarSent.push_back(sent);
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();

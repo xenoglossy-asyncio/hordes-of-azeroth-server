@@ -1510,12 +1510,15 @@ bool GossipSelect_npc_bonk_sandbox(Player* player, Creature* creature, uint32 se
 
 bool BonkRun::OfferSandboxGear(uint32 entry, std::string& error)
 {
-    if (!sBonkMgr.GetGear(entry))
+    uint32 const tier = BonkMgr::GetGearTier(entry);
+    if (!tier)
     {
         error = GetString(BONK_STRING_THAT_ISNT_RUN_GEAR);
         return false;
     }
-    m_pendingGear.push_back(entry);
+    PendingGear piece(entry);
+    piece.gear.tier = tier;
+    m_pendingGear.push_back(piece);
     OfferGear();
     return true;
 }

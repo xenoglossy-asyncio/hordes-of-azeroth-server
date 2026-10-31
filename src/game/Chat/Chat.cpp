@@ -280,7 +280,6 @@ ChatCommand * ChatHandler::getCommandTable()
         { "lang",           SEC_PLAYER,         false, &ChatHandler::HandleBonkLangCommand,            "", nullptr },
         { "effects",        SEC_PLAYER,         false, &ChatHandler::HandleBonkEffectsCommand,         "", nullptr },
         { "notice",         SEC_PLAYER,         false, &ChatHandler::HandleBonkNoticeCommand,          "", nullptr },
-        { "oldlegendaries", SEC_PLAYER,         false, &ChatHandler::HandleBonkOldLegendariesCommand,  "", nullptr },
         { "strings",        SEC_ADMINISTRATOR,  true,  nullptr,                                        "", bonkStringsCommandTable },
         { "quests",        SEC_PLAYER,         false, &ChatHandler::HandleBonkQuestsCommand,          "", nullptr },
         { "codex",          SEC_PLAYER,         false, &ChatHandler::HandleBonkCodexCommand,           "", nullptr },

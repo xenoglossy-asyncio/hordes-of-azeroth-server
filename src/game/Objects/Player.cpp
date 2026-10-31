@@ -18392,12 +18392,6 @@ bool Player::IsVendorItemVisible(Creature* vendor, VendorItem const* vendorItem,
         return false;
 #endif
 
-    if (m_bonkPlayer && !m_bonkPlayer->CanBuyGear(itemProto->ItemId))
-        return false;
-
-    if (m_bonkPlayer && !m_bonkPlayer->ShowsGearItem(vendor, itemProto->ItemId))
-        return false;
-
     return !vendorItem->conditionId ||
         IsConditionSatisfied(vendorItem->conditionId, this, vendor->GetMap(), vendor, CONDITION_FROM_VENDOR);
 }
@@ -18426,26 +18420,26 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
         return false;
     }
 
-    bool const tierVendor = m_bonkPlayer && m_bonkPlayer->IsTierVendor(pCreature);
-    VendorItem const tierItem(item, 0, 0, 0, 0);
-    VendorItemData const* vItems = tierVendor ? nullptr : pCreature->GetVendorItems();
-    VendorItemData const* tItems = tierVendor ? nullptr : pCreature->GetVendorTemplateItems();
+    bool const shopVendor = m_bonkPlayer && m_bonkPlayer->IsShopVendor(pCreature);
+    VendorItem const shopItem(item, 0, 0, 0, 0);
+    VendorItemData const* vItems = shopVendor ? nullptr : pCreature->GetVendorItems();
+    VendorItemData const* tItems = shopVendor ? nullptr : pCreature->GetVendorTemplateItems();
     uint32 vCount = vItems ? vItems->GetItemCount() : 0;
     uint32 tCount = tItems ? tItems->GetItemCount() : 0;
     size_t vendorslot = 0;
     VendorItem const* crItem = nullptr;
 
-    if (tierVendor)
+    if (shopVendor)
     {
-        std::vector<uint32> const tierStock = m_bonkPlayer->GetTierStock();
-        auto const stocked = std::find(tierStock.begin(), tierStock.end(), item);
-        if (stocked == tierStock.end())
+        std::vector<uint32> const shopStock = m_bonkPlayer->GetShopStock();
+        auto const stocked = std::find(shopStock.begin(), shopStock.end(), item);
+        if (stocked == shopStock.end())
         {
             SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, item, 0);
             return false;
         }
-        vendorslot = size_t(stocked - tierStock.begin());
-        crItem = &tierItem;
+        vendorslot = size_t(stocked - shopStock.begin());
+        crItem = &shopItem;
     }
     else
     {
@@ -18513,8 +18507,7 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
     uint32 price  = pProto->BuyPrice * count;
 
     // reputation discount
-    float const foundMod = m_bonkPlayer ? m_bonkPlayer->GetGearPriceFactor(pCreature, item) : 1.0f;
-    price = uint32(price * GetReputationPriceDiscount(pCreature) * foundMod + 0.5f);
+    price = uint32(price * GetReputationPriceDiscount(pCreature) + 0.5f);
 
     if (GetMoney() < price)
     {
@@ -18574,8 +18567,8 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
     // SMSG_LIST_INVENTORY numbers only visible rows. Report that same
     // compact slot so the client updates the item it just purchased.
-    uint32 clientVendorSlot = tierVendor ? uint32(vendorslot + 1) : 0;
-    for (size_t i = 0; !tierVendor && i <= vendorslot; ++i)
+    uint32 clientVendorSlot = shopVendor ? uint32(vendorslot + 1) : 0;
+    for (size_t i = 0; !shopVendor && i <= vendorslot; ++i)
     {
         VendorItem const* listedItem = i < vCount ? vItems->GetItem(i) : tItems->GetItem(i - vCount);
         ItemPrototype const* listedProto = listedItem ? sObjectMgr.GetItemPrototype(listedItem->item) : nullptr;

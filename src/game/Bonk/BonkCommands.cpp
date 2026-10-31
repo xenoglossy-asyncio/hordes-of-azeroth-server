@@ -534,21 +534,6 @@ bool ChatHandler::HandleBonkTitleCommand(char* args)
 bool ChatHandler::HandleBonkGearCommand(char* args)
 {
     std::string const tab = args ? args : "";
-    if (tab.compare(0, 4, "tab ") == 0)
-    {
-        m_session->GetPlayer()->GetBonkPlayer()->SelectGearTab(uint32(atoi(tab.c_str() + 4)));
-        return true;
-    }
-    if (tab == "refit")
-    {
-        m_session->GetPlayer()->GetBonkPlayer()->RefitAtQuartermaster();
-        return true;
-    }
-    if (tab == "upgrade on" || tab == "upgrade off")
-    {
-        m_session->GetPlayer()->GetBonkPlayer()->SetQuartermasterUpgrade(tab == "upgrade on");
-        return true;
-    }
     if (tab.compare(0, 8, "upgrade ") == 0)
     {
         std::string error;
@@ -787,16 +772,6 @@ bool ChatHandler::HandleBonkNoticeCommand(char* args)
     if (!which || std::string(which) != "gear")
         return false;
     m_session->GetPlayer()->GetBonkPlayer()->SeeGearNotice();
-    return true;
-}
-
-bool ChatHandler::HandleBonkOldLegendariesCommand(char* args)
-{
-    char* choice = ExtractArg(&args);
-    std::string const answer = choice ? choice : "";
-    if (answer != "keep" && answer != "delete")
-        return false;
-    m_session->GetPlayer()->GetBonkPlayer()->ResolveOldLegendaries(answer == "delete");
     return true;
 }
 

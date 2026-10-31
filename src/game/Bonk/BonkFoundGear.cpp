@@ -21,10 +21,8 @@ float BonkGearTierScale(uint32 tier)
 
 namespace
 {
-    float const BONK_FOUND_TWO_TIERS_UP_CHANCE = 3.0f;
-    float const BONK_FOUND_ONE_TIER_UP_CHANCE  = 12.0f;
-    float const BONK_FOUND_TWO_LINES_CHANCE    = 1.0f;
-    float const BONK_FOUND_ONE_LINE_CHANCE     = 10.0f;
+    float const BONK_FOUND_BLUE_SECOND_LINE_CHANCE = 25.0f;
+    float const BONK_FOUND_EPIC_SECOND_LINE_CHANCE = 50.0f;
     uint32 const BONK_FOUND_UPGRADE_BASE_SCRAP = 20;
     uint32 const BONK_SCRAP_PER_PLAIN_FIND = 1;
     uint32 const BONK_SCRAP_PER_FIND = 2;
@@ -68,23 +66,18 @@ namespace
         return effect == BONK_PASSIVE_POWER || effect == BONK_PASSIVE_MAX_HEALTH || effect == BONK_PASSIVE_ARMOR;
     }
 
-    uint32 RollExtraTiers()
+    uint32 RollLineCount(uint8 quality)
     {
-        float const roll = frand(0.0f, 100.0f);
-        if (roll < BONK_FOUND_TWO_TIERS_UP_CHANCE)
-            return 2;
-        return roll < BONK_FOUND_TWO_TIERS_UP_CHANCE + BONK_FOUND_ONE_TIER_UP_CHANCE ? 1 : 0;
+        switch (quality)
+        {
+            case ITEM_QUALITY_NORMAL:   return 0;
+            case ITEM_QUALITY_UNCOMMON: return 1;
+            case ITEM_QUALITY_RARE:     return roll_chance_f(BONK_FOUND_BLUE_SECOND_LINE_CHANCE) ? 2 : 1;
+            default:                    return roll_chance_f(BONK_FOUND_EPIC_SECOND_LINE_CHANCE) ? 2 : 1;
+        }
     }
 
-    uint32 RollLineCount()
-    {
-        float const roll = frand(0.0f, 100.0f);
-        if (roll < BONK_FOUND_TWO_LINES_CHANCE)
-            return 2;
-        return roll < BONK_FOUND_TWO_LINES_CHANCE + BONK_FOUND_ONE_LINE_CHANCE ? 1 : 0;
-    }
-
-    std::vector<BonkFoundLine> RollLines(uint32 count)
+    std::vector<BonkFoundLine> RollLines(uint32 count, float minRoll)
     {
         std::vector<uint8> effects;
         for (BonkFoundLineRange const& range : BONK_FOUND_LINE_RANGES)
@@ -95,7 +88,7 @@ namespace
             uint32 const pick = urand(0, uint32(effects.size() - 1));
             BonkFoundLine line;
             line.effect = effects[pick];
-            line.roll = frand(0.0f, 1.0f);
+            line.roll = frand(minRoll, 1.0f);
             lines.push_back(line);
             effects.erase(effects.begin() + pick);
         }
@@ -184,11 +177,11 @@ void BonkFoundStore::Forget(uint32 itemGuid)
     CharacterDatabase.PExecute("DELETE FROM `bonk_item_found` WHERE `item_guid` = %u", itemGuid);
 }
 
-BonkFoundGear BonkFound::Roll(uint32 dropTier)
+BonkFoundGear BonkFound::Roll(uint32 tier, uint8 quality, float minRoll)
 {
     BonkFoundGear found;
-    found.tier = std::max(1u, dropTier) + RollExtraTiers();
-    found.lines = RollLines(RollLineCount());
+    found.tier = std::max(1u, tier);
+    found.lines = RollLines(RollLineCount(quality), minRoll);
     return found;
 }
 
@@ -196,7 +189,7 @@ BonkFoundGear BonkFound::Make(uint32 tier, uint32 lineCount)
 {
     BonkFoundGear found;
     found.tier = std::max(1u, tier);
-    found.lines = RollLines(std::min<uint32>(lineCount, BONK_FOUND_MAX_LINES));
+    found.lines = RollLines(std::min<uint32>(lineCount, BONK_FOUND_MAX_LINES), 0.0f);
     return found;
 }
 

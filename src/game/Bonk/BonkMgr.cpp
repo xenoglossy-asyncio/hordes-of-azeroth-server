@@ -260,7 +260,6 @@ void BonkMgr::Load()
     LoadGlyphs();
     LoadHiddenEncounters();
     LoadBossLines();
-    LoadGear();
     LoadShopTrees();
     LoadUpgrades();
     LoadTalents();
@@ -371,7 +370,8 @@ void BonkMgr::LoadTiers()
 void BonkMgr::LoadLevels()
 {
     std::unique_ptr<QueryResult> result(WorldDatabase.Query(
-        "SELECT `tier`, `level`, `health`, `damage`, `extra_affixes`, `veteran_chance`, `reward` FROM `bonk_level` ORDER BY `tier`, `level`"));
+        "SELECT `tier`, `level`, `health`, `damage`, `extra_affixes`, `veteran_chance`, `reward`, `green_chance`, `blue_chance`, `epic_chance`, "
+        "`legendary_chance`, `roll_floor` FROM `bonk_level` ORDER BY `tier`, `level`"));
     if (!result)
     {
         sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_level` is empty or missing; every level plays as level 1.");
@@ -392,6 +392,11 @@ void BonkMgr::LoadLevels()
         level.extraAffixes = fields[4].GetUInt8();
         level.veteranChance = fields[5].GetFloat();
         level.reward = std::max(0.0f, fields[6].GetFloat());
+        level.greenChance = fields[7].GetFloat();
+        level.blueChance = fields[8].GetFloat();
+        level.epicChance = fields[9].GetFloat();
+        level.legendaryChance = fields[10].GetFloat();
+        level.rollFloor = std::min(1.0f, std::max(0.0f, fields[11].GetFloat()));
         tier->second.levelRows.push_back(level);
     } while (result->NextRow());
 }
@@ -1674,25 +1679,11 @@ void BonkMgr::LoadTalents()
 void BonkMgr::LoadItemStats()
 {
     m_itemStats.clear();
-    m_itemSets.clear();
-
-    std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT `id`, `name` FROM `bonk_item_set`"));
-    if (result)
-    {
-        do
-        {
-            Field* fields = result->Fetch();
-            BonkItemSet set;
-            set.id = fields[0].GetUInt32();
-            set.name = fields[1].GetCppString();
-            m_itemSets[set.id] = std::move(set);
-        } while (result->NextRow());
-    }
 
     std::string columns;
     for (auto const& column : BONK_GEAR_COLUMNS)
         columns += ", `" + std::string(column.name) + "`";
-    result = std::unique_ptr<QueryResult>(WorldDatabase.Query(("SELECT `entry`, `set_id`, `unlock_tier`" + columns + " FROM `bonk_item_stat` ORDER BY `entry`").c_str()));
+    std::unique_ptr<QueryResult> result(WorldDatabase.Query(("SELECT `entry`" + columns + " FROM `bonk_item_stat` ORDER BY `entry`").c_str()));
     if (result)
     {
         do
@@ -1706,55 +1697,13 @@ void BonkMgr::LoadItemStats()
             }
 
             BonkItemStat stat;
-            stat.setId = fields[1].GetUInt32();
-            stat.unlockTier = fields[2].GetUInt32();
             for (size_t i = 0; i < BONK_GEAR_COLUMN_COUNT; ++i)
-                stat.stats[BONK_GEAR_COLUMNS[i].effect] = fields[3 + i].GetFloat();
-            if (stat.setId)
-            {
-                auto set = m_itemSets.find(stat.setId);
-                if (set == m_itemSets.end())
-                {
-                    sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_item_stat`: item %u is in unknown set %u, set ignored.", entry, stat.setId);
-                    stat.setId = 0;
-                }
-                else
-                    set->second.items.push_back(entry);
-            }
+                stat.stats[BONK_GEAR_COLUMNS[i].effect] = fields[1 + i].GetFloat();
             m_itemStats[entry] = stat;
         } while (result->NextRow());
     }
 
-    result = std::unique_ptr<QueryResult>(WorldDatabase.Query("SELECT `set_id`, `pieces`, `power`, `armor`, `passive_effect`, `passive_value`, `description` "
-        "FROM `bonk_item_set_bonus` ORDER BY `set_id`, `pieces`"));
-    if (result)
-    {
-        do
-        {
-            Field* fields = result->Fetch();
-            uint32 const setId = fields[0].GetUInt32();
-            auto set = m_itemSets.find(setId);
-            if (set == m_itemSets.end())
-            {
-                sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_item_set_bonus`: unknown set %u, skipped.", setId);
-                continue;
-            }
-
-            BonkItemSetBonus bonus;
-            bonus.pieces = std::max<uint8>(1, fields[1].GetUInt8());
-            bonus.stats[BONK_PASSIVE_POWER] += fields[2].GetFloat();
-            bonus.stats[BONK_PASSIVE_ARMOR] += fields[3].GetFloat();
-            uint8 const effect = fields[4].GetUInt8();
-            if (effect < MAX_BONK_PASSIVE_EFFECT)
-                bonus.stats[effect] += fields[5].GetFloat();
-            else if (effect != 255)
-                sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_item_set_bonus`: set %u has unknown passive effect %u, ignored.", setId, effect);
-            bonus.description = fields[6].GetCppString();
-            set->second.bonuses.push_back(std::move(bonus));
-        } while (result->NextRow());
-    }
-
-    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk gear items in %u sets", uint32(m_itemStats.size()), uint32(m_itemSets.size()));
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk gear items", uint32(m_itemStats.size()));
 }
 
 BonkUpgrade const* BonkMgr::GetUpgrade(uint32 id) const
@@ -1775,12 +1724,6 @@ BonkItemStat const* BonkMgr::GetItemStat(uint32 itemEntry) const
     return itr != m_itemStats.end() ? &itr->second : nullptr;
 }
 
-BonkItemSet const* BonkMgr::GetItemSet(uint32 id) const
-{
-    auto itr = m_itemSets.find(id);
-    return itr != m_itemSets.end() ? &itr->second : nullptr;
-}
-
 BonkGearTotals BonkMgr::EvaluateGear(Player const* player) const
 {
     std::vector<uint32> worn;
@@ -1796,27 +1739,10 @@ BonkGearTotals BonkMgr::EvaluateGear(Player const* player) const
 BonkGearTotals BonkMgr::EvaluateItems(std::vector<uint32> const& entries) const
 {
     BonkGearTotals totals;
-    std::map<uint32, uint32> setPieces;
-
     for (uint32 entry : entries)
         if (BonkItemStat const* stat = GetItemStat(entry))
-        {
             for (uint8 effect = 0; effect < MAX_BONK_PASSIVE_EFFECT; ++effect)
                 totals.passives[effect] += stat->stats[effect];
-            if (stat->setId)
-                ++setPieces[stat->setId];
-        }
-
-    for (auto const& itr : setPieces)
-        if (BonkItemSet const* set = GetItemSet(itr.first))
-            for (BonkItemSetBonus const& bonus : set->bonuses)
-            {
-                if (itr.second < bonus.pieces)
-                    continue;
-                for (uint8 effect = 0; effect < MAX_BONK_PASSIVE_EFFECT; ++effect)
-                    totals.passives[effect] += bonus.stats[effect];
-            }
-
     return totals;
 }
 
@@ -2224,117 +2150,60 @@ void BonkMgr::LoadItemCards()
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk item cards", uint32(m_itemCards.size()));
 }
 
-uint32 BonkMgr::GetTierGearEntry(uint8 classId, uint32 tier, uint32 slot)
+uint32 BonkMgr::GetGearEntry(uint32 kind, uint8 quality, uint32 tier)
 {
-    uint8 const* classes = std::begin(BONK_TIER_GEAR_CLASSES);
-    uint8 const* found = std::find(classes, std::end(BONK_TIER_GEAR_CLASSES), classId);
-    if (found == std::end(BONK_TIER_GEAR_CLASSES) || !tier || tier > BONK_TIER_GEAR_TIERS || slot >= BONK_TIER_GEAR_SLOTS)
+    if (kind >= BONK_GEAR_KINDS || quality < BONK_GEAR_LOWEST_QUALITY || quality >= BONK_GEAR_LOWEST_QUALITY + BONK_GEAR_QUALITIES ||
+        !tier || tier > BONK_GEAR_TIERS)
         return 0;
-    uint32 const entry = BONK_TIER_GEAR_FIRST + (uint32(found - classes) * BONK_TIER_GEAR_TIERS + tier - 1) * BONK_TIER_GEAR_SLOTS + slot;
+    uint32 const entry = BONK_GEAR_FIRST + ((kind * BONK_GEAR_QUALITIES) + quality - BONK_GEAR_LOWEST_QUALITY) * BONK_GEAR_TIERS + tier - 1;
     return sObjectMgr.GetItemPrototype(entry) ? entry : 0;
 }
 
-namespace
+bool BonkMgr::ReadGearEntry(uint32 entry, uint32& kind, uint8& quality, uint32& tier)
 {
-    bool IsBlueGearRange(uint32 entry)
-    {
-        uint32 const setEnd = BONK_TIER_GEAR_FIRST + BONK_TIER_GEAR_TIERS * BONK_TIER_GEAR_SLOTS * BONK_TIER_GEAR_CLASS_COUNT;
-        uint32 const mythicEnd = BONK_MYTHIC_GEAR_FIRST + BONK_MYTHIC_GEAR_KINDS * BONK_TIER_GEAR_TIERS;
-        return (entry >= BONK_TIER_GEAR_FIRST && entry < setEnd) || (entry >= BONK_MYTHIC_GEAR_FIRST && entry < mythicEnd);
-    }
-}
-
-bool BonkMgr::IsEpicGear(uint32 entry)
-{
-    return entry >= BONK_EPIC_GEAR_OFFSET && IsBlueGearRange(entry - BONK_EPIC_GEAR_OFFSET);
-}
-
-uint32 BonkMgr::GetEpicGearEntry(uint32 blueEntry)
-{
-    return IsBlueGearRange(blueEntry) ? blueEntry + BONK_EPIC_GEAR_OFFSET : 0;
-}
-
-uint32 BonkMgr::GetBlueGearEntry(uint32 entry)
-{
-    return IsEpicGear(entry) ? entry - BONK_EPIC_GEAR_OFFSET : entry;
-}
-
-bool BonkMgr::ReadTierGearEntry(uint32 entry, uint8& classId, uint32& tier, uint32& slot)
-{
-    entry = GetBlueGearEntry(entry);
-    uint32 const perClass = BONK_TIER_GEAR_TIERS * BONK_TIER_GEAR_SLOTS;
-    if (entry < BONK_TIER_GEAR_FIRST || entry >= BONK_TIER_GEAR_FIRST + perClass * BONK_TIER_GEAR_CLASS_COUNT)
+    if (entry < BONK_GEAR_FIRST || entry >= BONK_GEAR_FIRST + BONK_GEAR_KINDS * BONK_GEAR_QUALITIES * BONK_GEAR_TIERS)
         return false;
-    uint32 const index = entry - BONK_TIER_GEAR_FIRST;
-    classId = BONK_TIER_GEAR_CLASSES[index / perClass];
-    tier = (index % perClass) / BONK_TIER_GEAR_SLOTS + 1;
-    slot = index % BONK_TIER_GEAR_SLOTS;
+    uint32 const index = entry - BONK_GEAR_FIRST;
+    tier = index % BONK_GEAR_TIERS + 1;
+    quality = uint8(BONK_GEAR_LOWEST_QUALITY + (index / BONK_GEAR_TIERS) % BONK_GEAR_QUALITIES);
+    kind = index / (BONK_GEAR_TIERS * BONK_GEAR_QUALITIES);
     return true;
 }
 
-uint32 BonkMgr::GetMythicGearEntry(uint32 kind, uint32 tier)
+std::vector<uint32> BonkMgr::GetGearKindsFor(uint32 classMask)
 {
-    if (kind >= BONK_MYTHIC_GEAR_KINDS || !tier || tier > BONK_TIER_GEAR_TIERS)
-        return 0;
-    uint32 const entry = BONK_MYTHIC_GEAR_FIRST + kind * BONK_TIER_GEAR_TIERS + tier - 1;
-    return sObjectMgr.GetItemPrototype(entry) ? entry : 0;
-}
-
-bool BonkMgr::ReadMythicGearEntry(uint32 entry, uint32& kind, uint32& tier)
-{
-    entry = GetBlueGearEntry(entry);
-    if (entry < BONK_MYTHIC_GEAR_FIRST || entry >= BONK_MYTHIC_GEAR_FIRST + BONK_MYTHIC_GEAR_KINDS * BONK_TIER_GEAR_TIERS)
-        return false;
-    kind = (entry - BONK_MYTHIC_GEAR_FIRST) / BONK_TIER_GEAR_TIERS;
-    tier = (entry - BONK_MYTHIC_GEAR_FIRST) % BONK_TIER_GEAR_TIERS + 1;
-    return true;
+    std::vector<uint32> kinds;
+    for (uint32 kind = 0; kind < BONK_GEAR_KINDS; ++kind)
+        if (ItemPrototype const* proto = sObjectMgr.GetItemPrototype(GetGearEntry(kind, BONK_GEAR_LOWEST_QUALITY, 1)))
+            if (proto->AllowableClass & classMask)
+                kinds.push_back(kind);
+    return kinds;
 }
 
 bool BonkMgr::ReadTrinketEffect(uint32 entry, BonkTrinketEffect& effect)
 {
     uint32 kind, tier;
-    if (!ReadMythicGearEntry(entry, kind, tier) || kind < BONK_MYTHIC_GEAR_FIRST_TRINKET)
+    uint8 quality;
+    if (!ReadGearEntry(entry, kind, quality, tier) || kind < BONK_GEAR_FIRST_TRINKET)
         return false;
-    effect = BonkTrinketEffect(kind - BONK_MYTHIC_GEAR_FIRST_TRINKET);
+    effect = BonkTrinketEffect(kind - BONK_GEAR_FIRST_TRINKET);
     return effect < MAX_BONK_TRINKET_EFFECT;
 }
 
-std::vector<uint32> BonkMgr::GetMythicGearFor(uint32 classMask, uint32 tier)
+uint32 BonkMgr::GetLegendaryEntry(uint32 kind, uint32 tier)
 {
-    std::vector<uint32> gear;
-    for (uint32 kind = 0; kind < BONK_MYTHIC_GEAR_KINDS; ++kind)
-        if (uint32 const entry = GetMythicGearEntry(kind, tier))
-            if (ItemPrototype const* proto = sObjectMgr.GetItemPrototype(entry))
-                if (proto->AllowableClass & classMask)
-                    gear.push_back(entry);
-    return gear;
-}
-
-uint32 BonkMgr::GetLegendaryTierEntry(uint32 kind, uint32 tier)
-{
-    if (kind >= BONK_LEGENDARY_KINDS || !tier || tier > BONK_TIER_GEAR_TIERS)
+    if (kind >= BONK_LEGENDARY_KINDS || !tier || tier > BONK_GEAR_TIERS)
         return 0;
-    uint32 const entry = BONK_LEGENDARY_TIER_FIRST + kind * BONK_TIER_GEAR_TIERS + tier - 1;
+    uint32 const entry = BONK_LEGENDARY_FIRST + kind * BONK_GEAR_TIERS + tier - 1;
     return sObjectMgr.GetItemPrototype(entry) ? entry : 0;
-}
-
-bool BonkMgr::IsLegacyLegendary(uint32 entry)
-{
-    return entry >= BONK_LEGACY_LEGENDARY_FIRST && entry < BONK_LEGACY_LEGENDARY_FIRST + BONK_LEGENDARY_KINDS;
 }
 
 bool BonkMgr::ReadLegendaryEntry(uint32 entry, uint32& kind, uint32& tier)
 {
-    if (IsLegacyLegendary(entry))
-    {
-        kind = entry - BONK_LEGACY_LEGENDARY_FIRST;
-        tier = 1;
-        return true;
-    }
-    if (entry < BONK_LEGENDARY_TIER_FIRST || entry >= BONK_LEGENDARY_TIER_FIRST + BONK_LEGENDARY_KINDS * BONK_TIER_GEAR_TIERS)
+    if (entry < BONK_LEGENDARY_FIRST || entry >= BONK_LEGENDARY_FIRST + BONK_LEGENDARY_KINDS * BONK_GEAR_TIERS)
         return false;
-    kind = (entry - BONK_LEGENDARY_TIER_FIRST) / BONK_TIER_GEAR_TIERS;
-    tier = (entry - BONK_LEGENDARY_TIER_FIRST) % BONK_TIER_GEAR_TIERS + 1;
+    kind = (entry - BONK_LEGENDARY_FIRST) / BONK_GEAR_TIERS;
+    tier = (entry - BONK_LEGENDARY_FIRST) % BONK_GEAR_TIERS + 1;
     return true;
 }
 
@@ -2342,7 +2211,7 @@ std::vector<uint32> BonkMgr::GetLegendariesFor(uint32 classMask, uint32 tier)
 {
     std::vector<uint32> legendaries;
     for (uint32 kind = 0; kind < BONK_LEGENDARY_KINDS; ++kind)
-        if (uint32 const entry = GetLegendaryTierEntry(kind, tier))
+        if (uint32 const entry = GetLegendaryEntry(kind, tier))
             if (ItemPrototype const* proto = sObjectMgr.GetItemPrototype(entry))
                 if (proto->AllowableClass & classMask)
                     legendaries.push_back(entry);
@@ -2351,86 +2220,22 @@ std::vector<uint32> BonkMgr::GetLegendariesFor(uint32 classMask, uint32 tier)
 
 uint32 BonkMgr::GetGearTier(uint32 entry)
 {
-    uint8 classId;
-    uint32 kind, tier, slot;
-    if (ReadTierGearEntry(entry, classId, tier, slot) || ReadMythicGearEntry(entry, kind, tier) || ReadLegendaryEntry(entry, kind, tier))
+    uint32 kind, tier;
+    uint8 quality;
+    if (ReadGearEntry(entry, kind, quality, tier) || ReadLegendaryEntry(entry, kind, tier))
         return tier;
     return 0;
 }
 
 uint32 BonkMgr::GetGearAtTier(uint32 entry, uint32 tier)
 {
-    uint8 classId;
-    uint32 kind, oldTier, slot;
-    bool const epic = IsEpicGear(entry);
-    if (ReadTierGearEntry(entry, classId, oldTier, slot))
-    {
-        uint32 const blue = GetTierGearEntry(classId, tier, slot);
-        return epic ? GetEpicGearEntry(blue) : blue;
-    }
-    if (ReadMythicGearEntry(entry, kind, oldTier))
-    {
-        uint32 const blue = GetMythicGearEntry(kind, tier);
-        return epic ? GetEpicGearEntry(blue) : blue;
-    }
+    uint32 kind, oldTier;
+    uint8 quality;
+    if (ReadGearEntry(entry, kind, quality, oldTier))
+        return GetGearEntry(kind, quality, tier);
     if (ReadLegendaryEntry(entry, kind, oldTier))
-        return GetLegendaryTierEntry(kind, tier);
+        return GetLegendaryEntry(kind, tier);
     return 0;
-}
-
-BonkGear const* BonkMgr::GetGear(uint32 entry) const
-{
-    auto itr = m_gear.find(entry);
-    return itr != m_gear.end() ? &itr->second : nullptr;
-}
-
-BonkGear const* BonkMgr::GetGearByKeep(uint32 keepEntry) const
-{
-    auto itr = m_gearByKeep.find(keepEntry);
-    return itr != m_gearByKeep.end() ? GetGear(itr->second) : nullptr;
-}
-
-void BonkMgr::LoadGear()
-{
-    m_gear.clear();
-    m_gearByKeep.clear();
-
-    std::unique_ptr<QueryResult> result(WorldDatabase.Query("SELECT `entry`, `quality`, `keep_entry`, `tier` FROM `bonk_gear`"));
-    if (!result)
-    {
-        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded 0 Bonk run gear.");
-        return;
-    }
-
-    do
-    {
-        Field* fields = result->Fetch();
-
-        BonkGear gear;
-        gear.entry = fields[0].GetUInt32();
-        gear.quality = fields[1].GetUInt8();
-        gear.keepEntry = fields[2].GetUInt32();
-        gear.tierId = fields[3].GetUInt32();
-
-        ItemPrototype const* proto = sObjectMgr.GetItemPrototype(gear.entry);
-        if (!proto)
-        {
-            sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_gear`: item %u does not exist, skipped.", gear.entry);
-            continue;
-        }
-        if (gear.keepEntry && !sObjectMgr.GetItemPrototype(gear.keepEntry))
-        {
-            sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_gear`: item %u keeps as missing item %u; it can't be extracted.", gear.entry, gear.keepEntry);
-            gear.keepEntry = 0;
-        }
-        gear.allowableClass = uint32(proto->AllowableClass);
-
-        m_gear[gear.entry] = gear;
-        if (gear.keepEntry)
-            m_gearByKeep[gear.keepEntry] = gear.entry;
-    } while (result->NextRow());
-
-    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk run gear", uint32(m_gear.size()));
 }
 
 float BonkPassive::RankWeight(uint32 rank) const

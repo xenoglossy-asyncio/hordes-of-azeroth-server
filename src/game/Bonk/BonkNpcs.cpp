@@ -24,7 +24,6 @@ namespace
     uint32 const BONK_TEXT_MASTERY_SOON  = 900009;
     uint32 const BONK_TEXT_VAULT_EMPTY   = 900010;
     uint32 const BONK_TEXT_VAULT         = 900011;
-    uint32 const BONK_TEXT_TIER_VENDOR   = 900015;
     uint32 const BONK_TEXT_COOP          = 900190;
 
     uint32 const COOP_ACTION_PAUSE = GOSSIP_ACTION_INFO_DEF + 1;
@@ -251,32 +250,6 @@ bool GOHello_go_bonk_chest(Player* player, GameObject* go)
     return true;
 }
 
-bool GossipHello_npc_bonk_tier_vendor(Player* player, Creature* creature)
-{
-    BonkPlayer* bonk = player->GetBonkPlayer();
-    std::vector<Item*> const foreign = bonk->GetForeignTierPieces();
-    if (foreign.empty())
-    {
-        player->GetSession()->SendListInventory(creature->GetObjectGuid());
-        return true;
-    }
-    std::string const exchange = bonk->GetString(foreign.size() == 1 ? BONK_STRING_REFIT_SET_PIECE : BONK_STRING_REFIT_SET_PIECES,
-        { std::to_string(foreign.size()), FormatBonkMoney(bonk->GetTierExchangeFee(foreign), bonk->GetLocale()) });
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, bonk->GetString(BONK_STRING_SHOW_SET_PIECES).c_str(), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, exchange.c_str(), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-    player->SEND_GOSSIP_MENU(BONK_TEXT_TIER_VENDOR, creature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_bonk_tier_vendor(Player* player, Creature* creature, uint32 , uint32 action)
-{
-    player->CLOSE_GOSSIP_MENU();
-    if (action == GOSSIP_ACTION_INFO_DEF)
-        player->GetBonkPlayer()->ExchangeTierPieces();
-    player->GetSession()->SendListInventory(creature->GetObjectGuid());
-    return true;
-}
-
 bool GossipHello_npc_bonk_vendor(Player* player, Creature* creature)
 {
     if (BonkRun* run = player->GetBonkPlayer()->GetRun())
@@ -479,12 +452,6 @@ void AddSC_bonk_npcs()
     newscript->Name = "npc_bonk_quartermaster";
     newscript->pGossipHello = &GossipHello_npc_bonk_quartermaster;
     newscript->pGossipSelect = &GossipSelect_npc_bonk_quartermaster;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_bonk_tier_vendor";
-    newscript->pGossipHello = &GossipHello_npc_bonk_tier_vendor;
-    newscript->pGossipSelect = &GossipSelect_npc_bonk_tier_vendor;
     newscript->RegisterSelf();
 
     newscript = new Script;

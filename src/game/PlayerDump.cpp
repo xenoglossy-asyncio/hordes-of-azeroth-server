@@ -63,7 +63,6 @@ static DumpTable dumpTables[] =
     { "item_loot",                        DTT_ITEM_LOOT  }, //                  <- item guids
     { "item_text",                        DTT_ITEM_TEXT  },
     { "bonk_item_found",                  DTT_ITEM_FOUND },
-    { "bonk_character_notice",            DTT_CHAR_TABLE },
     { "bonk_character_shards",            DTT_CHAR_TABLE },
     { "bonk_character_stats",             DTT_CHAR_TABLE },
     { "bonk_character_talent",            DTT_CHAR_TABLE },

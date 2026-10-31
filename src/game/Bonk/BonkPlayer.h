@@ -81,14 +81,12 @@ class BonkPlayer
         uint8 GetDetermination() const;
         void AddDetermination();
         void SendDetermination() const;
-        bool CanBuyGear(uint32 itemEntry) const;
-        bool ShowsGearItem(Creature const* vendor, uint32 itemEntry) const;
-        bool IsTierVendor(Creature const* vendor) const;
+        bool IsShopVendor(Creature const* vendor) const;
         uint32 GetStockTier() const;
-        std::vector<uint32> GetTierStock() const;
+        std::vector<uint32> GetShopStock() const;
+        static uint32 GetShopFirstTier(uint8 quality);
         uint32 GetScrap() const { return m_scrap; }
         void AddScrap(uint32 points);
-        void SetQuartermasterUpgrade(bool on);
         void SendQuartermaster() const;
         uint32 GetUpgradeCeiling() const;
         std::vector<Item*> GetUpgradableGear() const;
@@ -98,17 +96,6 @@ class BonkPlayer
         bool PickFoundReroll(uint32 guidLow, uint8 choice, std::string& error);
         void SendFoundItems() const;
         bool GiveTestFoundGear(uint32 tier, uint32 lineCount, std::string& error);
-        bool IsGearFound(uint32 keepEntry) const { return m_foundGear.count(keepEntry) != 0; }
-        bool RecordGearFound(uint32 keepEntry);
-        float GetGearPriceFactor(Creature const* vendor, uint32 itemEntry) const;
-        void SendFoundGear(Creature const* vendor) const;
-        std::vector<Item*> GetForeignTierPieces() const;
-        uint32 GetTierExchangeFee(std::vector<Item*> const& pieces) const;
-        void ExchangeTierPieces();
-        void SendGearTabs(Creature const* vendor) const;
-        void SelectGearTab(uint32 group);
-        void SendRefitOffer() const;
-        void RefitAtQuartermaster();
         std::string GetUnlockHint(BonkTier const& tier) const;
 
         static bool IsWipeName(std::string const& name);
@@ -310,7 +297,6 @@ class BonkPlayer
         void SendGearInfo() const;
         void SendUpdateNotices();
         void SeeGearNotice();
-        bool ResolveOldLegendaries(bool remove);
         void SendStats() const;
         void SendMasteryShop(bool open, bool inspect) const;
         std::map<uint32, uint8> ReadMasteryPreset(uint8 slot) const;
@@ -385,9 +371,6 @@ class BonkPlayer
         uint32 m_otherEffects = 100;
         float m_leashDistance = 0.0f;
         bool m_gearNoticePending = false;
-        bool m_legendaryPromptPending = false;
-        std::vector<Item*> GetOwnedLegendaries() const;
-        void ClearLegendaryPrompt();
         LocaleConstant m_locale = LOCALE_enUS;
         mutable bool m_zoneArtSent = false;
         void SendZoneArt() const;
@@ -412,9 +395,6 @@ class BonkPlayer
         static constexpr uint32 BONK_CAMP_MAIL_NOTICE_DELAY_MS = 1500;
         uint32 m_campMailNoticeMs = 0;
         void UpdateCampMailNotice(uint32 diff);
-        uint32 m_gearTab = 0;
-        std::vector<uint32> GetGearTabs(Creature const* vendor) const;
-        uint32 GetShownGearTab(std::vector<uint32> const& tabs) const;
         uint32 m_mailboxGlowMs = 0;
         bool m_mailboxGlowShown = false;
         static uint16 const PACKET_KINDS = 1024;
@@ -438,11 +418,9 @@ class BonkPlayer
         uint32 m_shards = 0;
         uint8 m_determination = 0;
         uint32 m_scrap = 0;
-        bool m_quartermasterUpgrade = false;
         uint32 m_rerollItem = 0;
         uint8 m_rerollLine = 0;
         std::vector<std::pair<uint8, float>> m_rerollOffers;
-        std::set<uint32> m_foundGear;
         uint32 m_masteryXp = 0;
         uint32 m_titleId = 0;
         bool m_accountHasRun = false;

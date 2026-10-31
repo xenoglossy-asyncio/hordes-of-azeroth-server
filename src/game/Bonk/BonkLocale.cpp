@@ -54,8 +54,6 @@ namespace
         { BONK_FIELD_UPGRADE_NAME,               "bonk_upgrade",        "name",        "id",        nullptr  },
         { BONK_FIELD_UPGRADE_DESCRIPTION,        "bonk_upgrade",        "description", "id",        nullptr  },
         { BONK_FIELD_ARCHETYPE_NAME,             "bonk_archetype",      "name",        "id",        nullptr  },
-        { BONK_FIELD_ITEM_SET_NAME,              "bonk_item_set",       "name",        "id",        nullptr  },
-        { BONK_FIELD_ITEM_SET_BONUS_DESCRIPTION, "bonk_item_set_bonus", "description", "set_id",    "pieces" },
         { BONK_FIELD_HIDDEN_NAME,                "bonk_hidden",         "name",        "id",        nullptr  },
         { BONK_FIELD_HIDDEN_YELL,                "bonk_hidden",         "yell",        "id",        nullptr  },
         { BONK_FIELD_HIDDEN_FOUND_TEXT,          "bonk_hidden",         "found_text",  "id",        nullptr  },

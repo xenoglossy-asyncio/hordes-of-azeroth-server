@@ -1865,7 +1865,6 @@ void BonkRun::UpdateOffers()
         m_lastLevel = level;
     }
 
-    SettlePendingGear();
     if (!m_offer.empty() || !m_leyOffer.empty() || m_vendorOpen || m_vaultOpen || m_gearOfferEntry || !m_glyphOffer.empty())
         return;
 

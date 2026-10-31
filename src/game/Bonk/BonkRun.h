@@ -202,9 +202,8 @@ class BonkRun
         uint32 GetEliteAffixes() const { return m_tier.eliteAffixes + m_bonuses.eliteAffixes + m_levelRow.extraAffixes; }
         ObjectGuid const& GetBossGuid() const { return m_bossGuid; }
         static float StageHealthScale(BonkTier const& tier, BonkLevel const& level, uint32 stage);
+        static uint32 GetLevelDropTier(BonkTier const& tier, uint32 bandLevel);
         static float StageDamageScale(BonkTier const& tier, BonkLevel const& level, uint32 stage);
-        static float BossLegendaryChance(BonkTier const& tier, uint32 bandLevel);
-        static float BossEpicChance(BonkTier const& tier, uint32 bandLevel);
         uint32 GetEvolveRank() const;
         void BringBossEarlier();
         uint32 GetStage() const { return m_stage; }
@@ -1183,15 +1182,7 @@ class BonkRun
         {
             PendingGear(uint32 pendingEntry = 0) : entry(pendingEntry) {}
             uint32 entry;
-            bool found = false;
             BonkFoundGear gear;
-        };
-        enum LootBag : uint8
-        {
-            LOOT_BAG_PLAIN,
-            LOOT_BAG_TIER,
-            LOOT_BAG_EPIC,
-            LOOT_BAG_LEGENDARY,
         };
         struct GearDrop
         {
@@ -1200,14 +1191,12 @@ class BonkRun
             uint32 marker = 0;
             uint32 core = 0;
             uint32 swirl = 0;
-            uint8 bag = LOOT_BAG_PLAIN;
             uint8 quality = 0;
             std::set<ObjectGuid> takenBy;
         };
-        bool MakeTierPiece(bool epic, PendingGear& piece) const;
+        bool MakeTierPiece(uint8 quality, PendingGear& piece) const;
         bool MakeLegendary(PendingGear& piece) const;
-        bool MakePlainGear(uint8 rolled, PendingGear& piece, uint8& quality) const;
-        bool MakeBagPiece(uint8 bag, uint8 quality, PendingGear& piece) const;
+        bool MakeBagPiece(uint8 quality, PendingGear& piece) const;
         void ShowLootBeamTo(Player* viewer, GameObject const* go, uint8 quality, GearDrop const& drop) const;
         void HideLootBagFrom(Player* viewer, GearDrop const& drop) const;
         void RemoveLootBag(GearDrop const& drop);
@@ -1215,24 +1204,20 @@ class BonkRun
         bool EveryoneTookBag(GearDrop const& drop) const;
         void DropGear(Creature const* mob, BonkSpawnKind kind);
         void DropTierPiece(Creature const* mob, BonkSpawnKind kind);
-        bool PlaceTierPiece(Creature const* mob, bool epic);
+        bool PlaceTierPiece(Creature const* mob, uint8 quality);
         bool DropLegendary(Creature const* mob);
         uint32 GetDropTier() const;
-        bool PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality, uint8 bag);
+        bool PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality);
         std::string DescribeFoundDrop(BonkFoundGear const& found) const;
         void AddEliteScrap();
-        bool GetKeepInfo(uint32 entry, uint32& keepEntry, uint8& quality) const;
+        bool GetGearQuality(uint32 entry, uint8& quality) const;
         void MailKeptPiece(uint32 entry, std::string const& body, BonkFoundGear const* found);
         uint32 GetScrapPoints(Item const* item) const;
         void GetOwnedTiers(uint32 entry, uint32& bestTier, bool& owned) const;
-        uint8 RollGearQuality(BonkSpawnKind kind) const;
+        uint8 RollGearQuality() const;
         void UpdateGearDrops(uint32 diff);
         void CollectAllGear();
         void OfferGear();
-        void SettlePendingGear();
-        void NoteGearFound(uint32 entry);
-        bool IsWorseThanWorn(uint32 entry) const;
-        void AutoSalvageGear(uint32 entry);
         void SendGearOffer() const;
         void CloseGearOffer();
         uint32 GetGearSalvage(uint32 entry) const;
