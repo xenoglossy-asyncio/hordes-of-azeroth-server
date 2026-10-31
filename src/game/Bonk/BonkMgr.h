@@ -221,6 +221,7 @@ struct BonkRunChoice
     BonkMap const* dungeon = nullptr;
     bool invade = false;
     uint32 startFloor = 1;
+    bool groupReady = false;
 };
 
 uint32 const BONK_CHECKPOINT_STEP = 5;

@@ -51,6 +51,7 @@ class BonkPlayer
         void PreviewTelegraph(BonkTelegraphShape shape, float x, float y, float z, float orientation, float size, uint32 durationMs);
         bool StartRun(BonkTier const& tier, std::string& error);
         bool StartRun(BonkTier const& tier, std::string& error, BonkRunChoice const& choice);
+        bool StartGuestRun(BonkTier const& tier, BonkRunChoice const& choice, Player* host, std::string& error);
         void SendMapInfo() const;
         bool StartSandbox(std::string& error);
         bool IsInSandbox() const;

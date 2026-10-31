@@ -367,6 +367,7 @@ namespace
 
 void BonkCoop::Update(uint32 diff)
 {
+    UpdateReadyChecks(diff);
     s_scanTimer += diff;
     if (s_scanTimer < SCAN_INTERVAL_MS)
         return;

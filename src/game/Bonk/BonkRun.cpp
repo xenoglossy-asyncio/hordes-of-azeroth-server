@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkCoop.h"
 #include "BonkCodex.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
@@ -252,6 +253,8 @@ namespace
     float const BONK_START_EDGE         = 60.0f;
     float const BONK_START_EDGE_ENCLOSED = 25.0f;
     float const BONK_START_SPREAD       = 80.0f;
+    float const BONK_COOP_FOLLOW_MIN    = 3.0f;
+    float const BONK_COOP_FOLLOW_MAX    = 7.0f;
     uint32 const BONK_ZONE_START_TRIES  = 40;
     float const BONK_ZONE_START_MARGIN  = 6.0f;
     float const BONK_ZONE_START_FLAT    = 12.0f;
@@ -1098,7 +1101,20 @@ bool BonkRun::Begin(std::string& error)
 {
     BonkStats::Reset(m_player->GetObjectGuid());
 
-    BonkMap const* first = ChooseNextMap();
+    BonkMap const* first = nullptr;
+    if (IsCoopGuest())
+    {
+        Player* host = sObjectMgr.GetPlayer(m_coopHost);
+        BonkRun const* hostRun = host ? host->GetBonkPlayer()->GetRun() : nullptr;
+        if (!hostRun || hostRun->IsOver())
+        {
+            error = "The host's run has ended.";
+            return false;
+        }
+        first = &hostRun->GetStageMap();
+    }
+    else
+        first = ChooseNextMap();
     if (!first)
     {
         error = "No maps are set up for " + m_tier.name + ".";
@@ -1336,12 +1352,36 @@ namespace
     }
 }
 
+bool BonkRun::PlaceNearHost(float& x, float& y, float& z, float& o) const
+{
+    Player* host = sObjectMgr.GetPlayer(m_coopHost);
+    BonkRun const* hostRun = host ? host->GetBonkPlayer()->GetRun() : nullptr;
+    if (!hostRun)
+        return false;
+    float hostX, hostY, hostZ;
+    hostRun->GetStageStart(hostX, hostY, hostZ);
+    if (hostX == 0.0f && hostY == 0.0f)
+        return false;
+    float const angle = frand(0.0f, 2.0f * M_PI_F);
+    float const distance = frand(BONK_COOP_FOLLOW_MIN, BONK_COOP_FOLLOW_MAX);
+    x = hostX + std::cos(angle) * distance;
+    y = hostY + std::sin(angle) * distance;
+    z = hostZ;
+    o = std::atan2(hostY - y, hostX - x);
+    if (o < 0.0f)
+        o += 2.0f * M_PI_F;
+    return true;
+}
+
 bool BonkRun::TeleportToStage(BonkMap const& map, std::string& error)
 {
     float x = map.x, y = map.y, z = map.z, o = map.o;
     std::vector<BonkMapStart> const starts = sBonkMgr.GetMapStarts(map.id);
     std::vector<BonkMapStart const*> const reachable = GetReachableStarts(map, starts);
-    if (FindZoneStart(map, x, y, z))
+    if (IsCoopGuest() && PlaceNearHost(x, y, z, o))
+    {
+    }
+    else if (FindZoneStart(map, x, y, z))
     {
         z += 0.5f;
         o = std::atan2(map.y - y, map.x - x);
@@ -1370,6 +1410,9 @@ bool BonkRun::TeleportToStage(BonkMap const& map, std::string& error)
         return false;
     }
 
+    m_stageX = x;
+    m_stageY = y;
+    m_stageZ = z;
     m_state = STATE_ENTERING;
     m_enterTimer = 0;
     return true;
@@ -5247,6 +5290,11 @@ void BonkRun::EnterNextStage()
         return;
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
+    if (IsCoopGuest())
+    {
+        bonk->Notify("The host takes the group to the next floor.");
+        return;
+    }
     if (!m_offer.empty())
     {
         bonk->Notify("Make your choice first.");
@@ -5262,6 +5310,27 @@ void BonkRun::EnterNextStage()
         return;
     }
 
+    ClearStageObjects();
+
+    std::string error;
+    if (!TeleportToStage(*next, error))
+    {
+        bonk->Notify(error + " Try the portal again.");
+        BonkMap const* other = ChooseNextMap();
+        m_nextMapId = other ? other->id : 0;
+        return;
+    }
+
+    ++m_stage;
+    m_map = *next;
+    ApplyInvader();
+    BringBossEarlier();
+    m_nextMapId = 0;
+    BonkCoop::OnHostEnteredStage(m_player, m_map, m_stage);
+}
+
+void BonkRun::ClearStageObjects()
+{
     CollectAllShards();
     CollectAllGlyphs();
     EndHearth();
@@ -5281,21 +5350,36 @@ void BonkRun::EnterNextStage()
     m_objectives.Clear(m_player);
     DespawnShrines();
     DespawnVendor();
+}
 
+void BonkRun::FollowToStage(BonkMap const& map, uint32 stage)
+{
+    if (IsOver() || m_sandbox)
+        return;
+    SetPaused(false);
+    ClearStageObjects();
     std::string error;
-    if (!TeleportToStage(*next, error))
+    if (!TeleportToStage(map, error))
     {
-        bonk->Notify(error + " Try the portal again.");
-        BonkMap const* other = ChooseNextMap();
-        m_nextMapId = other ? other->id : 0;
+        m_player->GetBonkPlayer()->Notify(error);
         return;
     }
-
-    ++m_stage;
-    m_map = *next;
+    m_stage = stage;
+    m_map = map;
     ApplyInvader();
     BringBossEarlier();
     m_nextMapId = 0;
+}
+
+void BonkRun::EndWithHost()
+{
+    if (m_state == STATE_ENTERING)
+    {
+        Exit();
+        return;
+    }
+    m_player->GetBonkPlayer()->Notify("The host ended the run.");
+    Finish(true);
 }
 
 bool BonkRun::SkipTime(uint32 seconds, std::string& error)
@@ -12796,6 +12880,8 @@ void BonkRun::Finish(bool wentHome)
         return;
 
     m_state = STATE_ENDING;
+    if (!IsCoopGuest())
+        BonkCoop::OnHostFinished(m_player);
     m_wentHome = wentHome;
     SetPaused(false);
     RemoveHeroLooks();

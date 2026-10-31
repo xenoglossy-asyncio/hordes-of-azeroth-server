@@ -1,3 +1,4 @@
+#include "BonkCoop.h"
 #include "BonkCodex.h"
 #include "BonkEnchant.h"
 #include "BonkLocale.h"
@@ -1208,6 +1209,13 @@ bool ChatHandler::HandleBonkScalingCommand(char*)
 
     for (std::string const& line : run->DescribeScaling())
         SendSysMessage(line.c_str());
+    return true;
+}
+
+bool ChatHandler::HandleBonkCoopReadyCommand(char* args)
+{
+    std::string const answer = args ? args : "";
+    BonkCoop::AnswerReady(m_session->GetPlayer(), answer == "1" || answer == "yes");
     return true;
 }
 

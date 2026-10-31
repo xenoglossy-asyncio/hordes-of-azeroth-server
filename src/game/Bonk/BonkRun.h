@@ -129,6 +129,14 @@ class BonkRun
         bool IsInvasion() const { return m_invaderId != 0; }
 
         bool Begin(std::string& error);
+        void FollowHost(ObjectGuid host) { m_coopHost = host; }
+        bool IsCoopGuest() const { return !m_coopHost.IsEmpty(); }
+        ObjectGuid GetCoopHost() const { return m_coopHost; }
+        bool IsOver() const { return m_state == STATE_ENDING || m_state == STATE_FINISHED; }
+        BonkMap const& GetStageMap() const { return m_map; }
+        void GetStageStart(float& x, float& y, float& z) const { x = m_stageX; y = m_stageY; z = m_stageZ; }
+        void FollowToStage(BonkMap const& map, uint32 stage);
+        void EndWithHost();
         void Update(uint32 diff);
         void Abort();
         void Surrender();
@@ -1373,6 +1381,10 @@ class BonkRun
         std::set<std::pair<bool, uint32>> m_banished;
         BonkMap m_map;
         uint32 m_stage = 1;
+        ObjectGuid m_coopHost;
+        float m_stageX = 0.0f, m_stageY = 0.0f, m_stageZ = 0.0f;
+        void ClearStageObjects();
+        bool PlaceNearHost(float& x, float& y, float& z, float& o) const;
         uint32 m_nextMapId = 0;
         std::set<uint32> m_playedMaps;
         State m_state = STATE_ENTERING;

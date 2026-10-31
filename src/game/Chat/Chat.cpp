@@ -314,6 +314,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "keyword",        SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkKeywordCommand,         "", nullptr },
         { "scaling",        SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkScalingCommand,         "", nullptr },
         { "stress",         SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkStressCommand,          "", nullptr },
+        { "coopready",      SEC_PLAYER,         false, &ChatHandler::HandleBonkCoopReadyCommand,       "", nullptr },
         { "crowd",          SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkCrowdCommand,           "", nullptr },
         { "spawnlook",      SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkSpawnLookCommand,       "", nullptr },
         { "bosstune",       SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkBossTuneCommand,        "", nullptr },

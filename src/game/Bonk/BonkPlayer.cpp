@@ -2908,8 +2908,34 @@ bool BonkPlayer::StartRun(BonkTier const& tier, std::string& error, BonkRunChoic
         return false;
     }
 
+    if (!choice.groupReady && BonkCoop::RequestGroupStart(m_player, tier, choice))
+        return true;
+
     TrimPoolToggles();
     m_run.reset(new BonkRun(m_player, tier, choice));
+    if (!m_run->Begin(error))
+    {
+        m_run.reset();
+        return false;
+    }
+    return true;
+}
+
+bool BonkPlayer::StartGuestRun(BonkTier const& tier, BonkRunChoice const& choice, Player* host, std::string& error)
+{
+    if (m_run)
+    {
+        error = "You are already in a run.";
+        return false;
+    }
+    if (m_player->IsTaxiFlying() || !IsPlayableClass(m_player->GetClass()) || !sBonkMgr.HasStarterSpell(m_player->GetClassMask()))
+    {
+        error = "You can't start a run right now.";
+        return false;
+    }
+    TrimPoolToggles();
+    m_run.reset(new BonkRun(m_player, tier, choice));
+    m_run->FollowHost(host->GetObjectGuid());
     if (!m_run->Begin(error))
     {
         m_run.reset();
