@@ -779,8 +779,6 @@ void BonkRun::OnHeroHit(Unit* victim, double damage, SpellEntry const* spell)
         return;
 
     float const multiplier = std::max(0.1f, GetDamageMultiplier(nullptr, victim, 1.0f, GetCastChargePower(spell, victim)));
-    float const castScale = owned->weapon.HasFlag(BONK_WEAPON_FLAG_AOE) ? 1.0f : 1.0f + float(GetSpellCount(*owned));
-    damage *= castScale;
 
     if (SpendCastCharge(*owned, BONK_CARD_DEATH_RAY))
         victim->SendPlaySpellVisualKit(BONK_KIT_DEATH_RAY);
