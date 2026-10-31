@@ -5,6 +5,9 @@
 #include "BonkPlayer.h"
 #include "Chat.h"
 #include "Database/DatabaseEnv.h"
+#include "DynamicObject.h"
+#include "Opcodes.h"
+#include "Utilities/Random.h"
 #include "Group.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
@@ -129,6 +132,51 @@ namespace
                     if (Creature* npc = member->FindNearestCreature(BONK_COOP_NPC, BONK_COOP_NPC_RANGE, true))
                         member->UpdateVisibilityOf(member, npc);
     }
+}
+
+namespace
+{
+    Player const* EffectOwner(WorldObject const* source)
+    {
+        if (!source)
+            return nullptr;
+        if (source->GetTypeId() == TYPEID_DYNAMICOBJECT)
+        {
+            Unit const* caster = static_cast<DynamicObject const*>(source)->GetUnitCaster();
+            return caster ? caster->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+        }
+        if (Unit const* unit = source->ToUnit())
+            return unit->GetCharmerOrOwnerPlayerOrPlayerItself();
+        return nullptr;
+    }
+
+    uint32 OtherEffectsFor(Player const* viewer, WorldObject const* source)
+    {
+        BonkPlayer const* bonk = viewer ? viewer->GetBonkPlayer() : nullptr;
+        if (!bonk || bonk->GetOtherEffects() >= 100)
+            return 100;
+        Player const* owner = EffectOwner(source);
+        if (!owner || owner == viewer)
+            return 100;
+        return bonk->GetOtherEffects();
+    }
+}
+
+bool BonkCoop::SkipsEffectPacket(Player const* viewer, WorldObject const* source, uint16 opcode)
+{
+    if (opcode != SMSG_SPELL_START && opcode != SMSG_SPELL_GO && opcode != SMSG_PLAY_SPELL_VISUAL && opcode != SMSG_PLAY_SPELL_IMPACT)
+        return false;
+    uint32 const shown = OtherEffectsFor(viewer, source);
+    return shown < 100 && urand(0, 99) >= shown;
+}
+
+bool BonkCoop::HidesEffectObject(Player const* viewer, WorldObject const* object)
+{
+    uint32 const shown = OtherEffectsFor(viewer, object);
+    if (shown >= 100)
+        return false;
+    uint32 const roll = (object->GetGUIDLow() * 2654435761u + viewer->GetGUIDLow() * 40503u) % 100;
+    return roll >= shown;
 }
 
 void BonkCoop::JoinHostGroup(Player* guest)

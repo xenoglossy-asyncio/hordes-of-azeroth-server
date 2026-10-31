@@ -86,7 +86,8 @@ namespace MaNGOS
     struct ObjectMessageDeliverer
     {
         WorldPacket* i_message;
-        explicit ObjectMessageDeliverer(WorldPacket* msg) : i_message(msg) {}
+        WorldObject const* i_sender;
+        explicit ObjectMessageDeliverer(WorldPacket* msg, WorldObject const* sender = nullptr) : i_message(msg), i_sender(sender) {}
         void Visit(CameraMapType& m);
         template<class SKIP> void Visit(GridRefManager<SKIP>&) {}
     };

@@ -278,6 +278,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "preset",         SEC_PLAYER,         false, &ChatHandler::HandleBonkPresetCommand,          "", nullptr },
         { "hello",         SEC_PLAYER,         false, &ChatHandler::HandleBonkHelloCommand,           "", nullptr },
         { "lang",           SEC_PLAYER,         false, &ChatHandler::HandleBonkLangCommand,            "", nullptr },
+        { "effects",        SEC_PLAYER,         false, &ChatHandler::HandleBonkEffectsCommand,         "", nullptr },
         { "notice",         SEC_PLAYER,         false, &ChatHandler::HandleBonkNoticeCommand,          "", nullptr },
         { "oldlegendaries", SEC_PLAYER,         false, &ChatHandler::HandleBonkOldLegendariesCommand,  "", nullptr },
         { "strings",        SEC_ADMINISTRATOR,  true,  nullptr,                                        "", bonkStringsCommandTable },

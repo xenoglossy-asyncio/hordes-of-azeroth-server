@@ -28,6 +28,7 @@
 #include "ObjectAccessor.h"
 #include "BattleGroundMgr.h"
 #include "PlayerBroadcaster.h"
+#include "Bonk/BonkCoop.h"
 
 using namespace MaNGOS;
 
@@ -121,6 +122,8 @@ void MessageDeliverer::Visit(CameraMapType& m)
 
         if (i_toSelf || owner != &i_player)
         {
+            if (BonkCoop::SkipsEffectPacket(owner, &i_player, i_message->GetOpcode()))
+                continue;
             if (WorldSession* session = owner->GetSession())
                 session->SendPacket(i_message);
         }
@@ -146,6 +149,8 @@ void ObjectMessageDeliverer::Visit(CameraMapType& m)
 {
     for (const auto& iter : m)
     {
+        if (BonkCoop::SkipsEffectPacket(iter.getSource()->GetOwner(), i_sender, i_message->GetOpcode()))
+            continue;
         if (WorldSession* session = iter.getSource()->GetOwner()->GetSession())
             session->SendPacket(i_message);
     }
@@ -161,6 +166,8 @@ void MessageDistDeliverer::Visit(CameraMapType& m)
                 (!i_ownTeamOnly || owner->GetTeam() == i_player.GetTeam()) &&
                 (!i_dist || iter.getSource()->GetBody()->IsWithinDist(&i_player, i_dist)))
         {
+            if (BonkCoop::SkipsEffectPacket(owner, &i_player, i_message->GetOpcode()))
+                continue;
             if (WorldSession* session = owner->GetSession())
                 session->SendPacket(i_message);
         }
@@ -173,6 +180,8 @@ void ObjectMessageDistDeliverer::Visit(CameraMapType& m)
     {
         if (!i_dist || iter.getSource()->GetBody()->IsWithinDist(&i_object, i_dist))
         {
+            if (BonkCoop::SkipsEffectPacket(iter.getSource()->GetOwner(), &i_object, i_message->GetOpcode()))
+                continue;
             if (WorldSession* session = iter.getSource()->GetOwner()->GetSession())
                 session->SendPacket(i_message);
         }

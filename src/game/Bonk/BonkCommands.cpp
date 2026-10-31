@@ -772,6 +772,15 @@ bool ChatHandler::HandleBonkHelloCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleBonkEffectsCommand(char* args)
+{
+    uint32 percent = 0;
+    if (!ExtractUInt32(&args, percent))
+        return false;
+    m_session->GetPlayer()->GetBonkPlayer()->SetOtherEffects(percent);
+    return true;
+}
+
 bool ChatHandler::HandleBonkNoticeCommand(char* args)
 {
     char* which = ExtractArg(&args);

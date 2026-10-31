@@ -26,6 +26,7 @@
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
 #include "SpellMgr.h"
+#include "Bonk/BonkCoop.h"
 
 DynamicObject::DynamicObject() : WorldObject(), m_spellId(0), m_effIndex(EFFECT_INDEX_0), m_aliveDuration(0), m_radius(0), m_positive(false), m_channeled(false)
 {
@@ -290,6 +291,10 @@ bool DynamicObject::IsVisibleForInState(WorldObject const* pDetector, WorldObjec
     // always seen by owner
     if (GetCasterGuid() == pDetector->GetObjectGuid())
         return true;
+
+    if (Player const* viewer = pDetector->ToPlayer())
+        if (BonkCoop::HidesEffectObject(viewer, this))
+            return false;
 
     // normal case
     return IsWithinDistInMap(viewPoint, std::max(GetMap()->GetVisibilityDistance() + (inVisibleList ? World::GetVisibleObjectGreyDistance() : 0.0f), GetVisibilityModifier()), false);

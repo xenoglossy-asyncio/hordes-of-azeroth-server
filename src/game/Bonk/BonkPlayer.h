@@ -50,6 +50,8 @@ class BonkPlayer
         BonkRun* GetRun() const { return m_run.get(); }
         float GetLeashFactor() const { return m_leashFactor; }
         void SetLeashFactor(float factor) { m_leashFactor = factor; }
+        uint32 GetOtherEffects() const { return m_otherEffects; }
+        void SetOtherEffects(uint32 percent) { m_otherEffects = std::min(percent, 100u); }
         float GetLeashDistance() const { return m_leashDistance; }
         void SetLeashDistance(float distance) { m_leashDistance = distance; }
         float GetRunDodge() const;
@@ -380,6 +382,7 @@ class BonkPlayer
         BonkTelegraphs m_previewTelegraphs;
         bool m_addonReady = false;
         float m_leashFactor = 1.0f;
+        uint32 m_otherEffects = 100;
         float m_leashDistance = 0.0f;
         bool m_gearNoticePending = false;
         bool m_legendaryPromptPending = false;

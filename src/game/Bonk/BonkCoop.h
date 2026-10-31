@@ -2,10 +2,12 @@
 #define BONK_COOP_H
 
 #include "ObjectGuid.h"
+#include "Common.h"
 
 #include <vector>
 
 class Player;
+class WorldObject;
 struct BonkMap;
 struct BonkTier;
 struct BonkRunChoice;
@@ -23,6 +25,8 @@ namespace BonkCoop
     void OnReconnected(Player* player);
     bool IsAway(Player const* player);
     bool IsInCoopGroup(Player const* player);
+    bool SkipsEffectPacket(Player const* viewer, WorldObject const* source, uint16 opcode);
+    bool HidesEffectObject(Player const* viewer, WorldObject const* object);
     bool IsGroupHost(Player const* player);
     bool SharesPause(Player const* player);
     bool SharesXp(Player const* player);

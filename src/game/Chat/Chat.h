@@ -234,6 +234,7 @@ class ChatHandler
         bool HandleBonkVaultCommand(char* args);
         bool HandleBonkTitleCommand(char* args);
         bool HandleBonkHelloCommand(char* args);
+        bool HandleBonkEffectsCommand(char* args);
         bool HandleBonkLangCommand(char* args);
         bool HandleBonkNoticeCommand(char* args);
         bool HandleBonkOldLegendariesCommand(char* args);

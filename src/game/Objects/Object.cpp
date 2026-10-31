@@ -54,6 +54,7 @@
 #include "packet_builder.h"
 #include "MovementBroadcaster.h"
 #include "PlayerBroadcaster.h"
+#include "Bonk/BonkCoop.h"
 #include "Utilities/Random.h"
 
 ////////////////////////////////////////////////////////////
@@ -2271,7 +2272,7 @@ struct ObjectViewersDeliverer
         for (const auto& iter : m)
             if (Player* player = iter.getSource()->GetOwner())
                 if (player != i_except && player != i_sender)
-                    if (player->IsInVisibleList_Unsafe(i_sender))
+                    if (player->IsInVisibleList_Unsafe(i_sender) && !BonkCoop::SkipsEffectPacket(player, i_sender, i_message->GetOpcode()))
                         player->GetSession()->SendPacket(i_message);
     }
     template<class SKIP> void Visit(GridRefManager<SKIP>&) {}

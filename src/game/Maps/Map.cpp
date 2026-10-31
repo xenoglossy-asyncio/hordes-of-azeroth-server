@@ -640,7 +640,7 @@ void Map::MessageBroadcast(WorldObject const* obj, WorldPacket* msg)
 
     //TODO: currently on continents when Visibility.Distance.InFlight > Visibility.Distance.Continents
     //we have alot of blinking mobs because monster move packet send is broken...
-    MaNGOS::ObjectMessageDeliverer post_man(msg);
+    MaNGOS::ObjectMessageDeliverer post_man(msg, obj);
     TypeContainerVisitor<MaNGOS::ObjectMessageDeliverer, WorldTypeMapContainer > message(post_man);
     cell.Visit(p, message, *this, *obj, GetVisibilityDistance());
 }
