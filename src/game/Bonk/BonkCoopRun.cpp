@@ -45,6 +45,7 @@ namespace
     std::vector<ReadyCheck> s_checks;
 
     uint32 const BLEEDOUT_MS = 30000;
+    uint32 const REJOIN_WAIT_MS = 120000;
     uint32 const CHOICE_WAIT_MS = 20000;
     uint32 const WAIT_SEND_MS = 1000;
     uint32 const REVIVE_MS = 3000;
@@ -225,7 +226,7 @@ namespace
     bool InLeash(Player* player)
     {
         BonkRun* run = player->GetBonkPlayer()->GetRun();
-        return run && (run->IsActive() || run->IsPortalOpen()) && player->IsAlive() && player->IsInWorld();
+        return run && (run->IsActive() || run->IsPortalOpen()) && !run->IsAway() && player->IsAlive() && player->IsInWorld();
     }
 
     void SetLeash(Player* player, float factor, float distance)
@@ -408,6 +409,50 @@ bool BonkCoop::InGroupRun(Player const* player)
     return player->GetGroup() && s_groups.count(HostOf(player));
 }
 
+bool BonkCoop::KeepsAfterDisconnect(Player const* player)
+{
+    if (!player || !IsGuestAccount(player) || !InGroupRun(player))
+        return false;
+    BonkRun* run = player->GetBonkPlayer()->GetRun();
+    return run && run->IsCoopGuest() && !run->IsOver();
+}
+
+uint32 BonkCoop::RejoinWaitMs()
+{
+    return REJOIN_WAIT_MS;
+}
+
+bool BonkCoop::IsAway(Player const* player)
+{
+    BonkRun* run = player->GetBonkPlayer() ? player->GetBonkPlayer()->GetRun() : nullptr;
+    return run && run->IsAway();
+}
+
+void BonkCoop::OnDisconnected(Player* player)
+{
+    BonkRun* run = player->GetBonkPlayer()->GetRun();
+    if (!run)
+        return;
+    run->SetAway(true);
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s lost the connection, run held for %u s", player->GetName(), REJOIN_WAIT_MS / IN_MILLISECONDS);
+    std::string const line = std::string(player->GetName()) + " lost the connection. Their run waits " +
+        std::to_string(REJOIN_WAIT_MS / IN_MILLISECONDS / MINUTE) + " minutes for them to rejoin.";
+    for (Player* member : OtherMembers(player))
+        member->GetBonkPlayer()->Notify(line);
+}
+
+void BonkCoop::OnReconnected(Player* player)
+{
+    BonkRun* run = player->GetBonkPlayer()->GetRun();
+    if (!run || !run->IsAway())
+        return;
+    run->SetAway(false);
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s rejoined the run", player->GetName());
+    std::string const line = std::string(player->GetName()) + " is back.";
+    for (Player* member : OtherMembers(player))
+        member->GetBonkPlayer()->Notify(line);
+}
+
 void BonkCoop::ShareExperience(Player* collector, float levelFraction)
 {
     if (levelFraction <= 0.0f || !collector->GetGroup())
@@ -565,7 +610,7 @@ void BonkCoop::UpdateDowned(uint32 diff)
         bool paused = false;
         for (Player* member : members)
             if (BonkRun* run = member->GetBonkPlayer()->GetRun())
-                if (run->IsPaused())
+                if (run->IsPaused() && !run->IsAway())
                     paused = true;
         for (auto it = group.downed.begin(); it != group.downed.end();)
         {

@@ -136,6 +136,8 @@ class BonkRun
         BonkMap const& GetStageMap() const { return m_map; }
         void GetStageStart(float& x, float& y, float& z) const { x = m_stageX; y = m_stageY; z = m_stageZ; }
         void FollowToStage(BonkMap const& map, uint32 stage);
+        void SetAway(bool away);
+        bool IsAway() const { return m_away; }
         void EndWithHost();
         void EndInWipe();
         void SetCoopPlayers(uint32 players);
@@ -1431,6 +1433,11 @@ class BonkRun
         bool m_paused = false;
         bool m_ownPaused = false;
         bool m_groupHeld = false;
+        bool m_away = false;
+        bool m_followPending = false;
+        BonkMap m_followMap;
+        uint32 m_followStage = 0;
+        bool WantsPause() const { return m_ownPaused || m_groupHeld || m_away; }
         void ApplyPause(bool paused);
         bool m_wentHome = false;
 

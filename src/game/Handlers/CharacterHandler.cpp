@@ -43,6 +43,7 @@
 #include "PlayerBotMgr.h"
 #include "MapManager.h"
 #include "AccountMgr.h"
+#include "Bonk/BonkCoop.h"
 #include "Bonk/BonkPlayer.h"
 
 class LoginQueryHolder : public SqlQueryHolder
@@ -727,6 +728,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
         // Send "Release spirit" timer, etc ...
         if (pCurrChar->GetDeathState() == CORPSE)
             pCurrChar->KillPlayer();
+        BonkCoop::OnReconnected(pCurrChar);
     }
     pCurrChar->RestorePendingTeleport();
 

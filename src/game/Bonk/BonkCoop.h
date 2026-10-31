@@ -17,6 +17,11 @@ namespace BonkCoop
     void JoinHostGroup(Player* guest);
     void OnUninvited(ObjectGuid guid);
     void OnLogout(Player* player);
+    bool KeepsAfterDisconnect(Player const* player);
+    uint32 RejoinWaitMs();
+    void OnDisconnected(Player* player);
+    void OnReconnected(Player* player);
+    bool IsAway(Player const* player);
     void DeleteGuestAccounts();
     void Update(uint32 diff);
     bool RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoice const& choice);

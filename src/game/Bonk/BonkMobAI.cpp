@@ -507,13 +507,13 @@ void BonkMobAI::UpdateChaseTarget(uint32 diff, Player* spawner)
     }
 
     Player* current = GetOwner();
-    bool const currentValid = current && current->IsAlive() && current->GetMapId() == m_creature->GetMapId();
+    bool const currentValid = current && current->IsAlive() && !BonkCoop::IsAway(current) && current->GetMapId() == m_creature->GetMapId();
     Player* nearest = nullptr;
     float nearestDistance = 0.0f;
     for (Player* member : group)
     {
         BonkRun* run = member->GetBonkPlayer()->GetRun();
-        if (!run || !run->IsActive() || !member->IsAlive() || !member->IsInWorld() || member->GetMapId() != m_creature->GetMapId())
+        if (!run || !run->IsActive() || run->IsAway() || !member->IsAlive() || !member->IsInWorld() || member->GetMapId() != m_creature->GetMapId())
             continue;
         float const distance = m_creature->GetDistance2d(member);
         if (!nearest || distance < nearestDistance)

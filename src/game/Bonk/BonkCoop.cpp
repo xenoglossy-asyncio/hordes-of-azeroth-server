@@ -166,6 +166,8 @@ void BonkCoop::OnLogout(Player* player)
 {
     if (!IsGuestAccount(player))
         return;
+    if (!player->GetSession()->IsConnected())
+        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s didn't rejoin in time", player->GetName());
     {
         std::lock_guard<std::mutex> guard(s_seatsLock);
         s_seats.erase(player->GetObjectGuid());

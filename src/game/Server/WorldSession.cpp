@@ -43,6 +43,7 @@
 #include "MasterPlayer.h"
 #include "PlayerBroadcaster.h"
 #include "Crypto/Hash/MD5.h"
+#include "Bonk/BonkCoop.h"
 #include "Bonk/BonkPlayer.h"
 
 #include <limits>
@@ -443,12 +444,13 @@ bool WorldSession::ForcePlayerLogoutDelay()
         {
             GetPlayer()->RemoveFromGroup();
         }
-        else if (sWorld.getConfig(CONFIG_BOOL_FORCE_LOGOUT_DELAY))
+        else if (sWorld.getConfig(CONFIG_BOOL_FORCE_LOGOUT_DELAY) || BonkCoop::KeepsAfterDisconnect(GetPlayer()))
         {
             sLog.Player(this, LOG_CHAR, "LostSocket", LOG_LVL_BASIC, "");
             SetDisconnectedSession();
-            m_disconnectTimer = 120000;
+            m_disconnectTimer = BonkCoop::KeepsAfterDisconnect(GetPlayer()) ? BonkCoop::RejoinWaitMs() : 120000;
             GetPlayer()->OnDisconnected();
+            BonkCoop::OnDisconnected(GetPlayer());
             GetPlayer()->SaveToDB();
             return true;
         }

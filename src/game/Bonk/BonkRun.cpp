@@ -3848,7 +3848,7 @@ uint32 BonkRun::MitigateDamage(uint32 damage)
     if (!damage)
         return 0;
 
-    if (IsCardImmune() || IsIceBlocked() || IsHiddenInSmoke() || IsDivinelyShielded() || BlockWithDivineShield(damage))
+    if (m_away || IsCardImmune() || IsIceBlocked() || IsHiddenInSmoke() || IsDivinelyShielded() || BlockWithDivineShield(damage))
         return 0;
 
     damage = ApplyDruidDamageTaken(ApplyPaladinDamageTaken(ApplyPriestDamageTaken(ApplyTalentDamageTaken(damage))));
@@ -5432,6 +5432,13 @@ void BonkRun::FollowToStage(BonkMap const& map, uint32 stage)
 {
     if (IsOver() || m_sandbox)
         return;
+    if (m_away)
+    {
+        m_followPending = true;
+        m_followMap = map;
+        m_followStage = stage;
+        return;
+    }
     SetPaused(false);
     ClearStageObjects();
     std::string error;
@@ -13127,7 +13134,7 @@ void BonkRun::SetPaused(bool paused)
     if (!paused && m_menuOpen)
         return;
     m_ownPaused = paused;
-    ApplyPause(m_ownPaused || m_groupHeld);
+    ApplyPause(WantsPause());
 }
 
 void BonkRun::RefreshGroupEnemies()
@@ -13150,7 +13157,20 @@ void BonkRun::SetGroupHeld(bool held)
     if (m_groupHeld == held)
         return;
     m_groupHeld = held;
-    ApplyPause(m_ownPaused || m_groupHeld);
+    ApplyPause(WantsPause());
+}
+
+void BonkRun::SetAway(bool away)
+{
+    if (m_away == away)
+        return;
+    m_away = away;
+    ApplyPause(WantsPause());
+    if (!away && m_followPending)
+    {
+        m_followPending = false;
+        FollowToStage(m_followMap, m_followStage);
+    }
 }
 
 void BonkRun::ResolveChoiceForGroup()

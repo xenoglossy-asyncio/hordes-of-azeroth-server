@@ -49,7 +49,7 @@ namespace
         BonkMobAI const* ai = mob ? dynamic_cast<BonkMobAI const*>(mob->AI()) : nullptr;
         Player* owner = ai ? sObjectAccessor.FindPlayer(ai->GetOwnerGuid()) : nullptr;
         BonkRun const* run = owner ? owner->GetBonkPlayer()->GetRun() : nullptr;
-        return run && run->IsPaused() ? run : nullptr;
+        return run && run->IsPaused() && !run->IsAway() ? run : nullptr;
     }
 
     void LogPausedHit(Unit* attacker, Unit* victim, uint32 damage, SpellEntry const* spellProto)
