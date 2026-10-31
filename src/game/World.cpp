@@ -88,6 +88,7 @@
 #include "Bonk/BonkMgr.h"
 #include "Bonk/BonkFoundGear.h"
 #include "Bonk/BonkVersion.h"
+#include "Bonk/BonkCoop.h"
 
 #include <chrono>
 
@@ -2008,6 +2009,7 @@ void World::Update(uint32 diff)
     sMassMailMgr.Update();
 
     BonkVersion::Update(diff);
+    BonkCoop::Update(diff);
 
     // <ul><li> Handle auctions when the timer has passed
     if (m_timers[WUPDATE_AUCTIONS].Passed())

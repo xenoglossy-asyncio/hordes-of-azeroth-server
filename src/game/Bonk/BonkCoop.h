@@ -11,6 +11,7 @@ namespace BonkCoop
     void JoinHostGroup(Player* guest);
     void OnUninvited(ObjectGuid guid);
     void DeleteGuestAccounts();
+    void Update(uint32 diff);
 }
 
 #endif

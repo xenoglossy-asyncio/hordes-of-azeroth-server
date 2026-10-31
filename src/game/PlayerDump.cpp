@@ -62,6 +62,15 @@ static DumpTable dumpTables[] =
     { "item_instance",                    DTT_ITEM       }, //                  <- item guids
     { "item_loot",                        DTT_ITEM_LOOT  }, //                  <- item guids
     { "item_text",                        DTT_ITEM_TEXT  },
+    { "bonk_item_found",                  DTT_ITEM_FOUND },
+    { "bonk_character_notice",            DTT_CHAR_TABLE },
+    { "bonk_character_shards",            DTT_CHAR_TABLE },
+    { "bonk_character_stats",             DTT_CHAR_TABLE },
+    { "bonk_character_talent",            DTT_CHAR_TABLE },
+    { "bonk_character_title",             DTT_CHAR_TABLE },
+    { "bonk_character_upgrade",           DTT_CHAR_TABLE },
+    { "bonk_ironman",                     DTT_CHAR_TABLE },
+    { "bonk_trinket_reset",               DTT_CHAR_TABLE },
     { NULL,                               DTT_CHAR_TABLE }, // end marker
 };
 
@@ -315,6 +324,10 @@ void PlayerDumpWriter::DumpTableContent(std::string& dump, uint32 guid, char con
         case DTT_ITEM_TEXT:
             fieldname = "id";
             guids = &texts;
+            break;
+        case DTT_ITEM_FOUND:
+            fieldname = "item_guid";
+            guids = &items;
             break;
         default:
             fieldname = "guid";
@@ -649,6 +662,12 @@ DumpReturn PlayerDumpReader::LoadDump(std::string const& file, uint32 account, s
                 if (!changeGuid(line, 2, items, sObjectMgr.m_ItemGuids.GetNextAfterMaxUsed()))
                     ROLLBACK(DUMP_FILE_BROKEN);             // mail_items.item_guid
                 if (!changenth(line, 4, newguid))           // mail_items.receiver_guid
+                    ROLLBACK(DUMP_FILE_BROKEN);
+                break;
+            }
+            case DTT_ITEM_FOUND:
+            {
+                if (!changeGuid(line, 1, items, sObjectMgr.m_ItemGuids.GetNextAfterMaxUsed()))
                     ROLLBACK(DUMP_FILE_BROKEN);
                 break;
             }
