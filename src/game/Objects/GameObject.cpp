@@ -49,6 +49,7 @@
 #include <G3D/Quat.h>
 #include "Geometry.h"
 #include "Utilities/Random.h"
+#include "Bonk/BonkCoop.h"
 #include "Bonk/BonkPlayer.h"
 
 bool QuaternionData::isUnit() const
@@ -1145,7 +1146,7 @@ bool GameObject::IsVisibleForInState(WorldObject const* pDetector, WorldObject c
     {
         if (pDetector->IsPlayer())
             if (BonkPlayer const* bonk = static_cast<Player const*>(pDetector)->GetBonkPlayer())
-                if (!bonk->CanSeeTownObject(GetEntry(), true))
+                if (!bonk->CanSeeTownObject(GetEntry(), true) || BonkCoop::IsObjectHiddenFor(GetObjectGuid(), pDetector->GetObjectGuid()))
                     return false;
 
         if (!IsVisible())

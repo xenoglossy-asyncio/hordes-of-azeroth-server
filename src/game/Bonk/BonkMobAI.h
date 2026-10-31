@@ -196,6 +196,11 @@ class BonkMobAI : public CreatureAI
         bool FindFleePoint(Player* owner, float distance, float& x, float& y, float& z) const;
 
         ObjectGuid m_ownerGuid;
+        ObjectGuid m_chaseGuid;
+        uint32 m_chaseScanMs = 0;
+        uint32 m_chaseHeldMs = 0;
+        Player* GetSpawner() const;
+        void UpdateChaseTarget(uint32 diff, Player* spawner);
         BonkSpawnKind m_kind = BONK_SPAWN_NORMAL;
         float m_healthOverflow = 1.0f;
         BonkArchetype m_archetype = BONK_ARCHETYPE_GRUNT;

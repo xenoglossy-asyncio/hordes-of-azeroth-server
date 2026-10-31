@@ -46,6 +46,10 @@ class BonkPlayer
         void Update(uint32 diff);
 
         BonkRun* GetRun() const { return m_run.get(); }
+        float GetLeashFactor() const { return m_leashFactor; }
+        void SetLeashFactor(float factor) { m_leashFactor = factor; }
+        float GetLeashDistance() const { return m_leashDistance; }
+        void SetLeashDistance(float distance) { m_leashDistance = distance; }
         float GetRunDodge() const;
         time_t GetSkyTime() const;
         void PreviewTelegraph(BonkTelegraphShape shape, float x, float y, float z, float orientation, float size, uint32 durationMs);
@@ -364,6 +368,8 @@ class BonkPlayer
         std::unique_ptr<BonkRun> m_run;
         BonkTelegraphs m_previewTelegraphs;
         bool m_addonReady = false;
+        float m_leashFactor = 1.0f;
+        float m_leashDistance = 0.0f;
         bool m_gearNoticePending = false;
         bool m_legendaryPromptPending = false;
         std::vector<Item*> GetOwnedLegendaries() const;

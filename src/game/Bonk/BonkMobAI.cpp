@@ -1,4 +1,5 @@
 #include "BonkMobAI.h"
+#include "BonkCoop.h"
 #include "BonkPlayer.h"
 #include "BonkRun.h"
 #include "Chat.h"
@@ -30,6 +31,9 @@ namespace
     float const BONK_RAID_FOLLOW_DISTANCE = 1.0f;
 
     uint32 const BONK_UNREACHABLE_MS = 1500;
+    uint32 const BONK_CHASE_SCAN_MS = 500;
+    uint32 const BONK_CHASE_GRACE_MS = 3000;
+    float const BONK_CHASE_SWITCH_MARGIN = 5.0f;
     uint32 const BONK_STUCK_CHECK_MS = 3000;
     float const BONK_STUCK_MIN_MOVE  = 1.5f;
     float const BONK_STUCK_SLACK     = 6.0f;
@@ -475,7 +479,56 @@ void BonkMobAI::Install(Creature* creature)
 
 Player* BonkMobAI::GetOwner() const
 {
+    if (!m_chaseGuid.IsEmpty())
+        if (Player* target = m_creature->GetMap()->GetPlayer(m_chaseGuid))
+            if (target->IsAlive() && target->IsInWorld())
+                return target;
+    return GetSpawner();
+}
+
+Player* BonkMobAI::GetSpawner() const
+{
     return m_creature->GetMap()->GetPlayer(m_ownerGuid);
+}
+
+void BonkMobAI::UpdateChaseTarget(uint32 diff, Player* spawner)
+{
+    m_chaseHeldMs += diff;
+    m_chaseScanMs += diff;
+    if (m_chaseScanMs < BONK_CHASE_SCAN_MS)
+        return;
+    m_chaseScanMs = 0;
+
+    std::vector<Player*> const group = BonkCoop::RunGroupOf(spawner);
+    if (group.size() < 2)
+    {
+        m_chaseGuid.Clear();
+        return;
+    }
+
+    Player* current = GetOwner();
+    bool const currentValid = current && current->IsAlive() && current->GetMapId() == m_creature->GetMapId();
+    Player* nearest = nullptr;
+    float nearestDistance = 0.0f;
+    for (Player* member : group)
+    {
+        BonkRun* run = member->GetBonkPlayer()->GetRun();
+        if (!run || !run->IsActive() || !member->IsAlive() || !member->IsInWorld() || member->GetMapId() != m_creature->GetMapId())
+            continue;
+        float const distance = m_creature->GetDistance2d(member);
+        if (!nearest || distance < nearestDistance)
+        {
+            nearest = member;
+            nearestDistance = distance;
+        }
+    }
+    if (!nearest || nearest == current)
+        return;
+    if (currentValid && (m_chaseHeldMs < BONK_CHASE_GRACE_MS || nearestDistance + BONK_CHASE_SWITCH_MARGIN >= m_creature->GetDistance2d(current)))
+        return;
+
+    m_chaseGuid = nearest->GetObjectGuid();
+    m_chaseHeldMs = 0;
 }
 
 void BonkMobAI::Setup(BonkSpawnKind kind)
@@ -868,13 +921,18 @@ void BonkMobAI::UpdateAI(uint32 const diff)
     if (m_creature->HasCreatureState(CSTATE_DESPAWNING))
         return;
 
-    Player* owner = GetOwner();
-    BonkRun* run = owner ? owner->GetBonkPlayer()->GetRun() : nullptr;
-    if (!run || !run->IsActive() || !owner->IsAlive())
+    Player* spawner = GetSpawner();
+    BonkRun* run = spawner ? spawner->GetBonkPlayer()->GetRun() : nullptr;
+    if (!run || !run->IsActive() || (!spawner->IsAlive() && !BonkCoop::IsDowned(spawner)))
     {
         m_creature->DespawnOrUnsummon();
         return;
     }
+
+    UpdateChaseTarget(diff, spawner);
+    Player* owner = GetOwner();
+    if (!owner->IsAlive())
+        return;
 
     if (run->IsPaused())
     {
@@ -2140,7 +2198,7 @@ void BonkMobAI::DamageDeal(Unit* victim, uint32& damage)
     if (!damage || victim == m_creature)
         return;
 
-    if (victim->GetObjectGuid() == m_ownerGuid)
+    if (victim->GetTypeId() == TYPEID_PLAYER)
         if (BonkRun* run = static_cast<Player*>(victim)->GetBonkPlayer()->GetRun())
         {
             if (static_cast<Player*>(victim)->GetBonkPlayer()->IsDashInvulnerable())
@@ -2168,7 +2226,7 @@ void BonkMobAI::DamageTaken(Unit* attacker, uint32& damage)
     if (m_fleeing && m_blinks && damage && damage < m_creature->GetHealth() && m_blinkTimer <= 0)
         m_blinkPending = true;
 
-    if (!damage || !attacker || attacker->GetObjectGuid() != m_ownerGuid)
+    if (!damage || !attacker || attacker->GetTypeId() != TYPEID_PLAYER)
         return;
 
     if (BonkRun* run = static_cast<Player*>(attacker)->GetBonkPlayer()->GetRun())
@@ -2744,17 +2802,22 @@ void BonkMobAI::JustDied(Unit* killer)
     if (m_creature->HasStaticFlag(CREATURE_STATIC_FLAG_DESPAWN_INSTANTLY))
         m_creature->DespawnOrUnsummon(BONK_DEAD_REMOVE_MS);
 
-    Player* owner = GetOwner();
-    if (!owner)
+    Player* spawner = GetSpawner();
+    if (!spawner)
         return;
 
-    if (BonkRun* run = owner->GetBonkPlayer()->GetRun())
+    if (BonkRun* run = spawner->GetBonkPlayer()->GetRun())
         run->OnMobKilled(m_creature, m_kind, killer);
 }
 
 void BonkMobAI::OnRemoveFromWorld()
 {
-    if (Player* owner = GetOwner())
-        if (BonkRun* run = owner->GetBonkPlayer()->GetRun())
+    Player* spawner = GetSpawner();
+    if (spawner)
+        if (BonkRun* run = spawner->GetBonkPlayer()->GetRun())
+            run->ForgetEnemyAttacks(m_creature);
+    Player* target = GetOwner();
+    if (target && target != spawner)
+        if (BonkRun* run = target->GetBonkPlayer()->GetRun())
             run->ForgetEnemyAttacks(m_creature);
 }

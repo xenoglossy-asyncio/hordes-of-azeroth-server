@@ -3,6 +3,8 @@
 
 #include "ObjectGuid.h"
 
+#include <vector>
+
 class Player;
 struct BonkMap;
 struct BonkTier;
@@ -19,8 +21,17 @@ namespace BonkCoop
     bool RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoice const& choice);
     void AnswerReady(Player* player, bool ready);
     void UpdateReadyChecks(uint32 diff);
+    void UpdateLeash(uint32 diff);
     void OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage);
     void OnHostFinished(Player* host);
+    void BeginGroupRun(Player* host, uint32 players);
+    bool Down(Player* player);
+    bool IsDowned(Player const* player);
+    void UpdateDowned(uint32 diff);
+    std::vector<Player*> RunGroupOf(Player* player);
+    void HideObjectFor(ObjectGuid object, ObjectGuid player);
+    bool IsObjectHiddenFor(ObjectGuid object, ObjectGuid player);
+    void ForgetHiddenObject(ObjectGuid object);
 }
 
 #endif

@@ -309,6 +309,19 @@ bool ChatHandler::HandleBonkShardsCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleBonkPortalCommand(char*)
+{
+    BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();
+    if (!run || !run->ForcePortal())
+    {
+        SendSysMessage("You need to be fighting on a floor of a run.");
+        SetSentErrorMessage(true);
+        return false;
+    }
+    SendSysMessage("The portal is open.");
+    return true;
+}
+
 bool ChatHandler::HandleBonkSkipCommand(char* args)
 {
     BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();

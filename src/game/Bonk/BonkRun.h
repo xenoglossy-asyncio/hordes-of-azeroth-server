@@ -137,6 +137,10 @@ class BonkRun
         void GetStageStart(float& x, float& y, float& z) const { x = m_stageX; y = m_stageY; z = m_stageZ; }
         void FollowToStage(BonkMap const& map, uint32 stage);
         void EndWithHost();
+        void EndInWipe();
+        bool OffersChest(ObjectGuid chest, Player* opener) const;
+        uint32 OpenChestFor(GameObject* chest, Player* opener);
+        void ReviveFromGroup(float health);
         void Update(uint32 diff);
         void Abort();
         void Surrender();
@@ -176,6 +180,7 @@ class BonkRun
         void ResyncPause();
         bool IsFinished() const { return m_state == STATE_FINISHED; }
         bool IsPortalOpen() const { return m_state == STATE_PORTAL; }
+        bool ForcePortal() { if (m_state != STATE_RUNNING || m_sandbox) return false; OpenPortal(nullptr); return true; }
         BonkMap const& GetMap() const { return m_map; }
         BonkTier const& GetTier() const { return m_tier; }
         uint32 GetEliteAffixes() const { return m_tier.eliteAffixes + m_bonuses.eliteAffixes + GetMilestoneAffixes(); }
@@ -1643,6 +1648,8 @@ class BonkRun
         uint32 m_poolTimer = 0;
         uint32 m_elitesWithoutChest = 0;
         std::map<ObjectGuid, uint32> m_chestChoices;
+        std::map<ObjectGuid, std::set<ObjectGuid>> m_chestOpenedBy;
+        void RemoveChest(ObjectGuid chest);
         std::vector<uint32> m_pendingChestChoices;
         struct PendingCast
         {

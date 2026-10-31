@@ -1452,11 +1452,11 @@ void BonkRun::Update(uint32 diff)
             break;
         case STATE_PORTAL:
         {
-            if (!m_player->IsAlive())
+            if (!m_player->IsAlive() && !BonkCoop::IsDowned(m_player))
             {
                 if (m_revives)
                     Revive();
-                else
+                else if (!BonkCoop::Down(m_player))
                     Finish(false);
                 return;
             }
@@ -1688,7 +1688,7 @@ void BonkRun::SendFullState() const
 
 void BonkRun::UpdateRunning(uint32 diff)
 {
-    if (!m_player->IsAlive())
+    if (!m_player->IsAlive() && !BonkCoop::IsDowned(m_player))
     {
         SpeakBossLine(m_player->GetMap()->GetCreature(m_lastStrikerGuid), BONK_BOSS_LINE_KILL);
         if (m_sandbox)
@@ -1703,7 +1703,7 @@ void BonkRun::UpdateRunning(uint32 diff)
             Revive();
         else if (m_soulstones)
             Revive(true);
-        else
+        else if (!BonkCoop::Down(m_player))
             Finish(false);
         return;
     }
@@ -1902,10 +1902,9 @@ void BonkRun::UpdateNatives(uint32 diff)
     MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(creatures, check);
     Cell::VisitGridObjects(m_player, searcher, BONK_NATIVE_SWEEP_RANGE);
 
-    ObjectGuid const playerGuid = m_player->GetObjectGuid();
     for (Creature* creature : creatures)
     {
-        if (creature->IsTemporarySummon() && static_cast<TemporarySummon*>(creature)->GetSummonerGuid() == playerGuid)
+        if (creature->IsTemporarySummon() && static_cast<TemporarySummon*>(creature)->GetSummonerGuid().IsPlayer())
             continue;
         if (creature->GetCharmerOrOwnerGuid().IsPlayer() || creature->IsFriendlyTo(m_player))
             continue;
@@ -2130,6 +2129,8 @@ void BonkRun::RunEvent(BonkMapEvent const& event)
         }
         case BONK_EVENT_CHESTS:
         {
+            if (IsCoopGuest())
+                break;
             uint32 placed = 0;
             for (uint32 i = 0; i < event.count; ++i)
                 placed += SpawnChestNearby() ? 1 : 0;
@@ -5002,6 +5003,7 @@ void BonkRun::DespawnObjects()
         for (ObjectGuid const& guid : m_chests)
         {
             ForgetChestObjective(guid);
+            BonkCoop::ForgetHiddenObject(guid);
             if (GameObject* chest = map->GetGameObject(guid))
                 chest->Delete();
         }
@@ -5027,6 +5029,7 @@ void BonkRun::DespawnObjects()
     DespawnPillar();
     ClearDropLooks();
     m_chests.clear();
+    m_chestOpenedBy.clear();
     m_chestObjectives.clear();
     m_powerups.clear();
     m_powerupObjectives.clear();
@@ -5054,6 +5057,8 @@ void BonkRun::DespawnPaidChests()
         }
         ForgetChestObjective(*itr);
         m_chestChoices.erase(*itr);
+        m_chestOpenedBy.erase(*itr);
+        BonkCoop::ForgetHiddenObject(*itr);
         if (chest)
             chest->Delete();
         itr = m_chests.erase(itr);
@@ -5083,13 +5088,66 @@ void BonkRun::RemoveObjective(uint32 id)
     }
 }
 
+bool BonkRun::OffersChest(ObjectGuid chest, Player* opener) const
+{
+    if (std::find(m_chests.begin(), m_chests.end(), chest) == m_chests.end())
+        return false;
+    auto opened = m_chestOpenedBy.find(chest);
+    return opened == m_chestOpenedBy.end() || !opened->second.count(opener->GetObjectGuid());
+}
+
+void BonkRun::RemoveChest(ObjectGuid chest)
+{
+    ForgetChestObjective(chest);
+    m_chests.erase(std::remove(m_chests.begin(), m_chests.end(), chest), m_chests.end());
+    m_chestChoices.erase(chest);
+    m_chestOpenedBy.erase(chest);
+    BonkCoop::ForgetHiddenObject(chest);
+}
+
+uint32 BonkRun::OpenChestFor(GameObject* chest, Player* opener)
+{
+    ObjectGuid const guid = chest->GetObjectGuid();
+    auto choices = m_chestChoices.find(guid);
+    uint32 const offered = choices != m_chestChoices.end() ? choices->second : uint32(BONK_OFFER_SIZE);
+
+    std::set<ObjectGuid>& opened = m_chestOpenedBy[guid];
+    opened.insert(opener->GetObjectGuid());
+    bool everyoneOpened = true;
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+    {
+        BonkRun* run = member->GetBonkPlayer()->GetRun();
+        if (run && !run->IsOver() && !opened.count(member->GetObjectGuid()))
+            everyoneOpened = false;
+    }
+    if (everyoneOpened)
+    {
+        RemoveChest(guid);
+        chest->Delete();
+        return offered;
+    }
+
+    if (opener == m_player)
+        ForgetChestObjective(guid);
+    BonkCoop::HideObjectFor(guid, opener->GetObjectGuid());
+    opener->UpdateVisibilityOf(opener, chest);
+    return offered;
+}
+
 void BonkRun::UseChest(GameObject* chest)
 {
     if (m_state != STATE_RUNNING && m_state != STATE_PORTAL)
         return;
 
-    auto itr = std::find(m_chests.begin(), m_chests.end(), chest->GetObjectGuid());
-    if (itr == m_chests.end())
+    BonkRun* owner = nullptr;
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+        if (BonkRun* run = member->GetBonkPlayer()->GetRun())
+            if (run->OffersChest(chest->GetObjectGuid(), m_player))
+            {
+                owner = run;
+                break;
+            }
+    if (!owner)
         return;
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
@@ -5112,13 +5170,7 @@ void BonkRun::UseChest(GameObject* chest)
         sBonkQuests.OnProgress(m_player, BONK_QUEST_CHESTS_BOUGHT, 0, 1);
     }
 
-    ForgetChestObjective(*itr);
-    m_chests.erase(itr);
-    auto choices = m_chestChoices.find(chest->GetObjectGuid());
-    m_pendingChestChoices.push_back(choices != m_chestChoices.end() ? choices->second : uint32(BONK_OFFER_SIZE));
-    if (choices != m_chestChoices.end())
-        m_chestChoices.erase(choices);
-    chest->Delete();
+    m_pendingChestChoices.push_back(owner->OpenChestFor(chest, m_player));
 
     UpdateOffers();
     SendState();
@@ -5380,6 +5432,28 @@ void BonkRun::EndWithHost()
     }
     m_player->GetBonkPlayer()->Notify("The host ended the run.");
     Finish(true);
+}
+
+void BonkRun::EndInWipe()
+{
+    if (m_state == STATE_ENTERING)
+    {
+        Exit();
+        return;
+    }
+    m_player->GetBonkPlayer()->Notify("Your whole group is down. The run is over.");
+    Finish(false);
+}
+
+void BonkRun::ReviveFromGroup(float health)
+{
+    if (m_player->IsAlive())
+        return;
+    m_player->ResurrectPlayer(health);
+    m_player->SpawnCorpseBones();
+    m_player->CastSpell(m_player, BONK_SPELL_REVIVE_SHIELD, true);
+    SmiteAroundRevive();
+    SendState();
 }
 
 bool BonkRun::SkipTime(uint32 seconds, std::string& error)
@@ -12880,6 +12954,8 @@ void BonkRun::Finish(bool wentHome)
         return;
 
     m_state = STATE_ENDING;
+    if (IsCoopGuest())
+        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: guest %s run ends, home %u alive %u", m_player->GetName(), uint32(wentHome), uint32(m_player->IsAlive()));
     if (!IsCoopGuest())
         BonkCoop::OnHostFinished(m_player);
     m_wentHome = wentHome;
@@ -13199,6 +13275,8 @@ void BonkRun::CleanUp()
 
 void BonkRun::Exit()
 {
+    if (IsCoopGuest())
+        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: guest %s exits run, state %u", m_player->GetName(), uint32(m_state));
     CleanUp();
     m_state = STATE_FINISHED;
 

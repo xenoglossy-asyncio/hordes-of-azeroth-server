@@ -7091,6 +7091,8 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
             speed *= sWorld.getConfig(((Player*)this)->InBattleGround() ? CONFIG_FLOAT_GHOST_RUN_SPEED_BG : CONFIG_FLOAT_GHOST_RUN_SPEED_WORLD);
         if (IsTimeFrozen())
             speed = 0.0f;
+        if (BonkPlayer const* bonk = static_cast<Player const*>(this)->GetBonkPlayer())
+            speed *= bonk->GetLeashFactor();
     }
 
     switch (mtype)
