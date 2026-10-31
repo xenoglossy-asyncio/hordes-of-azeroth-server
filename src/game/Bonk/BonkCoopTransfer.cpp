@@ -1,6 +1,7 @@
 #include "BonkCoop.h"
 
 #include "AccountMgr.h"
+#include "BonkPlayer.h"
 #include "Database/DatabaseEnv.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
@@ -247,6 +248,20 @@ namespace
         CharacterDatabase.DirectPExecute("DELETE FROM `character_inventory` WHERE `item_guid` IN (%s)", itemList.c_str());
     }
 
+    void DiscardAccountBank(uint32 accountId)
+    {
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT c.`guid` FROM `characters` c WHERE c.`account` = %u "
+            "AND NOT EXISTS (SELECT 1 FROM `bonk_ironman` m WHERE m.`guid` = c.`guid`)", accountId));
+        if (result)
+        {
+            do
+                DiscardHeldBank(result->Fetch()[0].GetUInt32());
+            while (result->NextRow());
+        }
+        CharacterDatabase.DirectPExecute("DELETE i FROM `item_instance` i JOIN `bonk_account_bank` b ON b.`item_guid` = i.`guid` WHERE b.`account` = %u", accountId);
+        CharacterDatabase.DirectPExecute("DELETE FROM `bonk_account_bank` WHERE `account` = %u", accountId);
+    }
+
     bool CharacterRowExists(uint32 guid)
     {
         std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT 1 FROM `characters` WHERE `guid` = %u", guid));
@@ -277,6 +292,7 @@ namespace
             s_pending.guid = low;
             return "";
         }
+        BonkPlayer::GatherAccountBank(AccountOfCharacter(low), low);
         return WriteExport(low);
     }
 
@@ -310,7 +326,7 @@ namespace
         {
             if (AccountOfCharacter(replaceGuid) != accountId)
                 return "error That character belongs to another account.";
-            DiscardHeldBank(replaceGuid);
+            DiscardAccountBank(accountId);
             Player::DeleteFromDB(old, accountId, true, true);
         }
         s_pending = Pending();
