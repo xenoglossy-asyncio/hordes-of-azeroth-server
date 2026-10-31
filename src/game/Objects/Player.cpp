@@ -3022,7 +3022,7 @@ void Player::GiveXP(uint32 xp, Unit const* victim)
     if (GetPersonalXpRate() >= 0.0f)
         xp *= GetPersonalXpRate();
 
-    if (xp < 1)
+    if (xp < 1 || (m_bonkPlayer && m_bonkPlayer->GetRun()))
         return;
 
     if (!IsAlive())
