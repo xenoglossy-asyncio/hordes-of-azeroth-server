@@ -3494,9 +3494,14 @@ BonkPlayer::PacketCounts BonkPlayer::TakePacketCounts()
     return counts;
 }
 
+WorldLocation const& BonkPlayer::GetCampArrival() const
+{
+    return BONK_CAMP_SEATS[BonkCoop::CampSeat(m_player)].arrival;
+}
+
 void BonkPlayer::TeleportToCamp()
 {
-    m_player->TeleportTo(BONK_CAMP_ARRIVAL);
+    m_player->TeleportTo(GetCampArrival());
     m_sitAtCampMs = BONK_CAMP_SIT_DELAY_MS;
     m_mailboxRefreshMs = BONK_MAILBOX_REFRESH_DELAY_MS;
 }
@@ -3565,7 +3570,7 @@ void BonkPlayer::SitAtCamp()
     if (m_run || !m_player->IsAlive() || !IsAtCamp())
         return;
 
-    GameObject* chair = m_player->FindNearestGameObject(BONK_CAMP_CHAIR, BONK_CAMP_CHAIR_RANGE);
+    GameObject* chair = m_player->FindNearestGameObject(BONK_CAMP_SEATS[BonkCoop::CampSeat(m_player)].chair, BONK_CAMP_CHAIR_RANGE);
     if (!chair)
         return;
     for (auto const& ref : m_player->GetMap()->GetPlayers())
@@ -3620,11 +3625,12 @@ void BonkPlayer::UpdateMailboxGlow(uint32 diff)
 
 bool BonkPlayer::MoveToCampBeforeLogin(bool gameMaster)
 {
-    if (gameMaster || IsAtCamp())
+    if (gameMaster || (IsAtCamp() && !BonkCoop::IsGuestAccount(m_player)))
         return false;
 
-    m_player->SetLocationMapId(BONK_CAMP_ARRIVAL.mapId);
-    m_player->Relocate(BONK_CAMP_ARRIVAL.x, BONK_CAMP_ARRIVAL.y, BONK_CAMP_ARRIVAL.z, BONK_CAMP_ARRIVAL.o);
+    WorldLocation const& arrival = GetCampArrival();
+    m_player->SetLocationMapId(arrival.mapId);
+    m_player->Relocate(arrival.x, arrival.y, arrival.z, arrival.o);
     m_sitAtCampMs = BONK_CAMP_SIT_DELAY_MS;
     return true;
 }

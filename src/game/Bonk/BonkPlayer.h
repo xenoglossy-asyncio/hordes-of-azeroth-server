@@ -313,6 +313,7 @@ class BonkPlayer
         bool IsAtCamp() const;
         static bool IsHiddenFrom(Creature const* creature, Player const* viewer);
         void TeleportToCamp();
+        WorldLocation const& GetCampArrival() const;
         void AnnounceMailAtCamp() { m_campMailNoticeMs = BONK_CAMP_MAIL_NOTICE_DELAY_MS; }
         bool MoveToCampBeforeLogin(bool gameMaster);
 

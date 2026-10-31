@@ -193,7 +193,7 @@ void BonkRun::UpdateLandMines(uint32 diff)
         itr->leftMs -= elapsed;
         bool springs = false;
         if (itr->armMs <= 0 && itr->leftMs > 0)
-            for (ObjectGuid const& guid : m_mobs)
+            for (ObjectGuid const& guid : GetEnemyGuids())
                 if (Creature* mob = map->GetCreature(guid))
                     if (mob->IsAlive() && mob->GetDistance2d(itr->x, itr->y) <= BONK_LAND_MINE_TRIGGER)
                     {
@@ -244,7 +244,7 @@ void BonkRun::DetonateLandMine(float x, float y, float z)
     float const damage = GetProcBaseHealth() * BONK_LAND_MINE_HEALTH_SHARE;
     Map* map = m_player->GetMap();
     std::vector<Creature*> targets;
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
         if (Creature* mob = map->GetCreature(guid))
             if (mob->IsAlive() && mob->GetDistance2d(x, y) <= BONK_LAND_MINE_RADIUS)
                 targets.push_back(mob);

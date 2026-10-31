@@ -10,6 +10,7 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <set>
@@ -44,6 +45,8 @@ namespace
     std::vector<ReadyCheck> s_checks;
 
     uint32 const BLEEDOUT_MS = 30000;
+    uint32 const CHOICE_WAIT_MS = 20000;
+    uint32 const WAIT_SEND_MS = 1000;
     uint32 const REVIVE_MS = 3000;
     uint32 const DOWNED_SEND_MS = 250;
     float const REVIVE_RADIUS = 5.0f;
@@ -62,7 +65,11 @@ namespace
         uint32 cap = 0;
         uint32 sendTimer = 0;
         bool wiped = false;
+        bool sharedPause = true;
+        uint32 waitSendMs = 0;
+        std::string lastWait;
         std::map<ObjectGuid, Downed> downed;
+        std::map<ObjectGuid, uint32> choosingMs;
     };
 
     std::map<ObjectGuid, GroupRun> s_groups;
@@ -413,6 +420,62 @@ void BonkCoop::ForgetHiddenObject(ObjectGuid object)
     s_hiddenObjects.erase(object);
 }
 
+void BonkCoop::UpdateSharedPause(uint32 diff)
+{
+    for (auto& entry : s_groups)
+    {
+        GroupRun& group = entry.second;
+        Player* host = ObjectAccessor::FindPlayerNotInWorld(entry.first);
+        if (!host || group.wiped || !group.sharedPause)
+            continue;
+
+        std::vector<std::pair<Player*, BonkRun*>> members;
+        for (Player* member : GroupMembers(host))
+            if (BonkRun* run = member->GetBonkPlayer()->GetRun())
+                if (run->IsActive() || run->IsPortalOpen())
+                    members.push_back({ member, run });
+
+        std::vector<std::string> waitingOn;
+        uint32 longestLeftMs = 0;
+        for (auto const& member : members)
+        {
+            ObjectGuid const guid = member.first->GetObjectGuid();
+            if (!member.second->IsChoosing())
+            {
+                group.choosingMs.erase(guid);
+                continue;
+            }
+            uint32& choosing = group.choosingMs[guid];
+            if (choosing >= CHOICE_WAIT_MS)
+                continue;
+            choosing += diff;
+            if (choosing >= CHOICE_WAIT_MS)
+            {
+                member.second->ResolveChoiceForGroup();
+                continue;
+            }
+            waitingOn.push_back(member.first->GetName());
+            longestLeftMs = std::max(longestLeftMs, CHOICE_WAIT_MS - choosing);
+        }
+
+        bool const held = !waitingOn.empty();
+        for (auto const& member : members)
+            member.second->SetGroupHeld(held);
+
+        group.waitSendMs += diff;
+        std::string names;
+        for (std::string const& name : waitingOn)
+            names += (names.empty() ? "" : ",") + name;
+        if (names == group.lastWait && (names.empty() || group.waitSendMs < WAIT_SEND_MS))
+            continue;
+        group.waitSendMs = 0;
+        group.lastWait = names;
+        std::string const line = "coopwait~" + names + "~" + std::to_string((longestLeftMs + 999) / IN_MILLISECONDS);
+        for (auto const& member : members)
+            member.first->GetBonkPlayer()->SendAddon(line);
+    }
+}
+
 void BonkCoop::BeginGroupRun(Player* host, uint32 players)
 {
     GroupRun& group = s_groups[host->GetObjectGuid()];
@@ -477,6 +540,11 @@ void BonkCoop::UpdateDowned(uint32 diff)
         if (group.wiped)
             continue;
         std::vector<Player*> const members = GroupMembers(host);
+        bool paused = false;
+        for (Player* member : members)
+            if (BonkRun* run = member->GetBonkPlayer()->GetRun())
+                if (run->IsPaused())
+                    paused = true;
         for (auto it = group.downed.begin(); it != group.downed.end();)
         {
             Player* downedPlayer = ObjectAccessor::FindPlayerNotInWorld(it->first);
@@ -486,7 +554,7 @@ void BonkCoop::UpdateDowned(uint32 diff)
                 continue;
             }
             Downed& downed = it->second;
-            if (downed.spectator)
+            if (downed.spectator || paused)
             {
                 ++it;
                 continue;

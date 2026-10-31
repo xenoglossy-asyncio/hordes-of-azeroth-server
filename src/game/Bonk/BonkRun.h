@@ -173,6 +173,12 @@ class BonkRun
         bool SaveFromDeath();
         void OnHeroDamaged();
         bool IsPaused() const { return m_paused; }
+        bool IsChoosing() const { return m_ownPaused; }
+        std::vector<ObjectGuid> const& GetMobGuids() const { return m_mobs; }
+        std::vector<ObjectGuid> const& GetEnemyGuids() const { return m_groupEnemies.empty() ? m_mobs : m_groupEnemies; }
+        void RefreshGroupEnemies();
+        void SetGroupHeld(bool held);
+        void ResolveChoiceForGroup();
         bool IsHeroPerched() const { return m_perched; }
         uint32 GetGlyphDashCharges() const { return uint32(GetGlyphValue(BONK_GLYPH_DASH, 0)); }
         float GetGlyphDashRecharge() const { return 1.0f + GetGlyphValue(BONK_GLYPH_DASH, 1) / 100.0f; }
@@ -1394,6 +1400,9 @@ class BonkRun
         std::set<uint32> m_playedMaps;
         State m_state = STATE_ENTERING;
         bool m_paused = false;
+        bool m_ownPaused = false;
+        bool m_groupHeld = false;
+        void ApplyPause(bool paused);
         bool m_wentHome = false;
 
         uint32 m_enterTimer = 0;
@@ -1532,6 +1541,7 @@ class BonkRun
         float m_scalingMinuteOverride = -1.0f;
         ObjectGuid m_bossGuid;
         std::vector<ObjectGuid> m_mobs;
+        std::vector<ObjectGuid> m_groupEnemies;
         uint32 m_lastPlateId = 0;
         float m_moveX = 0.0f, m_moveY = 0.0f;
         float m_lastX = 0.0f, m_lastY = 0.0f;

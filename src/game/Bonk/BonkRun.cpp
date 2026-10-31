@@ -1,5 +1,6 @@
 #include "BonkRun.h"
 #include "BonkCoop.h"
+#include "Group.h"
 #include "BonkCodex.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
@@ -1379,8 +1380,7 @@ bool BonkRun::TeleportToStage(BonkMap const& map, std::string& error)
     std::vector<BonkMapStart> const starts = sBonkMgr.GetMapStarts(map.id);
     std::vector<BonkMapStart const*> const reachable = GetReachableStarts(map, starts);
     if (IsCoopGuest() && PlaceNearHost(x, y, z, o))
-    {
-    }
+        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s placed near the host at %.1f %.1f", m_player->GetName(), x, y);
     else if (FindZoneStart(map, x, y, z))
     {
         z += 0.5f;
@@ -1413,6 +1413,7 @@ bool BonkRun::TeleportToStage(BonkMap const& map, std::string& error)
     m_stageX = x;
     m_stageY = y;
     m_stageZ = z;
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op stage: %s goes to map %u at %.1f %.1f, guest %u", m_player->GetName(), map.mapId, x, y, uint32(IsCoopGuest()));
     m_state = STATE_ENTERING;
     m_enterTimer = 0;
     return true;
@@ -1421,6 +1422,7 @@ bool BonkRun::TeleportToStage(BonkMap const& map, std::string& error)
 void BonkRun::Update(uint32 diff)
 {
     StressTick const stressTick(*this, diff);
+    RefreshGroupEnemies();
     UpdateSky();
     RefreshHeroPositionNow();
     if (m_runXpDirty)
@@ -3904,7 +3906,7 @@ void BonkRun::UpdateNecrotic(uint32 diff)
     m_necroticCheckMs = 0;
 
     Map* map = m_player->GetMap();
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
         if (Creature const* mob = map->GetCreature(guid))
             if (mob->IsAlive())
                 if (BonkMobAI const* ai = dynamic_cast<BonkMobAI const*>(mob->AI()))
@@ -4173,7 +4175,7 @@ void BonkRun::UpdatePools(uint32 diff)
     for (auto itr = m_pools.begin(); itr != m_pools.end();)
     {
         if (tick)
-            for (ObjectGuid const& guid : m_mobs)
+            for (ObjectGuid const& guid : GetEnemyGuids())
                 if (Creature* mob = map->GetCreature(guid))
                     if (mob->IsAlive() && mob->GetHealth() < mob->GetMaxHealth() &&
                         mob->GetDistance2d(itr->x, itr->y) <= BONK_SANGUINE_RADIUS)
@@ -4259,7 +4261,9 @@ BonkRun* BonkRun::FromAttack(SpellCaster const* attacker, Unit const* victim)
         return nullptr;
 
     BonkMobAI const* ai = dynamic_cast<BonkMobAI const*>(victim->AI());
-    if (!ai || ai->GetOwnerGuid() != player->GetObjectGuid())
+    if (!ai)
+        return nullptr;
+    if (ai->GetOwnerGuid() != player->GetObjectGuid() && !(player->GetGroup() && player->GetGroup()->IsMember(ai->GetOwnerGuid())))
         return nullptr;
     return player->GetBonkPlayer()->GetRun();
 }
@@ -4498,7 +4502,7 @@ void BonkRun::SmiteAroundRevive()
 
     std::vector<Creature*> smitten;
     Map* map = m_player->GetMap();
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
         if (Creature* mob = map->GetCreature(guid))
             if (mob->IsAlive() && m_player->IsWithinDistInMap(mob, BONK_REVIVE_CLEAR_RADIUS))
                 if (BonkMobAI* ai = dynamic_cast<BonkMobAI*>(mob->AI()))
@@ -4674,7 +4678,7 @@ std::vector<Creature*> BonkRun::GetMobsInRange(float range, WorldObject const* c
 
     Map* map = m_player->GetMap();
     std::vector<std::pair<float, Creature*>> found;
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
     {
         Creature* mob = map->GetCreature(guid);
         if (!mob || !mob->IsAlive() || mob->HasCreatureState(CSTATE_DESPAWNING))
@@ -6151,7 +6155,7 @@ std::vector<Creature*> BonkRun::GetMobsNear(float x, float y, float radius) cons
 {
     Map* map = m_player->GetMap();
     std::vector<std::pair<float, Creature*>> found;
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
     {
         Creature* mob = map->GetCreature(guid);
         if (!mob || !mob->IsAlive() || mob->HasCreatureState(CSTATE_DESPAWNING))
@@ -7717,7 +7721,7 @@ void BonkRun::UpdatePendingCasts(uint32 diff)
         {
             float const radius = GetWeaponRadius(*owned) * (1.0f + GetSpellUpgrade(*owned, BONK_SPELL_UPGRADE_TRAP_AREA) / 100.0f);
             float const damage = GetWeaponDamage(*owned) * cast.share;
-            for (ObjectGuid const& guid : m_mobs)
+            for (ObjectGuid const& guid : GetEnemyGuids())
                 if (Creature* mob = map->GetCreature(guid))
                     if (mob->IsAlive() && mob->GetDistance2d(cast.x, cast.y) <= radius)
                         DealSpellHit(info, mob, damage);
@@ -7929,7 +7933,7 @@ void BonkRun::UpdatePendingCasts(uint32 diff)
         if (info->EffectImplicitTargetA[EFFECT_INDEX_0] == TARGET_UNIT_ENEMY)
         {
             float const radius = std::max(BONK_CLEAVE_RADIUS, owned->weapon.groundRadius) * GetWeaponArea(*owned);
-            for (ObjectGuid const& guid : m_mobs)
+            for (ObjectGuid const& guid : GetEnemyGuids())
                 if (Creature* mob = map->GetCreature(guid))
                     if (mob->IsAlive() && mob->GetDistance2d(x, y) <= radius)
                         m_player->CastSpell(mob, info, true);
@@ -8121,7 +8125,7 @@ void BonkRun::UpdateProjectiles(uint32 diff)
             float const reached = std::min(projectile.length, projectile.speed * projectile.flownMs / IN_MILLISECONDS);
 
             std::vector<std::pair<float, Creature*>> touched;
-            for (ObjectGuid const& guid : m_mobs)
+            for (ObjectGuid const& guid : GetEnemyGuids())
             {
                 Creature* mob = map->GetCreature(guid);
                 if (!mob || !mob->IsAlive() || std::find(projectile.struck.begin(), projectile.struck.end(), guid) != projectile.struck.end())
@@ -8778,7 +8782,7 @@ void BonkRun::UpdateTraps(uint32 diff)
         bool remove = itr->leftMs <= 0 || !FindOwned(itr->weaponId);
         bool springs = false;
         if (!remove && itr->armMs <= 0)
-            for (ObjectGuid const& guid : m_mobs)
+            for (ObjectGuid const& guid : GetEnemyGuids())
                 if (Creature* mob = map->GetCreature(guid))
                     if (mob->IsAlive() && mob->GetDistance2d(itr->x, itr->y) <= BONK_TRAP_TRIGGER_RADIUS)
                     {
@@ -8874,7 +8878,7 @@ void BonkRun::SpringTrap(OwnedWeapon& owned, float x, float y, float z)
     if (altInfo->EffectImplicitTargetA[EFFECT_INDEX_0] == TARGET_UNIT_ENEMY)
     {
         Map* map = m_player->GetMap();
-        for (ObjectGuid const& guid : m_mobs)
+        for (ObjectGuid const& guid : GetEnemyGuids())
             if (Creature* mob = map->GetCreature(guid))
                 if (mob->IsAlive() && mob->GetDistance2d(x, y) <= radius)
                     m_player->CastSpell(mob, altInfo, true);
@@ -9973,7 +9977,7 @@ void BonkRun::UpdateCharge(Beast& beast, Creature* creature, uint32 diff, std::v
     float const reach = BONK_CHARGE_REACH * (owned ? GetWeaponArea(*owned) : 1.0f);
     float const x = creature->GetPositionX(), y = creature->GetPositionY();
     Map* map = m_player->GetMap();
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
     {
         Creature* mob = map->GetCreature(guid);
         if (!mob || !mob->IsAlive() || std::find(beast.struck.begin(), beast.struck.end(), guid) != beast.struck.end())
@@ -13050,6 +13054,49 @@ void BonkRun::SetPaused(bool paused)
 {
     if (!paused && m_menuOpen)
         return;
+    m_ownPaused = paused;
+    ApplyPause(m_ownPaused || m_groupHeld);
+}
+
+void BonkRun::RefreshGroupEnemies()
+{
+    m_groupEnemies.clear();
+    if (!m_player->GetGroup())
+        return;
+    std::vector<Player*> const group = BonkCoop::RunGroupOf(m_player);
+    if (group.size() < 2)
+        return;
+    m_groupEnemies = m_mobs;
+    for (Player* member : group)
+        if (member != m_player && member->GetMapId() == m_player->GetMapId())
+            if (BonkRun const* run = member->GetBonkPlayer()->GetRun())
+                m_groupEnemies.insert(m_groupEnemies.end(), run->GetMobGuids().begin(), run->GetMobGuids().end());
+}
+
+void BonkRun::SetGroupHeld(bool held)
+{
+    if (m_groupHeld == held)
+        return;
+    m_groupHeld = held;
+    ApplyPause(m_ownPaused || m_groupHeld);
+}
+
+void BonkRun::ResolveChoiceForGroup()
+{
+    std::string error;
+    if (!m_glyphOffer.empty())
+        ChooseGlyph(urand(1, uint32(m_glyphOffer.size())), error);
+    else if (!m_leyOffer.empty())
+        PickLeyBuff(urand(1, uint32(m_leyOffer.size())), error);
+    else if (!m_offer.empty())
+        Pick(urand(1, uint32(m_offer.size())), error);
+    else
+        return;
+    m_player->GetBonkPlayer()->Notify("Time's up, so a choice was made for you.");
+}
+
+void BonkRun::ApplyPause(bool paused)
+{
     if (m_paused == paused)
         return;
     m_paused = paused;

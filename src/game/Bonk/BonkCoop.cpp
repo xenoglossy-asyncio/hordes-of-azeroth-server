@@ -1,6 +1,7 @@
 #include "BonkCoop.h"
 
 #include "AccountMgr.h"
+#include "BonkMgr.h"
 #include "BonkPlayer.h"
 #include "Chat.h"
 #include "Database/DatabaseEnv.h"
@@ -11,6 +12,7 @@
 #include "Player.h"
 #include "WorldSession.h"
 
+#include <map>
 #include <mutex>
 #include <set>
 #include <vector>
@@ -26,6 +28,8 @@ namespace
     uint32 const REMOVE_DELAY_MS = 3000;
 
     std::mutex s_removedLock;
+    std::mutex s_seatsLock;
+    std::map<ObjectGuid, uint32> s_seats;
     std::set<uint32> s_removedAccounts;
 
     bool HasGuestPrefix(std::string const& username)
@@ -78,6 +82,33 @@ namespace
 bool BonkCoop::IsGuestAccount(Player const* player)
 {
     return player && player->GetSession() && HasGuestPrefix(player->GetSession()->GetUsername());
+}
+
+uint32 BonkCoop::CampSeat(Player const* player)
+{
+    if (!IsGuestAccount(player))
+        return 0;
+    std::lock_guard<std::mutex> guard(s_seatsLock);
+    auto found = s_seats.find(player->GetObjectGuid());
+    if (found != s_seats.end())
+        return found->second;
+
+    std::set<uint32> taken;
+    for (auto itr = s_seats.begin(); itr != s_seats.end();)
+    {
+        if (ObjectAccessor::FindPlayerNotInWorld(itr->first))
+        {
+            taken.insert(itr->second);
+            ++itr;
+        }
+        else
+            itr = s_seats.erase(itr);
+    }
+    uint32 seat = 1;
+    while (seat + 1 < BONK_CAMP_SEAT_COUNT && taken.count(seat))
+        ++seat;
+    s_seats[player->GetObjectGuid()] = seat;
+    return seat;
 }
 
 void BonkCoop::JoinHostGroup(Player* guest)
@@ -135,6 +166,10 @@ void BonkCoop::OnLogout(Player* player)
 {
     if (!IsGuestAccount(player))
         return;
+    {
+        std::lock_guard<std::mutex> guard(s_seatsLock);
+        s_seats.erase(player->GetObjectGuid());
+    }
     if (Group* group = player->GetGroup())
         Player::RemoveFromGroup(group, player->GetObjectGuid());
 }

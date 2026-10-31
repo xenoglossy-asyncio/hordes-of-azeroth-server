@@ -917,7 +917,7 @@ void BonkRun::SpringEntrapment(OwnedWeapon const& owned, float x, float y, float
     if (!m_mastery.entrapment.count(GetRootWeapon(owned.weapon)))
         return;
     Map* map = m_player->GetMap();
-    for (ObjectGuid const& guid : m_mobs)
+    for (ObjectGuid const& guid : GetEnemyGuids())
         if (Creature* mob = map->GetCreature(guid))
         {
             BonkMobAI const* ai = GetRunAI(mob);

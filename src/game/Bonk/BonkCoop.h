@@ -13,6 +13,7 @@ struct BonkRunChoice;
 namespace BonkCoop
 {
     bool IsGuestAccount(Player const* player);
+    uint32 CampSeat(Player const* player);
     void JoinHostGroup(Player* guest);
     void OnUninvited(ObjectGuid guid);
     void OnLogout(Player* player);
@@ -28,6 +29,7 @@ namespace BonkCoop
     bool Down(Player* player);
     bool IsDowned(Player const* player);
     void UpdateDowned(uint32 diff);
+    void UpdateSharedPause(uint32 diff);
     std::vector<Player*> RunGroupOf(Player* player);
     void HideObjectFor(ObjectGuid object, ObjectGuid player);
     bool IsObjectHiddenFor(ObjectGuid object, ObjectGuid player);

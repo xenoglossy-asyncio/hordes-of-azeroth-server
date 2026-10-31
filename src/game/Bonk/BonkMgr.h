@@ -19,6 +19,21 @@ WorldLocation const BONK_CAMP_LOCATION(1, 16226.2f, 16257.0f, 13.2022f, 1.65007f
 WorldLocation const BONK_CAMP_ARRIVAL(1, 16242.1f, 16304.9f, 20.899f, 6.1865f);
 uint32 const BONK_CAMP_CHAIR = 101766;
 
+struct BonkCampSeat
+{
+    uint32 chair;
+    WorldLocation arrival;
+};
+
+BonkCampSeat const BONK_CAMP_SEATS[] =
+{
+    { BONK_CAMP_CHAIR, BONK_CAMP_ARRIVAL },
+    { 101775, WorldLocation(1, 16243.9f, 16306.8f, 20.9003f, 4.59766f) },
+    { 101768, WorldLocation(1, 16243.4f, 16302.7f, 20.899f, 1.45293f) },
+    { 101776, WorldLocation(1, 16245.8f, 16306.6f, 20.8999f, 4.59766f) },
+};
+uint32 const BONK_CAMP_SEAT_COUNT = sizeof(BONK_CAMP_SEATS) / sizeof(BONK_CAMP_SEATS[0]);
+
 float const BONK_ENEMY_MAX_MELEE_REACH = 4.0f;
 
 uint32 const BONK_GO_CHEST      = 900001;
