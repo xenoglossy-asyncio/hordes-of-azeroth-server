@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkCoop.h"
 #include "Bag.h"
 #include "BonkMgr.h"
 #include "BonkMobAI.h"
@@ -266,9 +267,8 @@ void BonkRun::DropTierPiece(Creature const* mob, BonkSpawnKind kind)
     PlaceTierPiece(mob, roll_chance_f(EpicChance(m_stage, kind)));
 }
 
-bool BonkRun::PlaceTierPiece(Creature const* mob, bool epic)
+bool BonkRun::MakeTierPiece(bool epic, PendingGear& piece) const
 {
-    PendingGear piece;
     piece.found = true;
     piece.gear = BonkFound::Roll(GetDropTier());
     if (epic && piece.gear.lines.empty())
@@ -299,8 +299,16 @@ bool BonkRun::PlaceTierPiece(Creature const* mob, bool epic)
     piece.entry = choices[urand(0, uint32(choices.size() - 1))];
     if (epic)
         piece.entry = BonkMgr::GetEpicGearEntry(piece.entry);
+    return true;
+}
+
+bool BonkRun::PlaceTierPiece(Creature const* mob, bool epic)
+{
+    PendingGear piece;
+    if (!MakeTierPiece(epic, piece))
+        return false;
     ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
-    if (!proto || !PlaceGearDrop(mob, piece, proto->Quality))
+    if (!proto || !PlaceGearDrop(mob, piece, proto->Quality, epic ? LOOT_BAG_EPIC : LOOT_BAG_TIER))
         return false;
     m_player->GetBonkPlayer()->Notify(std::string(proto->Name1) + " (" + DescribeFoundDrop(piece.gear) + ") dropped!");
     return true;
@@ -322,17 +330,50 @@ void BonkRun::AddEliteScrap()
         m_eliteScrap += BONK_SCRAP_ELITE_BASE + m_stage / BONK_SCRAP_ELITE_FLOORS_PER_POINT;
 }
 
-bool BonkRun::DropLegendary(Creature const* mob)
+bool BonkRun::MakeLegendary(PendingGear& piece) const
 {
-    PendingGear piece;
     piece.found = true;
     piece.gear = BonkFound::Roll(GetDropTier());
     std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), std::min(BONK_TIER_GEAR_TIERS, piece.gear.tier));
     if (legendaries.empty())
         return false;
     piece.entry = legendaries[urand(0, uint32(legendaries.size() - 1))];
+    return true;
+}
+
+bool BonkRun::MakePlainGear(uint8 rolled, PendingGear& piece, uint8& quality) const
+{
+    uint32 const classMask = m_player->GetClassMask();
+    std::vector<BonkGear const*> pool;
+    for (int32 tryQuality = rolled; tryQuality >= ITEM_QUALITY_POOR && pool.empty(); --tryQuality)
+        for (auto const& itr : sBonkMgr.GetGear())
+            if (itr.second.quality == tryQuality && (itr.second.allowableClass & classMask) && itr.second.DropsOn(m_tier.id))
+                pool.push_back(&itr.second);
+    if (pool.empty())
+        return false;
+    BonkGear const* gear = pool[urand(0, uint32(pool.size() - 1))];
+    piece = PendingGear(gear->entry);
+    quality = gear->quality;
+    return true;
+}
+
+bool BonkRun::MakeBagPiece(uint8 bag, uint8 quality, PendingGear& piece) const
+{
+    if (bag == LOOT_BAG_LEGENDARY)
+        return MakeLegendary(piece) || MakeTierPiece(true, piece);
+    if (bag == LOOT_BAG_TIER || bag == LOOT_BAG_EPIC)
+        return MakeTierPiece(bag == LOOT_BAG_EPIC, piece);
+    uint8 made = 0;
+    return MakePlainGear(quality, piece, made);
+}
+
+bool BonkRun::DropLegendary(Creature const* mob)
+{
+    PendingGear piece;
+    if (!MakeLegendary(piece))
+        return false;
     ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
-    if (!proto || !PlaceGearDrop(mob, piece, ITEM_QUALITY_LEGENDARY))
+    if (!proto || !PlaceGearDrop(mob, piece, ITEM_QUALITY_LEGENDARY, LOOT_BAG_LEGENDARY))
         return true;
     m_player->GetBonkPlayer()->Notify(std::string(proto->Name1) + " (" + DescribeFoundDrop(piece.gear) + ") dropped!");
     return true;
@@ -422,7 +463,7 @@ void BonkRun::GetOwnedTiers(uint32 entry, uint32& bestTier, bool& owned) const
                     consider(mailed.itemId);
 }
 
-bool BonkRun::PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality)
+bool BonkRun::PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality, uint8 bag)
 {
     float const angle = frand(0.0f, 2.0f * M_PI_F);
     float x = mob->GetPositionX() + 2.0f * std::cos(angle);
@@ -452,8 +493,74 @@ bool BonkRun::PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8
     GearDrop drop;
     drop.guid = go->GetObjectGuid();
     drop.piece = piece;
+    drop.bag = bag;
+    drop.quality = quality;
     drop.marker = PlaceLootBeam(go, quality, drop.core, drop.swirl);
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+        if (member != m_player)
+            ShowLootBeamTo(member, go, quality, drop);
     m_gearDrops.push_back(drop);
+    return true;
+}
+
+void BonkRun::ShowLootBeamTo(Player* viewer, GameObject const* go, uint8 quality, GearDrop const& drop) const
+{
+    float const x = go->GetPositionX(), y = go->GetPositionY(), z = go->GetPositionZ();
+    SendBonkAuraAt(viewer, drop.marker, GetLootBeamSpell(quality), x, y, z, BONK_LOOT_BEAM_SCALE);
+    if (drop.core)
+        SendBonkAuraAt(viewer, drop.core, GetLootCoreSpell(quality), x, y, z, BONK_LOOT_BEAM_SCALE);
+    if (drop.swirl)
+        SendBonkAuraAt(viewer, drop.swirl, GetLootSwirlSpell(quality), x, y, z, BONK_LOOT_SWIRL_SCALE);
+}
+
+void BonkRun::HideLootBagFrom(Player* viewer, GearDrop const& drop) const
+{
+    for (uint32 key : { drop.marker, drop.swirl, drop.core })
+        if (key)
+            SendBonkAuraGone(viewer, key);
+    BonkCoop::HideObjectFor(drop.guid, viewer->GetObjectGuid());
+    if (GameObject* go = m_player->GetMap()->GetGameObject(drop.guid))
+        viewer->UpdateVisibilityOf(viewer, go);
+}
+
+void BonkRun::RemoveLootBag(GearDrop const& drop)
+{
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+        if (member != m_player)
+            for (uint32 key : { drop.marker, drop.swirl, drop.core })
+                if (key)
+                    SendBonkAuraGone(member, key);
+    BonkCoop::ForgetHiddenObject(drop.guid);
+    RemovePickup(drop.guid, drop.marker, drop.swirl, drop.core);
+}
+
+void BonkRun::GiveBagTo(Player* member, GearDrop& drop)
+{
+    drop.takenBy.insert(member->GetObjectGuid());
+    if (member == m_player)
+    {
+        m_pendingGear.push_back(drop.piece);
+        if (BonkCoop::InGroupRun(m_player))
+            sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s takes their own loot bag, item %u", m_player->GetName(), drop.piece.entry);
+        return;
+    }
+    BonkRun* run = member->GetBonkPlayer()->GetRun();
+    PendingGear piece;
+    if (!run || !run->MakeBagPiece(drop.bag, drop.quality, piece))
+        return;
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s takes %s's loot bag, item %u", member->GetName(), m_player->GetName(), piece.entry);
+    run->m_pendingGear.push_back(piece);
+    run->UpdateOffers();
+}
+
+bool BonkRun::EveryoneTookBag(GearDrop const& drop) const
+{
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+    {
+        BonkRun const* run = member->GetBonkPlayer()->GetRun();
+        if (run && !run->IsOver() && !drop.takenBy.count(member->GetObjectGuid()))
+            return false;
+    }
     return true;
 }
 
@@ -535,7 +642,8 @@ bool BonkRun::PlaceDropLooksNow(std::string& error)
 
 void BonkRun::DropGear(Creature const* mob, BonkSpawnKind kind)
 {
-    MaybeDropHearthstone(kind);
+    if (!BonkCoop::InGroupRun(m_player))
+        MaybeDropHearthstone(kind);
     if (kind == BONK_SPAWN_NORMAL || m_gearDrops.size() >= BONK_MAX_GEAR_DROPS)
         return;
     if (kind == BONK_SPAWN_ELITE)
@@ -551,18 +659,12 @@ void BonkRun::DropGear(Creature const* mob, BonkSpawnKind kind)
         return;
     }
 
-    uint8 const rolled = RollGearQuality(kind);
-    uint32 const classMask = m_player->GetClassMask();
-    std::vector<BonkGear const*> pool;
-    for (int32 quality = rolled; quality >= ITEM_QUALITY_POOR && pool.empty(); --quality)
-        for (auto const& itr : sBonkMgr.GetGear())
-            if (itr.second.quality == quality && (itr.second.allowableClass & classMask) && itr.second.DropsOn(m_tier.id))
-                pool.push_back(&itr.second);
-    if (pool.empty())
+    PendingGear piece;
+    uint8 quality = 0;
+    if (!MakePlainGear(RollGearQuality(kind), piece, quality))
         return;
-    BonkGear const* gear = pool[urand(0, uint32(pool.size() - 1))];
-    if (PlaceGearDrop(mob, PendingGear(gear->entry), gear->quality))
-        m_player->GetBonkPlayer()->Notify(GetQualityName(gear->quality) + " gear dropped!");
+    if (PlaceGearDrop(mob, piece, quality, LOOT_BAG_PLAIN))
+        m_player->GetBonkPlayer()->Notify(GetQualityName(quality) + " gear dropped!");
 }
 
 void BonkRun::UpdateGearDrops(uint32 diff)
@@ -573,20 +675,33 @@ void BonkRun::UpdateGearDrops(uint32 diff)
     m_gearTimer = 0;
 
     Map* map = m_player->GetMap();
-    float const range = GetMagnetRange();
+    std::vector<Player*> const group = BonkCoop::RunGroupOf(m_player);
     bool taken = false;
     for (auto itr = m_gearDrops.begin(); itr != m_gearDrops.end();)
     {
         GameObject* go = map->GetGameObject(itr->guid);
-        if (go && go->isSpawned() && m_player->GetDistance(go) > range)
+        bool const gone = !go || !go->isSpawned();
+        for (Player* member : group)
         {
-            ++itr;
+            BonkRun* run = member->GetBonkPlayer()->GetRun();
+            if (!run || run->IsOver() || itr->takenBy.count(member->GetObjectGuid()))
+                continue;
+            bool const inReach = go && member->GetMapId() == m_player->GetMapId() && member->IsAlive() &&
+                member->GetDistance(go) <= run->GetMagnetRange();
+            if (!inReach && !(gone && member == m_player))
+                continue;
+            GiveBagTo(member, *itr);
+            taken |= member == m_player;
+            if (!gone && !EveryoneTookBag(*itr))
+                HideLootBagFrom(member, *itr);
+        }
+        if (gone || EveryoneTookBag(*itr))
+        {
+            RemoveLootBag(*itr);
+            itr = m_gearDrops.erase(itr);
             continue;
         }
-        m_pendingGear.push_back(itr->piece);
-        RemovePickup(itr->guid, itr->marker, itr->swirl, itr->core);
-        itr = m_gearDrops.erase(itr);
-        taken = true;
+        ++itr;
     }
     if (taken)
         UpdateOffers();
@@ -594,10 +709,16 @@ void BonkRun::UpdateGearDrops(uint32 diff)
 
 void BonkRun::CollectAllGear()
 {
-    for (GearDrop const& drop : m_gearDrops)
+    std::vector<Player*> const group = BonkCoop::RunGroupOf(m_player);
+    for (GearDrop& drop : m_gearDrops)
     {
-        m_pendingGear.push_back(drop.piece);
-        RemovePickup(drop.guid, drop.marker, drop.swirl, drop.core);
+        for (Player* member : group)
+        {
+            BonkRun* run = member->GetBonkPlayer()->GetRun();
+            if (run && !run->IsOver() && !drop.takenBy.count(member->GetObjectGuid()))
+                GiveBagTo(member, drop);
+        }
+        RemoveLootBag(drop);
     }
     m_gearDrops.clear();
     UpdateOffers();

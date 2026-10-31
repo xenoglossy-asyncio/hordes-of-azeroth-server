@@ -31,6 +31,7 @@ namespace BonkCoop
     void UpdateDowned(uint32 diff);
     void UpdateSharedPause(uint32 diff);
     std::vector<Player*> RunGroupOf(Player* player);
+    bool InGroupRun(Player const* player);
     void ShareExperience(Player* collector, float levelFraction);
     void HideObjectFor(ObjectGuid object, ObjectGuid player);
     bool IsObjectHiddenFor(ObjectGuid object, ObjectGuid player);

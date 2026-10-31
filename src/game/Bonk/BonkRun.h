@@ -1178,6 +1178,13 @@ class BonkRun
             bool found = false;
             BonkFoundGear gear;
         };
+        enum LootBag : uint8
+        {
+            LOOT_BAG_PLAIN,
+            LOOT_BAG_TIER,
+            LOOT_BAG_EPIC,
+            LOOT_BAG_LEGENDARY,
+        };
         struct GearDrop
         {
             ObjectGuid guid;
@@ -1185,13 +1192,25 @@ class BonkRun
             uint32 marker = 0;
             uint32 core = 0;
             uint32 swirl = 0;
+            uint8 bag = LOOT_BAG_PLAIN;
+            uint8 quality = 0;
+            std::set<ObjectGuid> takenBy;
         };
+        bool MakeTierPiece(bool epic, PendingGear& piece) const;
+        bool MakeLegendary(PendingGear& piece) const;
+        bool MakePlainGear(uint8 rolled, PendingGear& piece, uint8& quality) const;
+        bool MakeBagPiece(uint8 bag, uint8 quality, PendingGear& piece) const;
+        void ShowLootBeamTo(Player* viewer, GameObject const* go, uint8 quality, GearDrop const& drop) const;
+        void HideLootBagFrom(Player* viewer, GearDrop const& drop) const;
+        void RemoveLootBag(GearDrop const& drop);
+        void GiveBagTo(Player* member, GearDrop& drop);
+        bool EveryoneTookBag(GearDrop const& drop) const;
         void DropGear(Creature const* mob, BonkSpawnKind kind);
         void DropTierPiece(Creature const* mob, BonkSpawnKind kind);
         bool PlaceTierPiece(Creature const* mob, bool epic);
         bool DropLegendary(Creature const* mob);
         uint32 GetDropTier() const;
-        bool PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality);
+        bool PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality, uint8 bag);
         std::string DescribeFoundDrop(BonkFoundGear const& found) const;
         void AddEliteScrap();
         bool GetKeepInfo(uint32 entry, uint32& keepEntry, uint8& quality) const;

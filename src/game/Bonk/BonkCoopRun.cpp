@@ -403,6 +403,11 @@ std::vector<Player*> BonkCoop::RunGroupOf(Player* player)
     return GroupMembers(host);
 }
 
+bool BonkCoop::InGroupRun(Player const* player)
+{
+    return player->GetGroup() && s_groups.count(HostOf(player));
+}
+
 void BonkCoop::ShareExperience(Player* collector, float levelFraction)
 {
     if (levelFraction <= 0.0f || !collector->GetGroup())
