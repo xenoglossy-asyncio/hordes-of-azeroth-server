@@ -1,5 +1,6 @@
 #include "BonkCodex.h"
 #include "BonkLocale.h"
+#include "BonkMastery.h"
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
 #include "BonkQuests.h"
@@ -358,7 +359,8 @@ void BonkCodex::Send(Player* player, std::string const& npc, bool deck)
         bonk->SendAddon("cdxw~" + id + "~" + bonk->Localize(BONK_FIELD_WEAPON_NAME, weapon.id, weapon.name) + "~" + weapon.icon + "~" + std::to_string(weapon.classMask) + "~" +
             std::to_string(weapon.starterClassMask | weapon.starterOptionMask) + "~" + std::to_string(weapon.evolvesFrom) + "~" + locked + "~" + std::to_string(price));
         bonk->SendAddon("cdxwd~" + id + "~" + bonk->Localize(BONK_FIELD_WEAPON_DESCRIPTION, weapon.id, weapon.description) + "~" +
-            DescribeBonkWeaponTags(weapon, GetBonkMagicSchoolName(weapon.spellId, bonk->GetLocale()), bonk->GetLocale()));
+            DescribeBonkWeaponTags(weapon, GetBonkMagicSchoolName(weapon.spellId, bonk->GetLocale()), bonk->GetLocale()) + "~" +
+            std::to_string(BonkMastery::GetSpec(weapon.id)));
         if (locked == "1")
             SendLock(bonk, "w", weapon.id, BONK_REWARD_WEAPON);
     }
