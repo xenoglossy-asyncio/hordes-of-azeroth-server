@@ -427,7 +427,7 @@ bool BonkRun::SpawnVendorNow(std::string& error)
 {
     if (m_state != STATE_RUNNING)
     {
-        error = GetString(BONK_STRING_ONLY_RUNNING_FLOOR_MERCHANT);
+        error = GetString(BONK_STRING_ONLY_RUNNING_STAGE_MERCHANT);
         return false;
     }
     if (!m_vendorGuid.IsEmpty())

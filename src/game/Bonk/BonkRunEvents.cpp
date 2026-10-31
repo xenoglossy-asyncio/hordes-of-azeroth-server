@@ -388,7 +388,7 @@ bool BonkRun::StartMiniEventNow(BonkMiniEventType type, std::string& error)
 {
     if (m_state != STATE_RUNNING || m_paused)
     {
-        error = GetString(BONK_STRING_ONLY_RUNNING_FLOOR_MINI_EVENT);
+        error = GetString(BONK_STRING_ONLY_RUNNING_STAGE_MINI_EVENT);
         return false;
     }
     if (m_miniEventActive)

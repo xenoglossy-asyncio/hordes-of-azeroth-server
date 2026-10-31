@@ -90,7 +90,6 @@ namespace
     float const BONK_STAGE_CROWD_GROWTH    = 0.15f;
     float const BONK_KILL_SHOT_PERCENT     = 100000.0f;
     uint32 const BONK_STAGE_CROWD_GROWTH_STAGES = 2;
-    float const BONK_MILESTONE_VETERAN_CHANCE = 5.0f;
     float const BONK_VETERAN_HEALTH        = 2.5f;
     float const BONK_MAX_MOB_HEALTH        = 2000000000.0f;
     uint32 const BONK_MOB_HEALTH_TABLE_LEVELS = 10;
@@ -237,6 +236,8 @@ namespace
     float const BONK_DUNGEON_HEALTH = 1.3f;
     float const BONK_DUNGEON_DAMAGE = 1.2f;
     float const BONK_DUNGEON_GOLD   = 1.5f;
+    float const BONK_FINALE_GOLD_PER_MINUTE  = 0.5f;
+    float const BONK_FINALE_SCRAP_PER_MINUTE = 2.0f;
     float const BONK_INVASION_GOLD  = 1.25f;
     float const BONK_INVASION_CROWD = 1.15f;
 
@@ -1088,8 +1089,8 @@ BonkRun::BonkRun(Player* player, BonkTier const& tier, BonkRunChoice const& choi
     m_dungeonId = dungeon && !choice.invade ? dungeon->id : 0;
     m_invaderId = dungeon && choice.invade ? dungeon->id : 0;
     m_startMapId = choice.startMap && !m_dungeonId ? choice.startMap->id : 0;
-    m_startFloor = std::max(1u, choice.startFloor);
-    m_stage = m_startFloor;
+    m_difficultyLevel = tier.HasLevel(choice.level) ? choice.level : tier.firstLevel;
+    m_levelRow = sBonkMgr.GetLevel(tier, GetBandLevel());
     uint32 const classMask = player->GetClassMask();
     for (bool const ownClass : { true, false })
         for (auto const& itr : sBonkMgr.GetWeapons())
@@ -1102,7 +1103,7 @@ BonkRun::BonkRun(Player* player, BonkTier const& tier, BonkRunChoice const& choi
     m_revives = m_bonuses.revives;
     m_coins = m_bonuses.startCoins;
     m_valorEarned = m_coins;
-    m_floorBestAtStart = player->GetBonkPlayer()->GetClassFloor();
+    m_levelBestAtStart = player->GetBonkPlayer()->GetBestLevel();
 }
 
 std::string BonkRun::GetString(BonkString id, std::vector<std::string> const& args) const
@@ -1524,7 +1525,7 @@ void BonkRun::Update(uint32 diff)
 void BonkRun::StartStage()
 {
     sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
-        "Bonk floor: %s starts stage %u at run minute %.2f (stage %u, %s, %s, class %u): level %u, %u kills, took %u damage so far",
+        "Bonk stage: %s starts stage %u at run minute %.2f (stage %u, %s, %s, class %u): level %u, %u kills, took %u damage so far",
         m_player->GetName(), m_stage, GetRunMinutes(), m_stage, m_map.key.c_str(), m_tier.key.c_str(), uint32(m_player->GetClass()),
         m_player->GetLevel() + m_overcapLevel, m_kills, m_damageTaken);
     m_state = STATE_RUNNING;
@@ -1611,7 +1612,6 @@ void BonkRun::StartStage()
             GiveStartLevels();
             if (GetUtility(BONK_UTILITY_START_GLYPH) > 0.0f)
                 QueueGlyphPick();
-            GiveCheckpointCatchUp();
         }
     }
     else
@@ -1637,7 +1637,7 @@ void BonkRun::StartStage()
     m_heldShotSources.clear();
     m_telegraphs.Dismiss(m_player);
     DespawnPillar();
-    m_floorMiniBosses = 0;
+    m_stageMiniBosses = 0;
     m_pillarRaised = false;
     m_objectives.Clear(m_player);
     m_spawnPoints.Reset(m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ());
@@ -1668,15 +1668,19 @@ void BonkRun::StartStage()
         return;
     }
 
-    m_player->GetBonkPlayer()->RecordStage(m_tier.id, m_stage);
-
     SendFullState();
+    if (IsFinale())
+    {
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_FINALE_BEGINS, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) });
+        return;
+    }
     uint32 const minutes = m_map.durationSeconds / 60;
     uint32 const seconds = m_map.durationSeconds % 60;
     std::string const minuteText = GetString(minutes == 1 ? BONK_STRING_DURATION_MINUTE : BONK_STRING_DURATION_MINUTES, { std::to_string(minutes) });
     std::string const secondText = GetString(seconds == 1 ? BONK_STRING_DURATION_SECOND : BONK_STRING_DURATION_SECONDS, { std::to_string(seconds) });
     std::string const bossIn = !minutes ? secondText : !seconds ? minuteText : GetString(BONK_STRING_DURATION_MINUTES_AND_SECONDS, { minuteText, secondText });
-    m_player->GetBonkPlayer()->Notify(IsMythic() ? BONK_STRING_MYTHIC_FLOOR_BEGINS : BONK_STRING_FLOOR_BEGINS, { std::to_string(m_stage), Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name), bossIn });
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_STAGE_BEGINS, { m_player->GetBonkPlayer()->GetLevelName(m_difficultyLevel), std::to_string(m_stage),
+        std::to_string(m_tier.stages), Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name), bossIn });
 }
 
 void BonkRun::SendFullState() const
@@ -1686,7 +1690,8 @@ void BonkRun::SendFullState() const
         bonk->SendAddon("start~" + Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) + "~" + GetString(BONK_STRING_SANDBOX) + "~0~" + std::to_string(m_stage) + "~0~");
     else
         bonk->SendAddon("start~" + Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) + "~" + Localize(BONK_FIELD_TIER_NAME, m_tier.id, m_tier.name) + "~" +
-            std::to_string(m_map.durationSeconds) + "~" + std::to_string(m_stage) + "~" + std::to_string(GetFirstMinibossSecond()) + "~" + DescribeTimelineMarks() + "~" + (IsMythic() ? "1" : "0"));
+            std::to_string(m_map.durationSeconds) + "~" + std::to_string(m_stage) + "~" + std::to_string(GetFirstMinibossSecond()) + "~" + DescribeTimelineMarks() + "~" + (IsMythic() ? "1" : "0") + "~" +
+            std::to_string(m_tier.stages) + "~" + bonk->GetLevelName(m_difficultyLevel) + "~" + (IsFinale() ? "1" : "0"));
     SendLoadout();
     SendState();
     SendRunXp();
@@ -2232,9 +2237,10 @@ void BonkRun::UpdateSpawns(uint32 diff)
     UpdateRingSample(diff);
     UpdatePerch(diff);
 
-    if (!m_bossSpawned && elapsedSeconds >= m_map.durationSeconds && IsCoopGuest())
+    bool const bossDue = !IsFinale() && !m_bossSpawned && elapsedSeconds >= m_map.durationSeconds;
+    if (bossDue && IsCoopGuest())
         m_bossSpawned = true;
-    if (!m_bossSpawned && elapsedSeconds >= m_map.durationSeconds)
+    else if (bossDue)
     {
         BonkMapCreature const* boss = PickCreature(BONK_SPAWN_BOSS);
         if (!boss)
@@ -2354,7 +2360,7 @@ float BonkRun::GetStageCrowdFloor() const
 
 float BonkRun::GetStageCrowdScale() const
 {
-    if (m_tier.stageCompound)
+    if (IsMythic())
         return 1.0f;
     return 1.0f + BONK_STAGE_CROWD_GROWTH * float(std::min(m_stage > 1 ? m_stage - 1 : 0, BONK_STAGE_CROWD_GROWTH_STAGES));
 }
@@ -2605,9 +2611,9 @@ std::string BonkRun::DescribeDefense() const
 void BonkRun::LogLoadout() const
 {
     sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
-        "Bonk loadout: %s starts a run at run minute 0 (stage %u, %s, %s, class %u): %s",
+        "Bonk loadout: %s starts a run at run minute 0 (stage %u, %s, %s, class %u): %s; difficulty level %u",
         m_player->GetName(), m_stage, m_map.key.c_str(), m_tier.key.c_str(), uint32(m_player->GetClass()),
-        m_player->GetBonkPlayer()->DescribeLoadout().c_str());
+        m_player->GetBonkPlayer()->DescribeLoadout().c_str(), m_difficultyLevel);
 }
 
 void BonkRun::LogBuild() const
@@ -2650,7 +2656,8 @@ uint32 BonkRun::GetFirstMinibossSecond() const
 
 void BonkRun::UpdateOvertime(uint32 diff)
 {
-    if (!m_bossSpawned || m_stress.on || m_elapsedMs < (m_map.durationSeconds + BONK_OVERTIME_AFTER_SEC) * IN_MILLISECONDS)
+    uint32 const startSecond = IsFinale() ? m_map.durationSeconds : m_map.durationSeconds + BONK_OVERTIME_AFTER_SEC;
+    if ((!m_bossSpawned && !IsFinale()) || m_stress.on || m_elapsedMs < startSecond * IN_MILLISECONDS)
         return;
     m_overtimeTimer -= int32(diff);
     if (m_overtimeTimer > 0)
@@ -3838,11 +3845,7 @@ uint32 BonkRun::GetSpawnHealth(BonkSpawnKind kind, BonkArchetype archetype, floa
 
 float BonkRun::GetTierKindHealth(BonkSpawnKind kind) const
 {
-    float const full = kind == BONK_SPAWN_BOSS ? m_tier.bossHealthMultiplier : kind == BONK_SPAWN_MINIBOSS ? m_tier.minibossHealthMultiplier : 1.0f;
-    if (full <= 1.0f)
-        return 1.0f;
-    float const ramp = m_tier.bossHealthRampFloors ? std::min(1.0f, float(m_stage) / float(m_tier.bossHealthRampFloors)) : 1.0f;
-    return std::max(1.0f, (1.0f + (full - 1.0f) * ramp) / TierKneeHealthSteps(m_tier, m_stage));
+    return kind == BONK_SPAWN_BOSS ? m_tier.bossHealthMultiplier : kind == BONK_SPAWN_MINIBOSS ? m_tier.minibossHealthMultiplier : 1.0f;
 }
 
 float BonkRun::GetProcBaseHealth() const
@@ -3894,49 +3897,26 @@ float BonkRun::GetMobHealth(uint32 level) const
     return tableHealth * (1.0f + BONK_MOB_HEALTH_LEVEL_GROWTH * float(levelsPastTable));
 }
 
-float BonkRun::CompoundStageScale(uint32 stage, float growth, float lateGrowth, uint32 knee, float lastGrowth, uint32 knee2)
+float BonkRun::StageHealthScale(BonkTier const& tier, BonkLevel const& level, uint32 stage)
 {
-    uint32 const steps = stage > 1 ? stage - 1 : 0;
-    uint32 const early = knee ? std::min(steps, knee - 1) : steps;
-    uint32 const late = knee2 > knee ? std::min(steps, knee2 - 1) - std::min(early, knee2 - 1) : steps - early;
-    uint32 const last = steps - early - late;
-    return std::pow(1.0f + growth, float(early)) * std::pow(1.0f + lateGrowth, float(late)) * std::pow(1.0f + lastGrowth, float(last));
-}
-
-float BonkRun::TierHealthScale(BonkTier const& tier, uint32 stage)
-{
-    if (tier.stageCompound)
-        return tier.healthMultiplier * TierKneeHealthSteps(tier, stage) *
-            CompoundStageScale(stage, tier.stageHealthGrowth, tier.lateHealthGrowth, tier.floorKnee, tier.lastHealthGrowth, tier.floorKnee2);
     float const stages = float(stage - 1);
-    return tier.healthMultiplier * (1.0f + tier.stageHealthGrowth * stages + tier.stageHealthAccel * stages * std::max(0.0f, stages - 1.0f));
+    return tier.healthMultiplier * level.health * (1.0f + tier.stageHealthGrowth * stages + tier.stageHealthAccel * stages * std::max(0.0f, stages - 1.0f));
 }
 
-float BonkRun::TierKneeHealthSteps(BonkTier const& tier, uint32 stage)
+float BonkRun::StageDamageScale(BonkTier const& tier, BonkLevel const& level, uint32 stage)
 {
-    if (!tier.stageCompound)
-        return 1.0f;
-    float const kneeStep = tier.floorKnee && stage > tier.floorKnee ? tier.kneeHealthStep : 1.0f;
-    float const knee2Step = tier.floorKnee2 && stage > tier.floorKnee2 ? tier.knee2HealthStep : 1.0f;
-    return kneeStep * knee2Step;
-}
-
-float BonkRun::TierDamageScale(BonkTier const& tier, uint32 stage)
-{
-    if (tier.stageCompound)
-        return tier.damageMultiplier * CompoundStageScale(stage, tier.stageDamageGrowth, tier.lateDamageGrowth, tier.floorKnee, tier.lastDamageGrowth, tier.floorKnee2);
     float const stages = float(stage - 1);
-    return tier.damageMultiplier * (1.0f + tier.stageDamageGrowth * stages + tier.stageDamageAccel * stages * std::max(0.0f, stages - 1.0f));
+    return tier.damageMultiplier * level.damage * (1.0f + tier.stageDamageGrowth * stages + tier.stageDamageAccel * stages * std::max(0.0f, stages - 1.0f));
 }
 
 float BonkRun::GetStageHealthMultiplier() const
 {
-    return TierHealthScale(m_tier, m_stage) * (1.0f + m_bonuses.enemyHealth / 100.0f) * (IsChallenge() ? BONK_DUNGEON_HEALTH : 1.0f);
+    return StageHealthScale(m_tier, m_levelRow, m_stage) * (1.0f + m_bonuses.enemyHealth / 100.0f) * (IsChallenge() ? BONK_DUNGEON_HEALTH : 1.0f);
 }
 
 float BonkRun::GetStageDamageMultiplier() const
 {
-    return TierDamageScale(m_tier, m_stage) * (1.0f + m_bonuses.enemyDamage / 100.0f) * (IsChallenge() ? BONK_DUNGEON_DAMAGE : 1.0f);
+    return StageDamageScale(m_tier, m_levelRow, m_stage) * (1.0f + m_bonuses.enemyDamage / 100.0f) * (IsChallenge() ? BONK_DUNGEON_DAMAGE : 1.0f);
 }
 
 void BonkRun::UpdateGear()
@@ -4662,37 +4642,7 @@ bool BonkRun::RollVeteran(BonkMapCreature const& creature) const
         return false;
     if (creature.archetype != BONK_ARCHETYPE_GRUNT && creature.archetype != BONK_ARCHETYPE_CASTER && creature.archetype != BONK_ARCHETYPE_CHARGER)
         return false;
-    return roll_chance_f(m_tier.veteranChance + GetMilestoneVeteranChance());
-}
-
-uint32 BonkRun::FloorMilestones(BonkTier const& tier, uint32 stage)
-{
-    return tier.key == "mythic" ? std::min(4u, stage / BONK_MYTHIC_MILESTONE_FLOORS) : 0;
-}
-
-uint32 BonkRun::MilestoneAffixes(BonkTier const& tier, uint32 stage)
-{
-    return FloorMilestones(tier, stage) / 2;
-}
-
-float BonkRun::MilestoneVeteranChance(BonkTier const& tier, uint32 stage)
-{
-    return BONK_MILESTONE_VETERAN_CHANCE * float((FloorMilestones(tier, stage) + 1) / 2);
-}
-
-uint32 BonkRun::GetFloorMilestones() const
-{
-    return FloorMilestones(m_tier, m_stage);
-}
-
-uint32 BonkRun::GetMilestoneAffixes() const
-{
-    return MilestoneAffixes(m_tier, m_stage);
-}
-
-float BonkRun::GetMilestoneVeteranChance() const
-{
-    return MilestoneVeteranChance(m_tier, m_stage);
+    return roll_chance_f(m_tier.veteranChance + m_levelRow.veteranChance);
 }
 
 Creature* BonkRun::SpawnMobAt(BonkMapCreature const& creature, float x, float y, float z, bool veteran)
@@ -5317,36 +5267,36 @@ bool BonkRun::IsOwnPortal(GameObject const* portal) const
     return m_state == STATE_PORTAL && portal->GetObjectGuid() == m_portalGuid;
 }
 
-void BonkRun::RewardMythicFloor()
+void BonkRun::RewardLevelClear()
 {
     BonkPlayer* bonk = m_player->GetBonkPlayer();
-    bool const firstClear = m_stage > bonk->GetMythicFloorsCleared();
-    bonk->RecordClassFloor(m_stage);
-    if (!firstClear)
+    uint8 const trainingCap = bonk->GetTrainingRankCap();
+    if (!bonk->RecordLevelClear(m_difficultyLevel, m_totalMs))
         return;
 
-    uint32 const tickets = GetFloorFirstClearTickets(m_stage);
-    if (tickets)
-    {
-        bonk->AddShards(tickets);
-        m_shardsEarned += tickets;
-    }
-    if (tickets)
-        bonk->Notify(BONK_STRING_FIRST_CLEAR_MYTHIC_FLOOR, { std::to_string(m_stage), FormatBonkShards(tickets, GetLocale()) });
+    uint32 const tickets = GetLevelFirstClearTickets(m_difficultyLevel);
+    bonk->AddShards(tickets);
+    m_shardsEarned += tickets;
+    bonk->Notify(BONK_STRING_FIRST_CLEAR_LEVEL, { bonk->GetLevelName(m_difficultyLevel), FormatBonkShards(tickets, GetLocale()) });
 
-    if (m_stage % BONK_TRAINING_FLOORS_PER_RANK == 0 && bonk->IsTierCleared("heroic") &&
-        m_stage / BONK_TRAINING_FLOORS_PER_RANK <= BONK_TRAINING_MYTHIC_RANKS)
-        bonk->Notify(BONK_STRING_ACCOUNT_TRAINING_CAN_NOW_GO, { std::to_string(bonk->GetTrainingRankCap() + 1) });
+    if (bonk->GetTrainingRankCap() > trainingCap)
+        bonk->Notify(BONK_STRING_ACCOUNT_TRAINING_CAN_NOW_GO, { std::to_string(bonk->GetTrainingRankCap()) });
 }
 
-float BonkRun::FloorRewardScale(BonkTier const& tier, uint32 stage)
+void BonkRun::PayFinale()
 {
-    return tier.key == "mythic" ? 1.0f + BONK_FLOOR_GOLD_GROWTH * float(std::min(stage, BONK_FLOOR_REWARD_GROWTH_FLOORS) - 1) : 1.0f;
-}
+    if (!IsFinale() || m_sandbox || IsCoopGuest())
+        return;
 
-float BonkRun::GetFloorRewardScale() const
-{
-    return FloorRewardScale(m_tier, m_stage);
+    float const minutes = m_elapsedMs / float(MINUTE * IN_MILLISECONDS);
+    uint32 const gold = uint32(m_map.stageGold * BONK_FINALE_GOLD_PER_MINUTE * minutes * m_levelRow.reward);
+    uint32 const scrap = uint32(BONK_FINALE_SCRAP_PER_MINUTE * minutes * m_levelRow.reward);
+    BonkPlayer* bonk = m_player->GetBonkPlayer();
+    GiveGold(gold);
+    bonk->AddScrap(scrap);
+    bonk->Notify(BONK_STRING_FINALE_PAYS, { FormatTime(m_elapsedMs / IN_MILLISECONDS), FormatBonkMoney(gold, GetLocale()), std::to_string(scrap) });
+    if (IsMythic())
+        bonk->RecordFinale(uint32(GetBandLevel() * minutes));
 }
 
 BonkMap const* BonkRun::GetNextMap() const
@@ -5370,14 +5320,14 @@ void BonkRun::OpenPortal(Creature* boss)
     ClearHidden();
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
-    if (IsMythic() && !m_sandbox)
-        RewardMythicFloor();
-    bonk->RecordStage(m_tier.id, m_stage + 1);
-
-    bool const last = m_tier.stages && m_stage >= m_tier.stages;
+    bool const last = m_stage >= m_tier.stages;
     if (last)
+    {
         m_victory = true;
-    BonkMap const* next = !last || m_tier.endless ? ChooseNextMap() : nullptr;
+        if (!m_sandbox)
+            RewardLevelClear();
+    }
+    BonkMap const* next = !last || m_tier.finale ? ChooseNextMap() : nullptr;
     m_nextMapId = next ? next->id : 0;
 
     if (boss)
@@ -5398,7 +5348,7 @@ void BonkRun::OpenPortal(Creature* boss)
         float const side = m_player->GetAngle(portal) + M_PI_F / 2.0f;
         PlaceVault(portal->GetPositionX() + BONK_VAULT_SIDE * std::cos(side), portal->GetPositionY() + BONK_VAULT_SIDE * std::sin(side),
             portal->GetPositionZ());
-        if ((IsMythic() || m_tier.key == "heroic") && (!last || m_tier.endless))
+        if ((IsMythic() || m_tier.key == "heroic") && (!last || m_tier.finale))
             PlaceEnchanter(portal->GetPositionX() - BONK_VAULT_SIDE * std::cos(side), portal->GetPositionY() - BONK_VAULT_SIDE * std::sin(side),
                 portal->GetPositionZ(), m_player->GetAngle(portal) + M_PI_F);
         MaybeSpawnPillarAt(portal->GetPositionX() + 2.0f * BONK_VAULT_SIDE * std::cos(side),
@@ -5406,13 +5356,10 @@ void BonkRun::OpenPortal(Creature* boss)
     }
 
     if (!last)
-        bonk->Notify(IsMythic() ? BONK_STRING_CLEARED_MYTHIC_FLOOR_TAKE_PORTAL : BONK_STRING_CLEARED_FLOOR_TAKE_PORTAL, { std::to_string(m_stage) });
-    else if (!m_tier.endless)
-        bonk->Notify(BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL, { Localize(BONK_FIELD_TIER_NAME, m_tier.id, m_tier.name) });
-    else if (m_stage == m_tier.stages)
-        bonk->Notify(BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL_HOME, { Localize(BONK_FIELD_TIER_NAME, m_tier.id, m_tier.name) });
+        bonk->Notify(BONK_STRING_CLEARED_STAGE_TAKE_PORTAL, { std::to_string(m_stage) });
     else
-        bonk->Notify(BONK_STRING_YOU_CLEARED_ENDLESS_FLOOR_TAKE, { std::to_string(m_stage) });
+        bonk->Notify(m_tier.finale ? BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL_HOME : BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL,
+            { bonk->GetLevelName(m_difficultyLevel) });
     SendState();
 }
 
@@ -5478,7 +5425,7 @@ void BonkRun::EnterNextStage()
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     if (IsCoopGuest())
     {
-        bonk->Notify("The host takes the group to the next floor.");
+        bonk->Notify("The host takes the group to the next stage.");
         return;
     }
     if (!m_offer.empty())
@@ -5601,7 +5548,7 @@ bool BonkRun::SkipTime(uint32 seconds, std::string& error)
 {
     if (m_state != STATE_RUNNING)
     {
-        error = GetString(BONK_STRING_ONLY_RUNNING_FLOOR_SKIPPED);
+        error = GetString(BONK_STRING_ONLY_RUNNING_STAGE_SKIPPED);
         return false;
     }
     if (m_bossSpawned)
@@ -10526,23 +10473,6 @@ uint32 BonkRun::GetNextLevelXp() const
     return sObjectMgr.GetXPForLevel(maxLevel - 1);
 }
 
-uint32 BonkRun::CheckpointLevel(uint32 floor)
-{
-    size_t const count = sizeof(BONK_CHECKPOINT_TABLE_FLOORS) / sizeof(BONK_CHECKPOINT_TABLE_FLOORS[0]);
-    if (floor >= BONK_CHECKPOINT_TABLE_FLOORS[count - 1])
-        return BONK_CHECKPOINT_TABLE_LEVELS[count - 1] +
-            uint32(float(floor - BONK_CHECKPOINT_TABLE_FLOORS[count - 1]) * BONK_CHECKPOINT_LEVELS_PER_FLOOR + 0.5f);
-    for (size_t i = 1; i < count; ++i)
-        if (floor <= BONK_CHECKPOINT_TABLE_FLOORS[i])
-        {
-            float const share = float(floor - BONK_CHECKPOINT_TABLE_FLOORS[i - 1]) /
-                float(BONK_CHECKPOINT_TABLE_FLOORS[i] - BONK_CHECKPOINT_TABLE_FLOORS[i - 1]);
-            return BONK_CHECKPOINT_TABLE_LEVELS[i - 1] +
-                uint32(share * float(BONK_CHECKPOINT_TABLE_LEVELS[i] - BONK_CHECKPOINT_TABLE_LEVELS[i - 1]) + 0.5f);
-        }
-    return 1;
-}
-
 bool BonkRun::IsOwnedOffer(Offer const& offer) const
 {
     if (offer.isCard)
@@ -10556,82 +10486,6 @@ bool BonkRun::IsOwnedOffer(Offer const& offer) const
 bool BonkRun::CanBanish(Offer const& offer) const
 {
     return offer.step == BONK_STEP_EVOLVE || !IsOwnedOffer(offer);
-}
-
-bool BonkRun::HasOwnedOffer() const
-{
-    return std::any_of(m_offer.begin(), m_offer.end(), [this](Offer const& offer) { return IsOwnedOffer(offer); });
-}
-
-size_t BonkRun::ChooseAutoPick() const
-{
-    size_t best = 0;
-    int32 bestScore = -1;
-    for (size_t i = 0; i < m_offer.size(); ++i)
-    {
-        Offer const& offer = m_offer[i];
-        int32 const score = (IsOwnedOffer(offer) ? 100 : 0) + int32(offer.rarity) * 10 + (offer.isWeapon ? 2 : offer.isCard ? 0 : 1);
-        if (score > bestScore)
-        {
-            bestScore = score;
-            best = i;
-        }
-    }
-    return best;
-}
-
-bool BonkRun::AutoPickCatchUp(std::string& error)
-{
-    if (!m_catchUpLevels)
-    {
-        error = GetString(BONK_STRING_NO_CATCH_UP_LEVEL_UPS_LEFT);
-        return false;
-    }
-    m_autoPickCatchUp = true;
-    if (!IsAutoPicking() || m_offer.empty())
-        return true;
-    if (!HasOwnedOffer())
-    {
-        m_autoPickCatchUp = false;
-        error = GetString(BONK_STRING_SELECTION_ONLY_NEW_CARDS);
-        return false;
-    }
-    return RunAutoPicks(error);
-}
-
-bool BonkRun::RunAutoPicks(std::string& error)
-{
-    m_autoPickRunning = true;
-    bool picked = true;
-    while (picked && IsAutoPicking() && !m_offer.empty() && HasOwnedOffer())
-        picked = Pick(uint32(ChooseAutoPick() + 1), error);
-    m_autoPickRunning = false;
-    if (!m_offer.empty() && IsAutoPicking())
-    {
-        m_autoPickCatchUp = false;
-        SendOffer();
-    }
-    return picked;
-}
-
-void BonkRun::GiveCheckpointCatchUp()
-{
-    if (m_startFloor <= 1)
-        return;
-    uint32 const target = CheckpointLevel(m_startFloor);
-    uint32 const before = m_player->GetLevel() + m_overcapLevel;
-    while (m_player->GetLevel() + m_overcapLevel < target)
-    {
-        uint32 const next = GetNextLevelXp();
-        uint32 const have = m_player->GetUInt32Value(PLAYER_XP);
-        if (!next || next <= have)
-            break;
-        GiveExperience(next - have);
-    }
-    m_catchUpLevels = m_player->GetLevel() + m_overcapLevel - before;
-    for (uint32 floor = 1; floor < m_startFloor && CanGainGlyphPick(); ++floor)
-        QueueGlyphPick();
-    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_START_ON_FLOOR_AT_LEVEL, { std::to_string(m_startFloor), std::to_string(m_player->GetLevel() + m_overcapLevel) });
 }
 
 void BonkRun::GiveStartLevels()
@@ -11102,7 +10956,7 @@ void BonkRun::DropShards(Creature const* mob, BonkSpawnKind kind)
         case BONK_SPAWN_BOSS:     count = m_tier.shardsBoss; break;
         default: break;
     }
-    uint32 const scaled = uint32(count * (GetBonkMapRewardPercent(m_map.type) + GetGreedRewardPercent()) * GetAmbitionReward(kind) * GetFloorRewardScale());
+    uint32 const scaled = uint32(count * (GetBonkMapRewardPercent(m_map.type) + GetGreedRewardPercent()) * GetAmbitionReward(kind) * m_levelRow.reward);
     count = scaled / 100 + (roll_chance_u(scaled % 100) ? 1 : 0);
     if (!count)
         return;
@@ -11400,7 +11254,7 @@ float BonkRun::GetGoldMultiplier() const
 {
     float const mapBonus = float(GetBonkMapRewardPercent(m_map.type)) - 100.0f;
     return (1.0f + (GetPassiveTotal(BONK_PASSIVE_GREED) + m_bonuses.goldBonus + mapBonus + GetGreedRewardPercent()) / 100.0f) *
-        (m_invaderId ? BONK_INVASION_GOLD : IsChallenge() ? BONK_DUNGEON_GOLD : 1.0f) * GetFloorRewardScale();
+        (m_invaderId ? BONK_INVASION_GOLD : IsChallenge() ? BONK_DUNGEON_GOLD : 1.0f) * m_levelRow.reward;
 }
 
 void BonkRun::GiveGold(uint32 copper)
@@ -11469,13 +11323,13 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
     if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && mob->GetObjectGuid() != hiddenBoss && ++m_glyphMiniBosses == 1)
         DropGlyph(mob);
     if (kind == BONK_SPAWN_MINIBOSS && mob->GetObjectGuid() != hiddenBoss)
-        CountFloorMiniBoss();
+        CountStageMiniBoss();
 
     if (mob->GetObjectGuid() == m_bossGuid)
     {
         if (m_stoneBoss)
             GiveExperience(GetNextLevelXp());
-        if (IsGlyphBossFloor())
+        if (IsGlyphBossStage())
             DropGlyph(mob);
         OpenPortal(mob);
     }
@@ -12421,16 +12275,6 @@ bool BonkRun::OfferUpgrades(OfferSource source, std::vector<Offer> const* avoid,
 
     m_offerSource = source;
     SetPaused(true);
-    if (IsAutoPicking() && HasOwnedOffer())
-    {
-        if (!m_autoPickRunning)
-        {
-            std::string error;
-            RunAutoPicks(error);
-        }
-        return true;
-    }
-    m_autoPickCatchUp = false;
     SendOffer();
     return true;
 }
@@ -12718,8 +12562,6 @@ void BonkRun::CloseOffer(uint32 pickedIndex)
     }
     else if (m_pendingLevels)
         --m_pendingLevels;
-    if (m_offerSource == OFFER_LEVEL && m_catchUpLevels)
-        --m_catchUpLevels;
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     bonk->SendAddon("picked");
@@ -13105,7 +12947,7 @@ void BonkRun::SendOffer() const
     {
         bonk->SendAddon("offer~" + std::to_string(m_player->GetLevel() + m_overcapLevel) + "~" + std::to_string(m_offer.size()) + "~" +
             (m_offerSource == OFFER_CHEST ? "chest" : "level") + "~" + std::to_string(m_rerolls) + "~" + std::to_string(m_banishes) + "~" +
-            std::to_string(m_skips) + "~" + std::to_string(m_offerSource == OFFER_LEVEL ? m_catchUpLevels : 0));
+            std::to_string(m_skips));
         for (size_t i = 0; i < m_offer.size(); ++i)
         {
             Offer const& offer = m_offer[i];
@@ -13186,6 +13028,7 @@ void BonkRun::Finish(bool wentHome)
 
     if (wentHome)
         CollectAllShards();
+    PayFinale();
 
     std::string const build = DescribeBuildTotals();
     DropOffers();
@@ -13193,7 +13036,7 @@ void BonkRun::Finish(bool wentHome)
     if (!m_sandbox)
         LogRunEnd(wentHome, build);
 
-    m_player->GetBonkPlayer()->RecordRun(m_stage, m_totalMs / IN_MILLISECONDS, m_kills, m_goldEarned);
+    m_player->GetBonkPlayer()->RecordRun(m_victory ? m_difficultyLevel : 0, m_totalMs / IN_MILLISECONDS, m_kills, m_goldEarned);
     AwardMastery();
     m_endTimer = BONK_END_DELAY_MS;
 
@@ -13205,10 +13048,10 @@ void BonkRun::Finish(bool wentHome)
     if (bonk->IsAddonReady())
         bonk->SendAddon("end~" + std::string(wentHome ? "1" : "0") + "~" + std::to_string(seconds) + "~" + std::to_string(m_kills) + "~" +
             std::to_string(m_goldEarned) + "~" + std::to_string(m_player->GetLevel()) + "~" + std::to_string(m_stage) + "~" + std::to_string(m_shardsEarned) +
-            "~" + (m_victory ? "1" : "0") + "~" + (IsMythic() ? "1" : "0") + "~" + std::to_string(bonk->GetClassFloor()) + "~" +
-            std::to_string(m_floorBestAtStart));
+            "~" + (m_victory ? "1" : "0") + "~" + (IsMythic() ? "1" : "0") + "~" + std::to_string(bonk->GetBestLevel()) + "~" +
+            std::to_string(m_levelBestAtStart) + "~" + bonk->GetLevelName(m_difficultyLevel) + "~" + std::to_string(IsFinale() ? m_elapsedMs / IN_MILLISECONDS : 0));
     else
-        ChatHandler(m_player).PSendSysMessage("%s You reached floor %u in %s with %u kills at level %u, and earned %s and %s.",
+        ChatHandler(m_player).PSendSysMessage("%s You reached stage %u in %s with %u kills at level %u, and earned %s and %s.",
             m_victory ? "Victory!" : wentHome ? "Run complete!" : "Defeated.",
             m_stage, FormatTime(seconds).c_str(), m_kills, m_player->GetLevel(), FormatBonkMoney(m_goldEarned).c_str(), FormatBonkShards(m_shardsEarned).c_str());
 
@@ -13583,7 +13426,7 @@ void BonkRun::Surrender()
     if (m_sandbox)
         LeaveSandbox();
     else if (m_state == STATE_RUNNING)
-        Finish(false);
+        Finish(IsFinale() && m_player->IsAlive());
     else if (m_state == STATE_PORTAL)
         Finish(true);
     else if (m_state == STATE_ENTERING)

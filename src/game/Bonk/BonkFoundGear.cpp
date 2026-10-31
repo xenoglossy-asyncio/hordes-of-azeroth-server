@@ -184,10 +184,10 @@ void BonkFoundStore::Forget(uint32 itemGuid)
     CharacterDatabase.PExecute("DELETE FROM `bonk_item_found` WHERE `item_guid` = %u", itemGuid);
 }
 
-BonkFoundGear BonkFound::Roll(uint32 floorTier)
+BonkFoundGear BonkFound::Roll(uint32 dropTier)
 {
     BonkFoundGear found;
-    found.tier = std::max(1u, floorTier) + RollExtraTiers();
+    found.tier = std::max(1u, dropTier) + RollExtraTiers();
     found.lines = RollLines(RollLineCount());
     return found;
 }

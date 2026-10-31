@@ -106,20 +106,18 @@ namespace
     float const BONK_TIER_DROP_MINIBOSS    = 25.0f;
     float const BONK_TIER_DROP_MINIBOSS_AHEAD = 50.0f;
     float const BONK_GEAR_CHANCE_PER_AFFIX = 5.0f;
-    uint32 const BONK_EPIC_FIRST_FLOOR     = 10;
-    float const BONK_EPIC_BOSS_CHANCE      = 10.0f;
-    float const BONK_EPIC_PER_FLOOR        = 1.0f;
+    float const BONK_EPIC_BOSS_CHANCE      = 5.0f;
+    float const BONK_EPIC_PER_LEVEL        = 2.0f;
     float const BONK_EPIC_MAX_CHANCE       = 25.0f;
     float const BONK_EPIC_MINIBOSS_SHARE   = 0.3f;
-    uint32 const BONK_LEGENDARY_FIRST_FLOOR = 20;
-    float const BONK_GEAR_LEGENDARY_CHANCE = 0.5f;
-    float const BONK_GEAR_LEGENDARY_PER_FLOOR = 0.05f;
-    float const BONK_GEAR_LEGENDARY_MAX_CHANCE = 2.0f;
+    uint32 const BONK_LEGENDARY_FIRST_LEVEL = 6;
+    float const BONK_GEAR_LEGENDARY_CHANCE = 1.0f;
+    float const BONK_GEAR_LEGENDARY_PER_LEVEL = 0.5f;
+    float const BONK_GEAR_LEGENDARY_MAX_CHANCE = 3.5f;
     float const BONK_INVASION_UPGRADE_CHANCE = 50.0f;
     uint32 const BONK_SCRAP_ELITE_BASE = 1;
-    uint32 const BONK_SCRAP_ELITE_FLOORS_PER_POINT = 4;
+    uint32 const BONK_SCRAP_ELITE_LEVELS_PER_POINT = 4;
     uint32 const BONK_GO_PILLAR            = 900070;
-    uint32 const BONK_PILLAR_EVERY_OTHER_UNTIL = 10;
     uint32 const BONK_PILLAR_MINI_BOSSES   = 2;
     float const BONK_PILLAR_MIN_DISTANCE   = 120.0f;
     float const BONK_PILLAR_MAX_DISTANCE   = 250.0f;
@@ -141,11 +139,11 @@ namespace
                                                 { ITEM_QUALITY_NORMAL, 30, ITEM_QUALITY_UNCOMMON, 0 },
                                                 { ITEM_QUALITY_UNCOMMON, 100, ITEM_QUALITY_UNCOMMON, 15 } };
 
-    float EpicChance(uint32 stage, BonkSpawnKind kind)
+    float EpicChance(BonkTier const& tier, uint32 bandLevel, BonkSpawnKind kind)
     {
-        if (stage < BONK_EPIC_FIRST_FLOOR || (kind != BONK_SPAWN_BOSS && kind != BONK_SPAWN_MINIBOSS))
+        if (tier.key != "mythic" || (kind != BONK_SPAWN_BOSS && kind != BONK_SPAWN_MINIBOSS))
             return 0.0f;
-        float const boss = std::min(BONK_EPIC_MAX_CHANCE, BONK_EPIC_BOSS_CHANCE + BONK_EPIC_PER_FLOOR * float(stage - BONK_EPIC_FIRST_FLOOR));
+        float const boss = std::min(BONK_EPIC_MAX_CHANCE, BONK_EPIC_BOSS_CHANCE + BONK_EPIC_PER_LEVEL * float(bandLevel - 1));
         return kind == BONK_SPAWN_BOSS ? boss : boss * BONK_EPIC_MINIBOSS_SHARE;
     }
 
@@ -217,21 +215,21 @@ namespace
     }
 }
 
-float BonkRun::BossLegendaryChance(BonkTier const& tier, uint32 stage)
+float BonkRun::BossLegendaryChance(BonkTier const& tier, uint32 bandLevel)
 {
-    if (tier.key != "mythic" || stage < BONK_LEGENDARY_FIRST_FLOOR)
+    if (tier.key != "mythic" || bandLevel < BONK_LEGENDARY_FIRST_LEVEL)
         return 0.0f;
-    return std::min(BONK_GEAR_LEGENDARY_MAX_CHANCE, BONK_GEAR_LEGENDARY_CHANCE + BONK_GEAR_LEGENDARY_PER_FLOOR * float(stage - BONK_LEGENDARY_FIRST_FLOOR));
+    return std::min(BONK_GEAR_LEGENDARY_MAX_CHANCE, BONK_GEAR_LEGENDARY_CHANCE + BONK_GEAR_LEGENDARY_PER_LEVEL * float(bandLevel - BONK_LEGENDARY_FIRST_LEVEL));
 }
 
-float BonkRun::BossEpicChance(BonkTier const& tier, uint32 stage)
+float BonkRun::BossEpicChance(BonkTier const& tier, uint32 bandLevel)
 {
-    return tier.key == "mythic" ? EpicChance(stage, BONK_SPAWN_BOSS) : 0.0f;
+    return EpicChance(tier, bandLevel, BONK_SPAWN_BOSS);
 }
 
 uint32 BonkRun::GetDropTier() const
 {
-    return std::max(1u, m_stage);
+    return std::min(m_difficultyLevel, BONK_STOCK_TIER_MAX);
 }
 
 uint8 BonkRun::RollGearQuality(BonkSpawnKind kind) const
@@ -256,14 +254,14 @@ void BonkRun::DropTierPiece(Creature const* mob, BonkSpawnKind kind)
         AddEliteScrap();
         return;
     }
-    bool const ahead = m_stage >= m_player->GetBonkPlayer()->GetStockTier();
+    bool const ahead = GetDropTier() >= m_player->GetBonkPlayer()->GetStockTier();
     float const miniBoss = ahead ? BONK_TIER_DROP_MINIBOSS_AHEAD : BONK_TIER_DROP_MINIBOSS;
     float const chance = kind == BONK_SPAWN_BOSS ? BONK_TIER_DROP_BOSS : kind == BONK_SPAWN_MINIBOSS ? miniBoss : 0.0f;
     if (!roll_chance_f(chance))
         return;
-    if (kind == BONK_SPAWN_BOSS && roll_chance_f(BossLegendaryChance(m_tier, m_stage)) && DropLegendary(mob))
+    if (kind == BONK_SPAWN_BOSS && roll_chance_f(BossLegendaryChance(m_tier, GetBandLevel())) && DropLegendary(mob))
         return;
-    PlaceTierPiece(mob, roll_chance_f(EpicChance(m_stage, kind)));
+    PlaceTierPiece(mob, roll_chance_f(EpicChance(m_tier, GetBandLevel(), kind)));
 }
 
 bool BonkRun::MakeTierPiece(bool epic, PendingGear& piece) const
@@ -326,7 +324,7 @@ std::string BonkRun::DescribeFoundDrop(BonkFoundGear const& found) const
 void BonkRun::AddEliteScrap()
 {
     if (IsMythic() && !m_sandbox)
-        m_eliteScrap += BONK_SCRAP_ELITE_BASE + m_stage / BONK_SCRAP_ELITE_FLOORS_PER_POINT;
+        m_eliteScrap += BONK_SCRAP_ELITE_BASE + GetBandLevel() / BONK_SCRAP_ELITE_LEVELS_PER_POINT;
 }
 
 bool BonkRun::MakeLegendary(PendingGear& piece) const
@@ -1414,7 +1412,7 @@ void BonkRun::SendVault() const
     bonk->SendAddon("vaultclear");
     bonk->SendAddon("vaultsent");
     for (PillarSentPiece const& piece : m_pillarSent)
-        bonk->SendAddon("vaultsentitem~" + std::to_string(piece.entry) + "~" + std::to_string(piece.floor) + "~" +
+        bonk->SendAddon("vaultsentitem~" + std::to_string(piece.entry) + "~" + std::to_string(piece.stage) + "~" +
             std::to_string(piece.tier) + "~" + piece.lines + "~" + piece.extra);
     std::string chosen;
     for (VaultFind const& find : GetVaultFinds())
@@ -1478,7 +1476,7 @@ bool BonkRun::SendHomeFromPillar(uint32 guidLow, std::string& error)
     bool const wasFound = sBonkFound.Get(item->GetGUIDLow(), found);
     PillarSentPiece sent;
     sent.entry = foundEntry;
-    sent.floor = m_stage;
+    sent.stage = m_stage;
     sent.tier = BonkFound::GetItemTier(item);
     if (wasFound)
     {
@@ -1502,22 +1500,20 @@ bool BonkRun::SendHomeFromPillar(uint32 guidLow, std::string& error)
     return true;
 }
 
-bool BonkRun::IsPillarFloor() const
+bool BonkRun::IsPillarStage() const
 {
-    if (!IsMythic() || m_sandbox || m_stage < m_player->GetBonkPlayer()->GetStockTier())
-        return false;
-    return m_stage > BONK_PILLAR_EVERY_OTHER_UNTIL || m_stage % 2 == 0;
+    return IsMythic() && !m_sandbox && !IsFinale() && GetDropTier() >= m_player->GetBonkPlayer()->GetStockTier();
 }
 
-void BonkRun::CountFloorMiniBoss()
+void BonkRun::CountStageMiniBoss()
 {
-    if (++m_floorMiniBosses == BONK_PILLAR_MINI_BOSSES)
+    if (++m_stageMiniBosses == BONK_PILLAR_MINI_BOSSES)
         MaybeSpawnPillar();
 }
 
 void BonkRun::MaybeSpawnPillar()
 {
-    if (m_pillarRaised || !IsPillarFloor())
+    if (m_pillarRaised || !IsPillarStage())
         return;
 
     BonkSpot spot;
@@ -1530,7 +1526,7 @@ void BonkRun::MaybeSpawnPillar()
 
 void BonkRun::MaybeSpawnPillarAt(float x, float y, float baseZ)
 {
-    if (m_pillarRaised || !IsPillarFloor())
+    if (m_pillarRaised || !IsPillarStage())
         return;
 
     float z = m_player->GetMap()->GetHeight(x, y, baseZ + 5.0f, true, 10.0f);

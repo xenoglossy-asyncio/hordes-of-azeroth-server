@@ -367,7 +367,7 @@ bool BonkPlayer::StartSandbox(std::string& error)
     BonkTier const* tier = map ? sBonkMgr.GetTier(map->tierId) : nullptr;
     if (!tier)
     {
-        std::vector<BonkTier const*> const tiers = GetTiersInOrder();
+        std::vector<BonkTier const*> const& tiers = sBonkMgr.GetTiersInOrder();
         tier = tiers.empty() ? nullptr : tiers.front();
     }
     if (!map || map->creatures.empty() || !tier)
@@ -982,7 +982,7 @@ void BonkRun::SetSandboxTraining(uint32 rank)
     HealInSandbox();
 }
 
-bool BonkRun::SetSandboxTier(uint32 tierId, uint32 stage, std::string& error)
+bool BonkRun::SetSandboxTier(uint32 tierId, uint32 bandLevel, std::string& error)
 {
     BonkTier const* tier = sBonkMgr.GetTier(tierId);
     if (!tier)
@@ -991,8 +991,11 @@ bool BonkRun::SetSandboxTier(uint32 tierId, uint32 stage, std::string& error)
         return false;
     }
     m_tier = *tier;
-    m_stage = std::max(1u, stage);
-    m_player->GetBonkPlayer()->Notify(BONK_STRING_SANDBOX_ENEMIES_NOW_FIGHT_AS, { Localize(BONK_FIELD_TIER_NAME, m_tier.id, m_tier.name), std::to_string(m_stage) });
+    uint32 const band = tier->IsEndlessLevels() ? std::max(1u, bandLevel) : std::max(1u, std::min(bandLevel, tier->levels));
+    m_difficultyLevel = tier->firstLevel + band - 1;
+    m_levelRow = sBonkMgr.GetLevel(*tier, band);
+    m_stage = 1;
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_SANDBOX_ENEMIES_NOW_FIGHT_AS, { m_player->GetBonkPlayer()->GetLevelName(m_difficultyLevel), std::to_string(m_stage) });
     return true;
 }
 

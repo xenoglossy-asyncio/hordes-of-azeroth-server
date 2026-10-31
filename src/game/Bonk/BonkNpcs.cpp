@@ -58,13 +58,13 @@ bool GossipHello_npc_bonk_run_master(Player* player, Creature* creature)
         return true;
     }
 
-    for (BonkTier const* tierPtr : BonkPlayer::GetTiersInOrder())
+    for (BonkTier const* tierPtr : sBonkMgr.GetTiersInOrder())
     {
         if (player->PlayerTalkClass->GetGossipMenu().MenuItemCount() >= GOSSIP_MAX_MENU_ITEMS)
             break;
 
         BonkTier const& tier = *tierPtr;
-        std::string text = tier.name;
+        std::string text = bonk->IsTierUnlocked(tier) ? bonk->GetLevelName(bonk->GetOpenLevel(tier)) : tier.name;
         if (!bonk->IsTierUnlocked(tier))
         {
             std::string hint = bonk->GetUnlockHint(tier);
@@ -72,8 +72,6 @@ bool GossipHello_npc_bonk_run_master(Player* player, Creature* creature)
                 hint[0] = char(tolower(static_cast<unsigned char>(hint[0])));
             text += " (locked: " + hint + ")";
         }
-        else if (uint32 const best = bonk->GetBestStage(tier.id))
-            text += " (best: floor " + std::to_string(best) + ")";
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_BATTLE, text.c_str(), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + tier.id);
     }
 
@@ -301,10 +299,9 @@ bool GOHello_go_bonk_portal(Player* player, GameObject* go)
 
     if (BonkMap const* next = run->GetNextMap())
     {
-        BonkTier const& tier = run->GetTier();
-        bool const endless = tier.stages && run->GetStage() + 1 > tier.stages;
-        std::string const text = run->GetString(endless ? BONK_STRING_PORTAL_NEXT_ENDLESS_FLOOR : BONK_STRING_PORTAL_NEXT_FLOOR,
-            { std::to_string(run->GetStage() + 1), run->Localize(BONK_FIELD_MAP_NAME, next->id, next->name) });
+        std::string const mapName = run->Localize(BONK_FIELD_MAP_NAME, next->id, next->name);
+        std::string const text = run->GetStage() >= run->GetTier().stages ? run->GetString(BONK_STRING_PORTAL_FINALE, { mapName }) :
+            run->GetString(BONK_STRING_PORTAL_NEXT_STAGE, { std::to_string(run->GetStage() + 1), mapName });
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_BATTLE, text.c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_NEXT);
     }
     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, run->GetString(BONK_STRING_PORTAL_RETURN_HOME).c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME);

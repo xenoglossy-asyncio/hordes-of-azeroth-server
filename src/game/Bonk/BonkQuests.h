@@ -19,7 +19,7 @@ enum BonkQuestType : uint8
     BONK_QUEST_KILLS          = 0,
     BONK_QUEST_KILL_KIND      = 1,
     BONK_QUEST_KILL_WEAPON    = 2,
-    BONK_QUEST_REACH_STAGE    = 3,
+    BONK_QUEST_CLEAR_LEVEL    = 3,
     BONK_QUEST_REACH_LEVEL    = 4,
     BONK_QUEST_SHARDS         = 5,
     BONK_QUEST_CRITS          = 6,
@@ -143,7 +143,7 @@ class BonkQuests
 
         void OnKill(Player* player, BonkSpawnKind kind, uint32 killingSpell, uint32 creatureType, uint32 entry, bool standing);
         void OnBossFight(Player* player, BonkSpawnKind kind, uint32 seconds, bool unhurt, uint32 healthPercent);
-        void OnStage(Player* player, uint32 tierId, uint32 stage, bool backfill = false);
+        void OnLevelCleared(Player* player, uint32 classLevel, uint32 accountLevel);
         void OnBossKilled(Player* player, uint32 tierId, uint32 stage, uint32 second);
         void OnShards(Player* player, uint32 count);
         void OnProgress(Player* player, BonkQuestType type, uint32 target, uint32 value, bool absolute = false);
@@ -168,7 +168,6 @@ class BonkQuests
         typedef std::map<uint32, Progress> AccountProgress;
 
         void Track(Player* player, std::function<void(BonkQuest const&, AccountProgress&)> const& step);
-        void CreditStage(Player* player, uint32 tierId, uint32 stage, bool backfill);
         void Advance(Player* player, AccountProgress& progress, BonkQuest const& quest, uint32 value, bool absolute);
         void AdvanceBit(AccountProgress& progress, BonkQuest const& quest, uint32 bit);
         void Complete(Player* player, BonkQuest const& quest);

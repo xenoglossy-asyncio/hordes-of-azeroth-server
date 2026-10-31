@@ -184,8 +184,7 @@ void BonkQuests::OnLogin(Player* player)
         m_disabled[account] = std::move(disabled);
     }
 
-    for (auto const& itr : sBonkMgr.GetTiers())
-        OnStage(player, itr.first, player->GetBonkPlayer()->GetBestStage(itr.first), true);
+    OnLevelCleared(player, player->GetBonkPlayer()->GetBestLevel(), player->GetBonkPlayer()->GetAccountBestLevel());
     OnProgress(player, BONK_QUEST_MASTERY_LEVEL, player->GetClass(), player->GetBonkPlayer()->GetMasteryLevel(), true);
     OnProgress(player, BONK_QUEST_QUESTS_DONE, 0, CountCompleted(account), true);
 }
@@ -550,30 +549,15 @@ void BonkQuests::OnKill(Player* player, BonkSpawnKind kind, uint32 killingSpell,
     });
 }
 
-void BonkQuests::OnStage(Player* player, uint32 tierId, uint32 stage, bool backfill)
+void BonkQuests::OnLevelCleared(Player* player, uint32 classLevel, uint32 accountLevel)
 {
-    if (!stage)
+    if (!accountLevel)
         return;
 
-    CreditStage(player, tierId, stage, backfill);
-    if (stage < 2)
-        return;
-
-    BonkTier const* tier = sBonkMgr.GetTier(tierId);
-    for (uint32 hops = 0; tier && tier->unlockTierId && hops < 8; ++hops)
-    {
-        tier = sBonkMgr.GetTier(tier->unlockTierId);
-        if (tier)
-            CreditStage(player, tier->id, tier->stages + 1, backfill);
-    }
-}
-
-void BonkQuests::CreditStage(Player* player, uint32 tierId, uint32 stage, bool backfill)
-{
     Track(player, [&](BonkQuest const& q, AccountProgress& progress)
     {
-        if (q.type == BONK_QUEST_REACH_STAGE && q.target == tierId && !(backfill && q.classId))
-            Advance(player, progress, q, stage, true);
+        if (q.type == BONK_QUEST_CLEAR_LEVEL)
+            Advance(player, progress, q, q.classId ? classLevel : accountLevel, true);
     });
 }
 

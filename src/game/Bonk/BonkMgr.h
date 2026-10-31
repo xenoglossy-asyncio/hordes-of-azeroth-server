@@ -236,15 +236,9 @@ struct BonkRunChoice
     BonkMap const* startMap = nullptr;
     BonkMap const* dungeon = nullptr;
     bool invade = false;
-    uint32 startFloor = 1;
+    uint32 level = 0;
     bool groupReady = false;
 };
-
-uint32 const BONK_CHECKPOINT_STEP = 5;
-uint32 const BONK_CHECKPOINT_TABLE_FLOORS[] = { 1, 5, 10, 15, 20 };
-uint32 const BONK_CHECKPOINT_TABLE_LEVELS[] = { 1, 69, 89, 96, 104 };
-float const BONK_CHECKPOINT_LEVELS_PER_FLOOR = 0.5f;
-uint32 const BONK_CHECKPOINT_GAP = 15;
 
 struct BonkMapStart
 {
@@ -270,6 +264,16 @@ struct BonkPowerup
     float value = 0.0f;
 };
 
+struct BonkLevel
+{
+    uint32 level = 1;
+    float health = 1.0f;
+    float damage = 1.0f;
+    uint8 extraAffixes = 0;
+    float veteranChance = 0.0f;
+    float reward = 1.0f;
+};
+
 struct BonkTier
 {
     uint32 id = 0;
@@ -284,18 +288,8 @@ struct BonkTier
     float stageDamageGrowth = 0.25f;
     float stageHealthAccel = 0.05f;
     float stageDamageAccel = 0.05f;
-    bool stageCompound = false;
-    uint32 floorKnee = 0;
-    float lateHealthGrowth = 0.0f;
-    float lateDamageGrowth = 0.0f;
-    uint32 floorKnee2 = 0;
-    float lastHealthGrowth = 0.0f;
-    float lastDamageGrowth = 0.0f;
-    float kneeHealthStep = 1.0f;
-    float knee2HealthStep = 1.0f;
     float bossHealthMultiplier = 1.0f;
     float minibossHealthMultiplier = 1.0f;
-    uint32 bossHealthRampFloors = 0;
     float minAliveMultiplier = 1.0f;
     float openingCrowd = 1.0f;
     uint32 openingMs = 0;
@@ -307,7 +301,6 @@ struct BonkTier
     float chestCostGrowth = 0.5f;
     float chestCostMinuteGrowth = 0.0f;
     uint32 unlockTierId = 0;
-    uint32 unlockStage = 0;
     float shardChanceNormal = 0.1f;
     float shardChanceElite = 12.0f;
     uint32 shardsMiniboss = 1;
@@ -317,10 +310,20 @@ struct BonkTier
     uint32 masteryXpMinute = 10;
     uint32 masteryXpMiniboss = 15;
     uint32 masteryXpBoss = 40;
-    uint32 stages = 0;
-    bool endless = false;
+    uint32 stages = 3;
+    bool finale = false;
+    uint32 levels = 0;
+    float levelHealthGrowth = 1.0f;
+    float levelDamageGrowth = 1.0f;
+    uint32 firstLevel = 1;
+    std::vector<BonkLevel> levelRows;
 
     std::vector<uint32> mapIds;
+
+    bool IsEndlessLevels() const { return levels == 0; }
+    uint32 GetLastLevel() const { return IsEndlessLevels() ? UINT32_MAX : firstLevel + levels - 1; }
+    bool HasLevel(uint32 level) const { return level >= firstLevel && level <= GetLastLevel(); }
+    uint32 GetBandLevel(uint32 level) const { return level - firstLevel + 1; }
 };
 
 enum BonkWeaponTarget : uint8
@@ -1016,7 +1019,7 @@ uint32 const BONK_TRAINING_TREE = 7;
 uint8 const BONK_TRAINING_OPEN_RANKS = 3;
 uint8 const BONK_TRAINING_HEROIC_RANKS = 3;
 uint8 const BONK_TRAINING_MYTHIC_RANKS = 4;
-uint32 const BONK_TRAINING_FLOORS_PER_RANK = 4;
+uint32 const BONK_TRAINING_LEVELS_PER_RANK = 4;
 uint32 const BONK_TIER_VENDOR = 900150;
 uint32 const BONK_DECK_OBJECT = 900063;
 uint32 const BONK_COOP_NPC = 900190;
@@ -1060,25 +1063,13 @@ struct BonkTrinket
     BonkString text;
 };
 uint8 const BONK_DETERMINATION_MAX_STACKS = 5;
-uint32 const BONK_FLOORS_PER_TALENT_POINT = 2;
-uint32 const BONK_FLOOR_TALENT_POINTS_MAX = 10;
-uint32 const BONK_MYTHIC_MILESTONE_FLOORS = 5;
-float const BONK_FLOOR_GOLD_GROWTH = 0.1f;
-uint32 const BONK_FLOOR_REWARD_GROWTH_FLOORS = 10;
-uint32 const BONK_FLOOR_TICKETS_BASE = 3;
-uint32 const BONK_MILESTONE_TICKET_FACTOR = 2;
+uint32 const BONK_LEVELS_PER_TALENT_POINT = 2;
+uint32 const BONK_LEVEL_TALENT_POINTS_MAX = 10;
+uint32 const BONK_LEVEL_TICKETS_BASE = 3;
 
-inline bool IsMythicMilestoneFloor(uint32 floor)
+inline uint32 GetLevelFirstClearTickets(uint32 level)
 {
-    return floor % BONK_MYTHIC_MILESTONE_FLOORS == 0 && floor <= BONK_MYTHIC_MILESTONE_FLOORS * 4;
-}
-
-inline uint32 GetFloorFirstClearTickets(uint32 floor)
-{
-    uint32 const tickets = BONK_FLOOR_TICKETS_BASE + floor / 2;
-    if (IsMythicMilestoneFloor(floor))
-        return tickets * BONK_MILESTONE_TICKET_FACTOR;
-    return floor % 2 == 1 ? tickets : 0;
+    return BONK_LEVEL_TICKETS_BASE + level / 2;
 }
 float const BONK_DETERMINATION_PER_STACK = 3.0f;
 
@@ -1359,6 +1350,9 @@ class BonkMgr
         BonkMap const* FindTierMap(BonkTier const& tier, std::string const& key) const;
         std::vector<BonkMap const*> GetDungeons() const;
         std::map<uint32, BonkTier> const& GetTiers() const { return m_tiers; }
+        std::vector<BonkTier const*> const& GetTiersInOrder() const { return m_tiersInOrder; }
+        BonkTier const* GetLevelTier(uint32 level) const;
+        BonkLevel GetLevel(BonkTier const& tier, uint32 bandLevel) const;
 
         BonkMap const* GetMap(uint32 id) const;
         std::vector<BonkMapStart> GetMapStarts(uint32 bonkMapId) const;
@@ -1448,6 +1442,8 @@ class BonkMgr
 
     private:
         void LoadTiers();
+        void LoadLevels();
+        void OrderTiers();
         void LoadMaps();
         void LoadMapCreatures();
         void LoadMapEvents();
@@ -1478,6 +1474,7 @@ class BonkMgr
         void CheckShopLayout(char const* table, BonkShop shop, std::map<uint32, Entry>& entries) const;
 
         std::map<uint32, BonkTier> m_tiers;
+        std::vector<BonkTier const*> m_tiersInOrder;
         std::map<uint32, BonkMap> m_maps;
         std::map<uint32, BonkWeapon> m_weapons;
         std::map<uint8, BonkKeywordInfo> m_keywords;

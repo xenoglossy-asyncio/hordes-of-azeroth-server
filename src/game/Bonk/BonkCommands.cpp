@@ -126,8 +126,8 @@ bool ChatHandler::HandleBonkStartCommand(char* args)
             continue;
         if (option == "invade")
             choice.invade = true;
-        else if (option.compare(0, 5, "floor") == 0 && option.size() > 5 && isdigit(static_cast<unsigned char>(option[5])))
-            choice.startFloor = std::max(1u, uint32(atoi(option.c_str() + 5)));
+        else if (isdigit(static_cast<unsigned char>(option[0])))
+            choice.level = tier->firstLevel + std::max(1u, uint32(atoi(option.c_str()))) - 1;
         else if (BonkMap const* dungeon = sBonkMgr.FindDungeon(option))
             choice.dungeon = dungeon;
         else if (BonkMap const* map = sBonkMgr.FindTierMap(*tier, option))
@@ -182,18 +182,6 @@ bool ChatHandler::HandleBonkHomeCommand(char*)
 bool ChatHandler::HandleBonkPickCommand(char* args)
 {
     BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();
-    if (args && std::string(args) == "auto")
-    {
-        std::string error = GetString(m_session, BONK_STRING_NOT_IN_A_RUN);
-        if (!run || !run->AutoPickCatchUp(error))
-        {
-            SendSysMessage(error.c_str());
-            SetSentErrorMessage(true);
-            return false;
-        }
-        return true;
-    }
-
     uint32 choice;
     if (!ExtractUInt32(&args, choice))
         return false;
@@ -356,7 +344,7 @@ bool ChatHandler::HandleBonkPortalCommand(char*)
     BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();
     if (!run || !run->ForcePortal())
     {
-        SendSysMessage("You need to be fighting on a floor of a run.");
+        SendSysMessage("You need to be fighting on a stage of a run.");
         SetSentErrorMessage(true);
         return false;
     }

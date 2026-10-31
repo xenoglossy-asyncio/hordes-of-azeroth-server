@@ -17,8 +17,6 @@
 namespace
 {
     uint32 const BONK_GLYPH_PICKS      = 2;
-    uint32 const BONK_MYTHIC_GLYPH_PICKS = 6;
-    uint32 const BONK_MYTHIC_GLYPH_FLOORS[] = { 2, 5, 10, 15, 20 };
     uint32 const BONK_GLYPH_CHOICES    = 4;
     uint32 const BONK_GLYPH_STILL_MS   = 500;
     uint32 const BONK_GLYPH_MIN_CLEAN  = 2;
@@ -83,7 +81,7 @@ namespace
 
 bool BonkRun::CanGainGlyphPick() const
 {
-    uint32 const picks = (IsMythic() ? BONK_MYTHIC_GLYPH_PICKS : BONK_GLYPH_PICKS) + (GetUtility(BONK_UTILITY_START_GLYPH) > 0.0f ? 1 : 0);
+    uint32 const picks = BONK_GLYPH_PICKS + (GetUtility(BONK_UTILITY_START_GLYPH) > 0.0f ? 1 : 0);
     return m_glyphPicksGiven + m_pendingGlyphPicks + uint32(m_glyphDrops.size()) < picks && !sBonkMgr.GetGlyphs().empty();
 }
 
@@ -327,11 +325,9 @@ void BonkRun::EchoRankPick(OwnedWeapon& owned, Offer const& offer)
     m_player->GetBonkPlayer()->Notify(BONK_STRING_YOUR_GLYPH_OF_ECHOES_GIVES, { Localize(BONK_FIELD_WEAPON_NAME, owned.weapon.id, owned.weapon.name) });
 }
 
-bool BonkRun::IsGlyphBossFloor() const
+bool BonkRun::IsGlyphBossStage() const
 {
-    if (IsMythic())
-        return std::find(std::begin(BONK_MYTHIC_GLYPH_FLOORS), std::end(BONK_MYTHIC_GLYPH_FLOORS), m_stage) != std::end(BONK_MYTHIC_GLYPH_FLOORS);
-    return !m_tier.stages || m_stage < m_tier.stages;
+    return m_stage < m_tier.stages;
 }
 
 bool BonkRun::IsDivineShieldReady() const
@@ -346,12 +342,12 @@ bool BonkRun::IsDivineShieldReady() const
 
 std::string BonkRun::DescribeDivineShieldRecharge(BonkGlyph const& shield) const
 {
-    uint32 const floors = uint32(shield.values[1]);
-    if (!floors)
+    uint32 const stages = uint32(shield.values[1]);
+    if (!stages)
         return GetString(BONK_STRING_DIVINE_SHIELD_NEVER);
-    if (floors == 1)
-        return GetString(BONK_STRING_DIVINE_SHIELD_NEXT_FLOOR);
-    return GetString(BONK_STRING_DIVINE_SHIELD_FLOORS, { std::to_string(floors) });
+    if (stages == 1)
+        return GetString(BONK_STRING_DIVINE_SHIELD_NEXT_STAGE);
+    return GetString(BONK_STRING_DIVINE_SHIELD_STAGES, { std::to_string(stages) });
 }
 
 bool BonkRun::IsProdigySpell(SpellEntry const* spell) const

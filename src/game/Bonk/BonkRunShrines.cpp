@@ -722,17 +722,17 @@ bool BonkRun::PlaceShrineNow(BonkShrineType type, std::string& error)
 {
     if (m_state != STATE_RUNNING)
     {
-        error = GetString(BONK_STRING_ONLY_RUNNING_FLOOR_SHRINE);
+        error = GetString(BONK_STRING_ONLY_RUNNING_STAGE_SHRINE);
         return false;
     }
     if ((type == BONK_SHRINE_MOONWELL && m_moonwellPlaced) || (type == BONK_SHRINE_STONE && m_stonePlaced))
     {
-        error = GetString(BONK_STRING_FLOOR_ALREADY_HAD_SHRINE, { GetString(SHRINE_LABELS[type]) });
+        error = GetString(BONK_STRING_STAGE_ALREADY_HAD_SHRINE, { GetString(SHRINE_LABELS[type]) });
         return false;
     }
     if (type == BONK_SHRINE_LEY_LINE && m_leyLinesPlaced >= BONK_MAX_LEY_LINES)
     {
-        error = GetString(BONK_STRING_FLOOR_ALREADY_HAD_LEY_LINES, { std::to_string(BONK_MAX_LEY_LINES) });
+        error = GetString(BONK_STRING_STAGE_ALREADY_HAD_LEY_LINES, { std::to_string(BONK_MAX_LEY_LINES) });
         return false;
     }
     if (!PlaceShrine(type))

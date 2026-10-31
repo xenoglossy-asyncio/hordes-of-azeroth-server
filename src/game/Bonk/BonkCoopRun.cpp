@@ -183,10 +183,7 @@ namespace
 
     std::string StartText(BonkTier const& tier, BonkRunChoice const& choice)
     {
-        std::string text = "The host wants to start " + tier.name;
-        if (choice.startFloor > 1)
-            text += " floor " + std::to_string(choice.startFloor);
-        return text + ".";
+        return "The host wants to start " + tier.name + " " + std::to_string(tier.GetBandLevel(choice.level)) + ".";
     }
 
     bool Done(ReadyCheck const& check)
@@ -393,7 +390,7 @@ void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage
     {
         ++group->second.pool;
         for (Player* member : GroupMembers(host))
-            member->GetBonkPlayer()->Notify("Floor cleared! Your group gains a revive.");
+            member->GetBonkPlayer()->Notify("Stage cleared! Your group gains a revive.");
     }
 }
 

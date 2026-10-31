@@ -199,30 +199,18 @@ class BonkRun
         bool ForcePortal() { if (m_state != STATE_RUNNING || m_sandbox) return false; OpenPortal(nullptr); return true; }
         BonkMap const& GetMap() const { return m_map; }
         BonkTier const& GetTier() const { return m_tier; }
-        uint32 GetEliteAffixes() const { return m_tier.eliteAffixes + m_bonuses.eliteAffixes + GetMilestoneAffixes(); }
+        uint32 GetEliteAffixes() const { return m_tier.eliteAffixes + m_bonuses.eliteAffixes + m_levelRow.extraAffixes; }
         ObjectGuid const& GetBossGuid() const { return m_bossGuid; }
-        uint32 GetFloorMilestones() const;
-        static float CompoundStageScale(uint32 stage, float growth, float lateGrowth, uint32 knee, float lastGrowth, uint32 knee2);
-        static float TierHealthScale(BonkTier const& tier, uint32 stage);
-        static uint32 CheckpointLevel(uint32 floor);
-        void GiveCheckpointCatchUp();
-        size_t ChooseAutoPick() const;
-        bool IsAutoPicking() const { return m_autoPickCatchUp && m_catchUpLevels && m_offerSource == OFFER_LEVEL; }
-        bool AutoPickCatchUp(std::string& error);
-        bool RunAutoPicks(std::string& error);
-        static float TierKneeHealthSteps(BonkTier const& tier, uint32 stage);
-        static float TierDamageScale(BonkTier const& tier, uint32 stage);
-        static uint32 FloorMilestones(BonkTier const& tier, uint32 stage);
-        static uint32 MilestoneAffixes(BonkTier const& tier, uint32 stage);
-        static float MilestoneVeteranChance(BonkTier const& tier, uint32 stage);
-        static float FloorRewardScale(BonkTier const& tier, uint32 stage);
-        static float BossLegendaryChance(BonkTier const& tier, uint32 stage);
-        static float BossEpicChance(BonkTier const& tier, uint32 stage);
-        uint32 GetMilestoneAffixes() const;
-        float GetMilestoneVeteranChance() const;
+        static float StageHealthScale(BonkTier const& tier, BonkLevel const& level, uint32 stage);
+        static float StageDamageScale(BonkTier const& tier, BonkLevel const& level, uint32 stage);
+        static float BossLegendaryChance(BonkTier const& tier, uint32 bandLevel);
+        static float BossEpicChance(BonkTier const& tier, uint32 bandLevel);
         uint32 GetEvolveRank() const;
         void BringBossEarlier();
         uint32 GetStage() const { return m_stage; }
+        uint32 GetDifficultyLevel() const { return m_difficultyLevel; }
+        uint32 GetBandLevel() const { return m_tier.GetBandLevel(m_difficultyLevel); }
+        bool IsFinale() const { return m_stage > m_tier.stages; }
 
         void OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer = nullptr);
         void OnMobStuck(Creature* mob);
@@ -612,9 +600,9 @@ class BonkRun
         void DespawnPools();
         void RunEvent(BonkMapEvent const& event);
         void OpenPortal(Creature* boss);
-        void RewardMythicFloor();
+        void RewardLevelClear();
+        void PayFinale();
         bool IsMythic() const { return m_tier.key == "mythic"; }
-        float GetFloorRewardScale() const;
         float GetScrapMultiplier() const;
         void PlacePortal(float x, float y, float baseZ);
 
@@ -765,7 +753,7 @@ class BonkRun
         void RankUpStarter(uint32 ranks);
         void RankUpWeapon(OwnedWeapon& owned, uint32 ranks);
         void EchoRankPick(OwnedWeapon& owned, Offer const& offer);
-        bool IsGlyphBossFloor() const;
+        bool IsGlyphBossStage() const;
         bool IsDivineShieldReady() const;
         std::string DescribeDivineShieldRecharge(BonkGlyph const& shield) const;
         bool IsProdigySpell(SpellEntry const* spell) const;
@@ -1263,8 +1251,8 @@ class BonkRun
         void SendVault() const;
         bool CheckVaultReach(std::string& error) const;
         bool CheckPillarReach(std::string& error) const;
-        bool IsPillarFloor() const;
-        void CountFloorMiniBoss();
+        bool IsPillarStage() const;
+        void CountStageMiniBoss();
         void MaybeSpawnPillar();
         void MaybeSpawnPillarAt(float x, float y, float baseZ);
         bool RaisePillarAt(float x, float y, float z);
@@ -1276,13 +1264,13 @@ class BonkRun
         struct PillarSentPiece
         {
             uint32 entry = 0;
-            uint32 floor = 0;
+            uint32 stage = 0;
             uint32 tier = 0;
             std::string lines;
             std::string extra;
         };
         std::vector<PillarSentPiece> m_pillarSent;
-        uint32 m_floorMiniBosses = 0;
+        uint32 m_stageMiniBosses = 0;
         ObjectGuid FindRunGear(uint32 guidLow) const;
         bool IsInVault(ObjectGuid const& guid) const;
         uint32 GetGearGold(uint8 quality) const;
@@ -1342,11 +1330,9 @@ class BonkRun
         uint32 m_dungeonId = 0;
         uint32 m_invaderId = 0;
         uint32 m_startMapId = 0;
-        uint32 m_startFloor = 1;
-        uint32 m_catchUpLevels = 0;
-        bool m_autoPickCatchUp = false;
-        bool m_autoPickRunning = false;
-        uint32 m_floorBestAtStart = 0;
+        uint32 m_difficultyLevel = 1;
+        BonkLevel m_levelRow;
+        uint32 m_levelBestAtStart = 0;
         void ApplyInvader();
 
         void Finish(bool wentHome);
@@ -3096,7 +3082,7 @@ class BonkRun
         void SetSandboxTalent(uint32 nodeId, uint32 rank);
         bool SetSandboxBenchItem(uint32 entry, std::string& error);
         void SetSandboxTraining(uint32 rank);
-        bool SetSandboxTier(uint32 tierId, uint32 stage, std::string& error);
+        bool SetSandboxTier(uint32 tierId, uint32 bandLevel, std::string& error);
         void ReportSandboxVitals();
         void ReportSandboxTrinkets();
         void SetSandboxRank(uint32 baseId, uint32 rank, bool epicRoundRobin);

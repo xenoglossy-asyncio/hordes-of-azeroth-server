@@ -63,12 +63,17 @@ class BonkPlayer
         bool IsInSandbox() const;
         void StopRun();
 
-        static std::vector<BonkTier const*> GetTiersInOrder();
-        uint32 GetBestStage(uint32 tierId) const;
+        uint32 GetBestLevel() const;
+        uint32 GetAccountBestLevel() const;
+        uint32 GetOpenLevel(BonkTier const& tier) const;
+        uint32 GetTierBest(BonkTier const& tier) const;
+        bool IsLevelOpen(uint32 level) const;
+        std::string GetLevelName(uint32 level) const;
         bool IsTierUnlocked(BonkTier const& tier) const;
         bool IsTierCleared(BonkTier const& tier) const;
         bool IsTierCleared(char const* tierKey) const;
-        uint32 GetMythicFloorsCleared() const;
+        bool RecordLevelClear(uint32 level, uint32 clearMs);
+        void RecordFinale(uint32 score);
         uint8 GetTrainingRankCap() const;
         std::string GetTrainingCapHint() const;
         uint8 GetDetermination() const;
@@ -103,7 +108,6 @@ class BonkPlayer
         void SendRefitOffer() const;
         void RefitAtQuartermaster();
         std::string GetUnlockHint(BonkTier const& tier) const;
-        void RecordStage(uint32 tierId, uint32 stage);
 
         static bool IsWipeName(std::string const& name);
         static bool IsPlayableClass(uint8 classId);
@@ -120,7 +124,7 @@ class BonkPlayer
         bool IsIronman() const;
         uint32 GetProgressAccount() const;
 
-        void RecordRun(uint32 stage, uint32 seconds, uint32 kills, uint32 goldEarned);
+        void RecordRun(uint32 level, uint32 seconds, uint32 kills, uint32 goldEarned);
 
         struct StarterOption
         {
@@ -158,11 +162,7 @@ class BonkPlayer
         BonkMasteryNode const* FindLearnedRival(BonkMasteryNode const& node) const;
         bool HasLearnedParent(BonkMasteryNode const& node, uint32 ignoredId) const;
         uint32 GetMasterySpentAbove(uint32 treeId, uint8 row) const;
-        uint32 GetFloorTalentPoints() const;
-        uint32 GetClassFloor() const { return m_classFloor; }
-        std::vector<uint32> GetCheckpoints(BonkTier const& tier) const;
-        void SendCheckpoints() const;
-        void RecordClassFloor(uint32 floor);
+        uint32 GetLevelTalentPoints() const;
         void TakeTalentResetNotice();
         uint32 GetMasterySpent() const;
         std::string DescribeLoadout() const;
@@ -345,7 +345,7 @@ class BonkPlayer
         struct Record
         {
             uint32 runs = 0;
-            uint32 bestStage = 0;
+            uint32 bestLevel = 0;
             uint32 bestSeconds = 0;
             uint32 kills = 0;
             uint32 goldEarned = 0;
@@ -371,7 +371,7 @@ class BonkPlayer
 
         void SendShop(bool open) const;
         void SendArena(std::string const& npc) const;
-        void SendFloorPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const;
+        void SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const;
         bool IsAtShop() const;
         bool IsAtSpellbook() const;
 
@@ -421,7 +421,13 @@ class BonkPlayer
         void UpdateMailboxGlow(uint32 diff);
         bool m_goldLoaded = false;
         mutable int8 m_ironman = -1;
-        std::map<uint32, uint32> m_bestStages;
+        struct LevelRecord
+        {
+            uint32 best = 0;
+            uint32 bestMs = 0;
+            uint32 finale = 0;
+        };
+        std::map<uint8, LevelRecord> m_levels;
         Record m_record;
         std::map<uint32, uint8> m_upgradeRanks;
         std::map<uint32, uint8> m_talentRanks;
@@ -435,7 +441,6 @@ class BonkPlayer
         std::vector<std::pair<uint8, float>> m_rerollOffers;
         std::set<uint32> m_foundGear;
         uint32 m_masteryXp = 0;
-        uint32 m_classFloor = 0;
         uint32 m_titleId = 0;
         bool m_accountHasRun = false;
         std::map<uint32, uint8> m_masteryRanks;

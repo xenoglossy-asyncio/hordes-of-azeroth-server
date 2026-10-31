@@ -292,12 +292,11 @@ void BonkMgr::LoadTiers()
 
     std::unique_ptr<QueryResult> result(WorldDatabase.Query(
         "SELECT `id`, `key`, `name`, `health_multiplier`, `damage_multiplier`, `stage_health_growth`, `stage_damage_growth`, "
-        "`stage_health_accel`, `chest_cost`, `chest_cost_growth`, `unlock_tier`, `unlock_stage`, "
+        "`stage_health_accel`, `chest_cost`, `chest_cost_growth`, `unlock_tier`, "
         "`shard_chance_normal`, `shard_chance_elite`, `shards_miniboss`, `shards_boss`, `description`, `art`, "
         "`mastery_xp_minute`, `mastery_xp_miniboss`, `mastery_xp_boss`, `elite_affixes`, "
-        "`stage_damage_accel`, `min_alive_multiplier`, `max_alive`, `max_bruisers`, `first_elite_sec`, `charge_interval_ms`, `stages`, `endless`, `veteran_chance`, `chest_cost_minute_growth`, `details`, `opening_crowd`, `opening_sec`, "
-        "`stage_compound`, `floor_knee`, `late_health_growth`, `late_damage_growth`, `floor_knee2`, `last_health_growth`, `last_damage_growth`, `knee_health_step`, `knee2_health_step`, "
-        "`boss_health_multiplier`, `miniboss_health_multiplier`, `boss_health_ramp_floors` FROM `bonk_tier`"));
+        "`stage_damage_accel`, `min_alive_multiplier`, `max_alive`, `max_bruisers`, `first_elite_sec`, `charge_interval_ms`, `stages`, `finale`, `veteran_chance`, `chest_cost_minute_growth`, `details`, `opening_crowd`, `opening_sec`, "
+        "`levels`, `level_health_growth`, `level_damage_growth`, `boss_health_multiplier`, `miniboss_health_multiplier` FROM `bonk_tier`"));
 
     if (!result)
     {
@@ -321,42 +320,34 @@ void BonkMgr::LoadTiers()
         tier.chestCost = fields[8].GetUInt32();
         tier.chestCostGrowth = fields[9].GetFloat();
         tier.unlockTierId = fields[10].GetUInt32();
-        tier.unlockStage = fields[11].GetUInt32();
-        tier.shardChanceNormal = fields[12].GetFloat();
-        tier.shardChanceElite = fields[13].GetFloat();
-        tier.shardsMiniboss = fields[14].GetUInt32();
-        tier.shardsBoss = fields[15].GetUInt32();
-        tier.description = fields[16].GetCppString();
-        tier.art = fields[17].GetCppString();
-        tier.masteryXpMinute = fields[18].GetUInt32();
-        tier.masteryXpMiniboss = fields[19].GetUInt32();
-        tier.masteryXpBoss = fields[20].GetUInt32();
-        tier.eliteAffixes = fields[21].GetUInt8();
-        tier.stageDamageAccel = fields[22].GetFloat();
-        tier.minAliveMultiplier = fields[23].GetFloat();
-        tier.maxAlive = std::max(1u, fields[24].GetUInt32());
-        tier.maxBruisers = fields[25].GetUInt32();
-        tier.firstEliteSecond = fields[26].GetUInt32();
-        tier.chargeIntervalMs = fields[27].GetUInt32();
-        tier.stages = fields[28].GetUInt32();
-        tier.endless = fields[29].GetUInt8() != 0;
-        tier.veteranChance = fields[30].GetFloat();
-        tier.chestCostMinuteGrowth = fields[31].GetFloat();
-        tier.details = fields[32].GetCppString();
-        tier.openingCrowd = std::min(1.0f, std::max(0.0f, fields[33].GetFloat()));
-        tier.openingMs = fields[34].GetUInt32() * IN_MILLISECONDS;
-        tier.stageCompound = fields[35].GetUInt8() != 0;
-        tier.floorKnee = fields[36].GetUInt32();
-        tier.lateHealthGrowth = fields[37].GetFloat();
-        tier.lateDamageGrowth = fields[38].GetFloat();
-        tier.floorKnee2 = fields[39].GetUInt32();
-        tier.lastHealthGrowth = fields[40].GetFloat();
-        tier.lastDamageGrowth = fields[41].GetFloat();
-        tier.kneeHealthStep = std::max(1.0f, fields[42].GetFloat());
-        tier.knee2HealthStep = std::max(1.0f, fields[43].GetFloat());
-        tier.bossHealthMultiplier = std::max(1.0f, fields[44].GetFloat());
-        tier.minibossHealthMultiplier = std::max(1.0f, fields[45].GetFloat());
-        tier.bossHealthRampFloors = fields[46].GetUInt32();
+        tier.shardChanceNormal = fields[11].GetFloat();
+        tier.shardChanceElite = fields[12].GetFloat();
+        tier.shardsMiniboss = fields[13].GetUInt32();
+        tier.shardsBoss = fields[14].GetUInt32();
+        tier.description = fields[15].GetCppString();
+        tier.art = fields[16].GetCppString();
+        tier.masteryXpMinute = fields[17].GetUInt32();
+        tier.masteryXpMiniboss = fields[18].GetUInt32();
+        tier.masteryXpBoss = fields[19].GetUInt32();
+        tier.eliteAffixes = fields[20].GetUInt8();
+        tier.stageDamageAccel = fields[21].GetFloat();
+        tier.minAliveMultiplier = fields[22].GetFloat();
+        tier.maxAlive = std::max(1u, fields[23].GetUInt32());
+        tier.maxBruisers = fields[24].GetUInt32();
+        tier.firstEliteSecond = fields[25].GetUInt32();
+        tier.chargeIntervalMs = fields[26].GetUInt32();
+        tier.stages = std::max(1u, fields[27].GetUInt32());
+        tier.finale = fields[28].GetUInt8() != 0;
+        tier.veteranChance = fields[29].GetFloat();
+        tier.chestCostMinuteGrowth = fields[30].GetFloat();
+        tier.details = fields[31].GetCppString();
+        tier.openingCrowd = std::min(1.0f, std::max(0.0f, fields[32].GetFloat()));
+        tier.openingMs = fields[33].GetUInt32() * IN_MILLISECONDS;
+        tier.levels = fields[34].GetUInt32();
+        tier.levelHealthGrowth = std::max(1.0f, fields[35].GetFloat());
+        tier.levelDamageGrowth = std::max(1.0f, fields[36].GetFloat());
+        tier.bossHealthMultiplier = std::max(1.0f, fields[37].GetFloat());
+        tier.minibossHealthMultiplier = std::max(1.0f, fields[38].GetFloat());
 
         m_tiers[tier.id] = std::move(tier);
     } while (result->NextRow());
@@ -371,7 +362,91 @@ void BonkMgr::LoadTiers()
         }
     }
 
+    LoadLevels();
+    OrderTiers();
+
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk tiers", uint32(m_tiers.size()));
+}
+
+void BonkMgr::LoadLevels()
+{
+    std::unique_ptr<QueryResult> result(WorldDatabase.Query(
+        "SELECT `tier`, `level`, `health`, `damage`, `extra_affixes`, `veteran_chance`, `reward` FROM `bonk_level` ORDER BY `tier`, `level`"));
+    if (!result)
+    {
+        sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Table `bonk_level` is empty or missing; every level plays as level 1.");
+        return;
+    }
+
+    do
+    {
+        Field* fields = result->Fetch();
+        auto tier = m_tiers.find(fields[0].GetUInt32());
+        if (tier == m_tiers.end())
+            continue;
+
+        BonkLevel level;
+        level.level = std::max(1u, fields[1].GetUInt32());
+        level.health = std::max(0.01f, fields[2].GetFloat());
+        level.damage = std::max(0.01f, fields[3].GetFloat());
+        level.extraAffixes = fields[4].GetUInt8();
+        level.veteranChance = fields[5].GetFloat();
+        level.reward = std::max(0.0f, fields[6].GetFloat());
+        tier->second.levelRows.push_back(level);
+    } while (result->NextRow());
+}
+
+void BonkMgr::OrderTiers()
+{
+    m_tiersInOrder.clear();
+    std::set<uint32> placed;
+    for (bool added = true; added;)
+    {
+        added = false;
+        for (auto const& itr : m_tiers)
+        {
+            BonkTier const& tier = itr.second;
+            if (placed.count(tier.id) || (tier.unlockTierId && !placed.count(tier.unlockTierId)))
+                continue;
+            m_tiersInOrder.push_back(&tier);
+            placed.insert(tier.id);
+            added = true;
+        }
+    }
+    for (auto const& itr : m_tiers)
+        if (!placed.count(itr.first))
+            m_tiersInOrder.push_back(&itr.second);
+
+    uint32 next = 1;
+    for (BonkTier const* ordered : m_tiersInOrder)
+    {
+        BonkTier& tier = m_tiers[ordered->id];
+        tier.firstLevel = next;
+        if (tier.IsEndlessLevels())
+            break;
+        next += tier.levels;
+    }
+}
+
+BonkTier const* BonkMgr::GetLevelTier(uint32 level) const
+{
+    for (BonkTier const* tier : m_tiersInOrder)
+        if (tier->HasLevel(level))
+            return tier;
+    return nullptr;
+}
+
+BonkLevel BonkMgr::GetLevel(BonkTier const& tier, uint32 bandLevel) const
+{
+    BonkLevel scaled;
+    for (BonkLevel const& row : tier.levelRows)
+        if (row.level <= bandLevel)
+            scaled = row;
+    uint32 const past = bandLevel > scaled.level ? bandLevel - scaled.level : 0;
+    scaled.health *= std::pow(tier.levelHealthGrowth, float(past));
+    scaled.damage *= std::pow(tier.levelDamageGrowth, float(past));
+    scaled.level = bandLevel;
+    return scaled;
 }
 
 void BonkMgr::LoadMaps()

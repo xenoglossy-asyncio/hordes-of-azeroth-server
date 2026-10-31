@@ -39,7 +39,7 @@
 namespace
 {
     char const* const BONK_ACCOUNT_TABLES[] = { "bonk_account", "bonk_account_mastery", "bonk_account_mastery_node", "bonk_account_quest",
-        "bonk_account_starter", "bonk_account_talent", "bonk_account_tier", "bonk_account_upgrade", "bonk_account_floor",
+        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_upgrade",
         "bonk_account_found", "bonk_account_mastery_preset", "bonk_account_mastery_preset_active" };
     uint8 const BONK_MASTERY_PRESET_SLOTS = 3;
     char const* const BONK_PROGRESS_ONLY_TABLES[] = { "bonk_account_disabled", "bonk_account_unlock" };
@@ -158,25 +158,28 @@ void BonkPlayer::OnLogin()
     for (uint8 i = 0; i < PLAYER_EXPLORED_ZONES_SIZE; ++i)
         m_player->SetUInt32Value(PLAYER_EXPLORED_ZONES_1 + i, 0xFFFFFFFF);
 
-    m_bestStages.clear();
-    result = CharacterDatabase.PQuery("SELECT `tier`, `best_stage` FROM `bonk_account_tier` WHERE `account` = %u", accountId);
+    m_levels.clear();
+    result = CharacterDatabase.PQuery("SELECT `class`, `best_level`, `best_ms`, `best_finale` FROM `bonk_account_level` WHERE `account` = %u", accountId);
     if (result)
     {
         do
         {
             Field* fields = result->Fetch();
-            m_bestStages[fields[0].GetUInt32()] = fields[1].GetUInt32();
+            LevelRecord& record = m_levels[fields[0].GetUInt8()];
+            record.best = fields[1].GetUInt32();
+            record.bestMs = fields[2].GetUInt32();
+            record.finale = fields[3].GetUInt32();
         } while (result->NextRow());
     }
 
     m_record = Record();
-    result = CharacterDatabase.PQuery("SELECT `runs`, `best_stage`, `best_time_sec`, `kills`, `gold_earned` FROM `bonk_character_stats` WHERE `guid` = %u",
+    result = CharacterDatabase.PQuery("SELECT `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned` FROM `bonk_character_stats` WHERE `guid` = %u",
         m_player->GetGUIDLow());
     if (result)
     {
         Field* fields = result->Fetch();
         m_record.runs = fields[0].GetUInt32();
-        m_record.bestStage = fields[1].GetUInt32();
+        m_record.bestLevel = fields[1].GetUInt32();
         m_record.bestSeconds = fields[2].GetUInt32();
         m_record.kills = fields[3].GetUInt32();
         m_record.goldEarned = fields[4].GetUInt32();
@@ -364,12 +367,6 @@ void BonkPlayer::LoadMastery()
     if (result)
         m_masteryXp = result->Fetch()[0].GetUInt32();
 
-    m_classFloor = 0;
-    result = CharacterDatabase.PQuery("SELECT `best_floor` FROM `bonk_account_floor` WHERE `account` = %u AND `class` = %u",
-        accountId, uint32(classId));
-    if (result)
-        m_classFloor = result->Fetch()[0].GetUInt32();
-
     m_accountHasRun = bool(CharacterDatabase.PQuery("SELECT 1 FROM `bonk_account_mastery` WHERE `account` = %u AND `xp` > 0 LIMIT 1", accountId));
 
     m_titleId = 0;
@@ -433,7 +430,7 @@ uint32 BonkPlayer::GetMasteryLevel() const
 
 uint32 BonkPlayer::GetMasteryPoints() const
 {
-    return GetMasteryLevel() + sBonkQuests.GetMasteryPoints(GetProgressAccount(), m_player->GetClass()) + GetFloorTalentPoints();
+    return GetMasteryLevel() + sBonkQuests.GetMasteryPoints(GetProgressAccount(), m_player->GetClass()) + GetLevelTalentPoints();
 }
 
 std::string BonkPlayer::DescribeLoadout() const
@@ -447,7 +444,7 @@ std::string BonkPlayer::DescribeLoadout() const
         return text;
     };
     return "mastery level " + std::to_string(GetMasteryLevel()) + ", talent points " + std::to_string(GetMasterySpent()) + " of " +
-        std::to_string(GetMasteryPoints()) + ", best floor " + std::to_string(m_classFloor) + ", determination " + std::to_string(GetDetermination()) +
+        std::to_string(GetMasteryPoints()) + ", best level " + std::to_string(GetBestLevel()) + ", determination " + std::to_string(GetDetermination()) +
         "; talents [" + describeRanks(m_masteryRanks) + "]; upgrades [" + describeRanks(m_upgradeRanks) + "]; fortunes [" +
         describeRanks(m_talentRanks) + "]; gear [" + DescribeGear() + "]; found [" + DescribeFoundGear() + "]; gold " +
         std::to_string(m_player->GetMoney()) + ", scrap " + std::to_string(m_scrap) + ", tickets " + std::to_string(m_shards);
@@ -478,47 +475,9 @@ std::string BonkPlayer::DescribeGear() const
     return gear;
 }
 
-uint32 BonkPlayer::GetFloorTalentPoints() const
+uint32 BonkPlayer::GetLevelTalentPoints() const
 {
-    return std::min(BONK_FLOOR_TALENT_POINTS_MAX, m_classFloor / BONK_FLOORS_PER_TALENT_POINT);
-}
-
-std::vector<uint32> BonkPlayer::GetCheckpoints(BonkTier const& tier) const
-{
-    std::vector<uint32> checkpoints;
-    if (tier.key != "mythic" || m_classFloor < BONK_CHECKPOINT_GAP + BONK_CHECKPOINT_STEP)
-        return checkpoints;
-    uint32 const highest = (m_classFloor - BONK_CHECKPOINT_GAP) / BONK_CHECKPOINT_STEP * BONK_CHECKPOINT_STEP;
-    for (uint32 floor = BONK_CHECKPOINT_STEP; floor <= highest; floor += BONK_CHECKPOINT_STEP)
-        checkpoints.push_back(floor);
-    return checkpoints;
-}
-
-void BonkPlayer::SendCheckpoints() const
-{
-    for (auto const& itr : sBonkMgr.GetTiers())
-    {
-        std::string list;
-        for (uint32 floor : GetCheckpoints(itr.second))
-            list += (list.empty() ? "" : ",") + std::to_string(floor);
-        if (!list.empty())
-            SendAddon("checkpoints~" + std::to_string(itr.first) + "~" + list);
-    }
-}
-
-void BonkPlayer::RecordClassFloor(uint32 floor)
-{
-    if (floor <= m_classFloor)
-        return;
-    uint32 const pointsBefore = GetFloorTalentPoints();
-    m_classFloor = floor;
-    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_floor` (`account`, `class`, `best_floor`) VALUES (%u, %u, %u)",
-        GetProgressAccount(), uint32(m_player->GetClass()), floor);
-    if (GetFloorTalentPoints() > pointsBefore)
-    {
-        Notify(BONK_STRING_YOU_EARNED_TALENT_POINT_FOR, { std::to_string(floor) });
-        SendMasteryState();
-    }
+    return std::min(BONK_LEVEL_TALENT_POINTS_MAX, GetBestLevel() / BONK_LEVELS_PER_TALENT_POINT);
 }
 
 uint32 BonkPlayer::GetMasterySpent() const
@@ -988,19 +947,19 @@ void BonkPlayer::OnLogout()
     WriteHeroScreenStats();
 }
 
-void BonkPlayer::RecordRun(uint32 stage, uint32 seconds, uint32 kills, uint32 goldEarned)
+void BonkPlayer::RecordRun(uint32 level, uint32 seconds, uint32 kills, uint32 goldEarned)
 {
     if (IsInSandbox())
         return;
     ++m_record.runs;
     m_accountHasRun = true;
-    m_record.bestStage = std::max(m_record.bestStage, stage);
+    m_record.bestLevel = std::max(m_record.bestLevel, level);
     m_record.bestSeconds = std::max(m_record.bestSeconds, seconds);
     m_record.kills += kills;
     m_record.goldEarned += goldEarned;
 
-    CharacterDatabase.PExecute("REPLACE INTO `bonk_character_stats` (`guid`, `runs`, `best_stage`, `best_time_sec`, `kills`, `gold_earned`) "
-        "VALUES (%u, %u, %u, %u, %u, %u)", m_player->GetGUIDLow(), m_record.runs, m_record.bestStage, m_record.bestSeconds,
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_character_stats` (`guid`, `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned`) "
+        "VALUES (%u, %u, %u, %u, %u, %u)", m_player->GetGUIDLow(), m_record.runs, m_record.bestLevel, m_record.bestSeconds,
         m_record.kills, m_record.goldEarned);
 }
 
@@ -1091,7 +1050,7 @@ void BonkPlayer::WriteHeroScreenStats() const
         sharedGold = result ? result->Fetch()[0].GetUInt32() : 0;
     }
 
-    result = CharacterDatabase.PQuery("SELECT s.`guid`, s.`runs`, s.`best_stage`, s.`best_time_sec`, s.`kills`, s.`gold_earned` "
+    result = CharacterDatabase.PQuery("SELECT s.`guid`, s.`runs`, s.`best_level`, s.`best_time_sec`, s.`kills`, s.`gold_earned` "
         "FROM `bonk_character_stats` s JOIN `characters` c ON c.`guid` = s.`guid` WHERE c.`account` = %u", accountId);
     if (result)
     {
@@ -1102,7 +1061,7 @@ void BonkPlayer::WriteHeroScreenStats() const
             if (hero == heroes.end() || hero->first == ownGuid)
                 continue;
             hero->second.record.runs = fields[1].GetUInt32();
-            hero->second.record.bestStage = fields[2].GetUInt32();
+            hero->second.record.bestLevel = fields[2].GetUInt32();
             hero->second.record.bestSeconds = fields[3].GetUInt32();
             hero->second.record.kills = fields[4].GetUInt32();
             hero->second.record.goldEarned = fields[5].GetUInt32();
@@ -1144,7 +1103,7 @@ void BonkPlayer::WriteHeroScreenStats() const
         if (hero.name.empty() || hero.name.find_first_of("\\\"\n") != std::string::npos)
             continue;
         lua << "\t\t[\"" << hero.name << "\"] = { runs = " << hero.record.runs
-            << ", bestStage = " << hero.record.bestStage
+            << ", bestLevel = " << hero.record.bestLevel
             << ", bestTime = " << hero.record.bestSeconds
             << ", kills = " << hero.record.kills
             << ", goldEarned = " << hero.record.goldEarned
@@ -2178,7 +2137,7 @@ void BonkPlayer::Update(uint32 diff)
 
 bool BonkPlayer::IsTierCleared(BonkTier const& tier) const
 {
-    return tier.stages && GetBestStage(tier.id) > tier.stages;
+    return GetAccountBestLevel() >= (tier.IsEndlessLevels() ? tier.firstLevel : tier.GetLastLevel());
 }
 
 bool BonkPlayer::IsTierCleared(char const* tierKey) const
@@ -2187,18 +2146,11 @@ bool BonkPlayer::IsTierCleared(char const* tierKey) const
     return tier && IsTierCleared(*tier);
 }
 
-uint32 BonkPlayer::GetMythicFloorsCleared() const
-{
-    BonkTier const* mythic = sBonkMgr.FindTier("mythic");
-    uint32 const reached = mythic ? GetBestStage(mythic->id) : 0;
-    return reached ? reached - 1 : 0;
-}
-
 uint8 BonkPlayer::GetTrainingRankCap() const
 {
     if (!IsTierCleared("heroic"))
         return BONK_TRAINING_OPEN_RANKS;
-    uint32 const mythicRanks = std::min<uint32>(BONK_TRAINING_MYTHIC_RANKS, GetMythicFloorsCleared() / BONK_TRAINING_FLOORS_PER_RANK);
+    uint32 const mythicRanks = std::min<uint32>(BONK_TRAINING_MYTHIC_RANKS, GetAccountBestLevel() / BONK_TRAINING_LEVELS_PER_RANK);
     return uint8(BONK_TRAINING_OPEN_RANKS + BONK_TRAINING_HEROIC_RANKS + mythicRanks);
 }
 
@@ -2207,8 +2159,8 @@ std::string BonkPlayer::GetTrainingCapHint() const
     uint8 const cap = GetTrainingRankCap();
     if (!IsTierCleared("heroic"))
         return GetString(BONK_STRING_CLEAR_HEROIC_TO_UNLOCK_RANKS, { std::to_string(cap + 1), std::to_string(cap + BONK_TRAINING_HEROIC_RANKS) });
-    uint32 const floor = (cap - BONK_TRAINING_OPEN_RANKS - BONK_TRAINING_HEROIC_RANKS + 1) * BONK_TRAINING_FLOORS_PER_RANK;
-    return GetString(BONK_STRING_CLEAR_MYTHIC_FLOOR_TO_UNLOCK_RANK, { std::to_string(floor), std::to_string(cap + 1) });
+    uint32 const level = (cap - BONK_TRAINING_OPEN_RANKS - BONK_TRAINING_HEROIC_RANKS + 1) * BONK_TRAINING_LEVELS_PER_RANK;
+    return GetString(BONK_STRING_CLEAR_LEVEL_TO_UNLOCK_RANK, { GetLevelName(level), std::to_string(cap + 1) });
 }
 
 uint8 BonkPlayer::GetDetermination() const
@@ -2281,7 +2233,7 @@ namespace
 
     BonkTier const* GetGearGroupTier(uint32 group, size_t* order = nullptr)
     {
-        std::vector<BonkTier const*> const tiers = BonkPlayer::GetTiersInOrder();
+        std::vector<BonkTier const*> const& tiers = sBonkMgr.GetTiersInOrder();
         for (size_t i = 0; i < tiers.size(); ++i)
             if (tiers[i]->unlockTierId == group)
             {
@@ -2381,7 +2333,7 @@ bool BonkPlayer::IsTierVendor(Creature const* vendor) const
 
 uint32 BonkPlayer::GetStockTier() const
 {
-    uint32 const cleared = GetMythicFloorsCleared();
+    uint32 const cleared = GetAccountBestLevel();
     uint32 const lagged = cleared > BONK_STOCK_TIER_LAG ? cleared - BONK_STOCK_TIER_LAG : 1u;
     return std::min(BONK_STOCK_TIER_MAX, std::max(1u, lagged));
 }
@@ -2426,7 +2378,7 @@ void BonkPlayer::SendQuartermaster() const
 
 uint32 BonkPlayer::GetUpgradeCeiling() const
 {
-    return std::max(BONK_STOCK_TIER_MAX, GetMythicFloorsCleared());
+    return std::max(BONK_STOCK_TIER_MAX, GetAccountBestLevel());
 }
 
 std::vector<Item*> BonkPlayer::GetUpgradableGear() const
@@ -2591,7 +2543,7 @@ bool BonkPlayer::UpgradeFoundGear(uint32 guidLow, std::string& error)
     uint32 const cost = BonkFound::GetUpgradeCost(tier);
     if (tier >= GetUpgradeCeiling())
     {
-        error = GetString(BONK_STRING_CLEAR_MYTHIC_FLOOR_TO_RAISE, { std::to_string(tier + 1), BonkFound::DescribeTier(tier + 1, m_locale) });
+        error = GetString(BONK_STRING_CLEAR_LEVEL_TO_RAISE, { GetLevelName(tier + 1), BonkFound::DescribeTier(tier + 1, m_locale) });
         return false;
     }
     if (m_scrap < cost)
@@ -2904,14 +2856,13 @@ bool BonkPlayer::StartRun(BonkTier const& tier, std::string& error, BonkRunChoic
         return false;
     }
 
-    if (choice.startFloor > 1)
+    BonkRunChoice leveled = choice;
+    if (!leveled.level)
+        leveled.level = GetOpenLevel(tier);
+    if (!tier.HasLevel(leveled.level) || !IsLevelOpen(leveled.level))
     {
-        std::vector<uint32> const checkpoints = GetCheckpoints(tier);
-        if (choice.dungeon || std::find(checkpoints.begin(), checkpoints.end(), choice.startFloor) == checkpoints.end())
-        {
-            error = GetString(BONK_STRING_CANT_START_ON_FLOOR_YET, { std::to_string(choice.startFloor), std::to_string(BONK_CHECKPOINT_GAP) });
-            return false;
-        }
+        error = GetString(BONK_STRING_TIER_LOCKED, { GetLevelName(leveled.level), GetString(BONK_STRING_UNLOCK_HINT_CLEAR, { GetLevelName(leveled.level - 1) }) });
+        return false;
     }
 
     if (m_player->IsInCombat())
@@ -2932,11 +2883,11 @@ bool BonkPlayer::StartRun(BonkTier const& tier, std::string& error, BonkRunChoic
         return false;
     }
 
-    if (!choice.groupReady && BonkCoop::RequestGroupStart(m_player, tier, choice))
+    if (!leveled.groupReady && BonkCoop::RequestGroupStart(m_player, tier, leveled))
         return true;
 
     TrimPoolToggles();
-    m_run.reset(new BonkRun(m_player, tier, choice));
+    m_run.reset(new BonkRun(m_player, tier, leveled));
     if (!m_run->Begin(error))
     {
         m_run.reset();
@@ -2974,41 +2925,51 @@ void BonkPlayer::StopRun()
         m_run->Surrender();
 }
 
-std::vector<BonkTier const*> BonkPlayer::GetTiersInOrder()
+uint32 BonkPlayer::GetBestLevel() const
 {
-    std::map<uint32, BonkTier> const& tiers = sBonkMgr.GetTiers();
-    std::vector<BonkTier const*> ordered;
-    std::set<uint32> placed;
-
-    for (bool added = true; added;)
-    {
-        added = false;
-        for (auto const& itr : tiers)
-        {
-            BonkTier const& tier = itr.second;
-            if (placed.count(tier.id) || (tier.unlockTierId && !placed.count(tier.unlockTierId)))
-                continue;
-            ordered.push_back(&tier);
-            placed.insert(tier.id);
-            added = true;
-        }
-    }
-
-    for (auto const& itr : tiers)
-        if (!placed.count(itr.first))
-            ordered.push_back(&itr.second);
-    return ordered;
+    auto itr = m_levels.find(m_player->GetClass());
+    return itr != m_levels.end() ? itr->second.best : 0;
 }
 
-uint32 BonkPlayer::GetBestStage(uint32 tierId) const
+uint32 BonkPlayer::GetAccountBestLevel() const
 {
-    auto itr = m_bestStages.find(tierId);
-    return itr != m_bestStages.end() ? itr->second : 0;
+    uint32 best = 0;
+    for (auto const& itr : m_levels)
+        best = std::max(best, itr.second.best);
+    return best;
+}
+
+uint32 BonkPlayer::GetOpenLevel(BonkTier const& tier) const
+{
+    if (!IsTierUnlocked(tier))
+        return 0;
+    return std::min(tier.GetLastLevel(), std::max(tier.firstLevel, GetBestLevel() + 1));
+}
+
+uint32 BonkPlayer::GetTierBest(BonkTier const& tier) const
+{
+    uint32 const best = GetBestLevel();
+    if (best < tier.firstLevel)
+        return 0;
+    return std::min(best, tier.GetLastLevel()) - tier.firstLevel + 1;
+}
+
+bool BonkPlayer::IsLevelOpen(uint32 level) const
+{
+    return level && level <= GetBestLevel() + 1 && sBonkMgr.GetLevelTier(level);
+}
+
+std::string BonkPlayer::GetLevelName(uint32 level) const
+{
+    BonkTier const* tier = sBonkMgr.GetLevelTier(level);
+    if (!tier)
+        return std::to_string(level);
+    return GetString(BONK_STRING_LEVEL_NAME, { Localize(BONK_FIELD_TIER_NAME, tier->id, tier->name), std::to_string(tier->GetBandLevel(level)) });
 }
 
 bool BonkPlayer::IsTierUnlocked(BonkTier const& tier) const
 {
-    return !tier.unlockTierId || GetBestStage(tier.unlockTierId) >= tier.unlockStage;
+    return IsLevelOpen(tier.firstLevel);
 }
 
 std::string BonkPlayer::GetUnlockHint(BonkTier const& tier) const
@@ -3016,33 +2977,53 @@ std::string BonkPlayer::GetUnlockHint(BonkTier const& tier) const
     BonkTier const* required = sBonkMgr.GetTier(tier.unlockTierId);
     if (!required)
         return "";
-    if (required->stages && tier.unlockStage > required->stages)
-        return GetString(BONK_STRING_UNLOCK_HINT_CLEAR, { Localize(BONK_FIELD_TIER_NAME, required->id, required->name) });
-    return GetString(BONK_STRING_UNLOCK_HINT_REACH_FLOOR, { std::to_string(tier.unlockStage), Localize(BONK_FIELD_TIER_NAME, required->id, required->name) });
+    return GetString(BONK_STRING_UNLOCK_HINT_CLEAR, { GetLevelName(tier.firstLevel - 1) });
 }
 
-void BonkPlayer::RecordStage(uint32 tierId, uint32 stage)
+bool BonkPlayer::RecordLevelClear(uint32 level, uint32 clearMs)
 {
-    sBonkQuests.OnStage(m_player, tierId, stage);
-
-    if (stage <= GetBestStage(tierId))
-        return;
+    LevelRecord& record = m_levels[m_player->GetClass()];
+    bool const firstClear = level > record.best;
+    bool const faster = level == record.best && clearMs && (!record.bestMs || clearMs < record.bestMs);
+    if (!firstClear && !faster)
+        return false;
 
     std::vector<BonkTier const*> locked;
-    for (auto const& itr : sBonkMgr.GetTiers())
-        if (!IsTierUnlocked(itr.second))
-            locked.push_back(&itr.second);
+    for (BonkTier const* tier : sBonkMgr.GetTiersInOrder())
+        if (!IsTierUnlocked(*tier))
+            locked.push_back(tier);
+    uint32 const pointsBefore = GetLevelTalentPoints();
 
-    m_bestStages[tierId] = stage;
-    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_tier` (`account`, `tier`, `best_stage`) VALUES (%u, %u, %u)",
-        GetProgressAccount(), tierId, stage);
+    if (firstClear)
+        record.best = level;
+    record.bestMs = clearMs;
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_level` (`account`, `class`, `best_level`, `best_ms`, `best_finale`) VALUES (%u, %u, %u, %u, %u)",
+        GetProgressAccount(), uint32(m_player->GetClass()), record.best, record.bestMs, record.finale);
+    if (!firstClear)
+        return false;
 
+    sBonkQuests.OnLevelCleared(m_player, level, GetAccountBestLevel());
     for (BonkTier const* tier : locked)
         if (IsTierUnlocked(*tier))
             Notify(BONK_STRING_TIER_UNLOCKED, { Localize(BONK_FIELD_TIER_NAME, tier->id, tier->name) });
-
+    if (GetLevelTalentPoints() > pointsBefore)
+    {
+        Notify(BONK_STRING_YOU_EARNED_TALENT_POINT_FOR, { GetLevelName(level) });
+        SendMasteryState();
+    }
     if (m_determination)
         SendDetermination();
+    return true;
+}
+
+void BonkPlayer::RecordFinale(uint32 score)
+{
+    LevelRecord& record = m_levels[m_player->GetClass()];
+    if (score <= record.finale)
+        return;
+    record.finale = score;
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_level` (`account`, `class`, `best_level`, `best_ms`, `best_finale`) VALUES (%u, %u, %u, %u, %u)",
+        GetProgressAccount(), uint32(m_player->GetClass()), record.best, record.bestMs, record.finale);
 }
 
 void BonkPlayer::SendAddon(std::string const& line) const
@@ -3064,10 +3045,9 @@ std::vector<BonkPlayer::BanSource> BonkPlayer::GetBanSources(BonkQuestReward typ
             sources.push_back({ GetString(BONK_STRING_BAN_SOURCE_QUEST, { Localize(BONK_FIELD_QUEST_NAME, quest->id, quest->name) }),
                 Localize(BONK_FIELD_QUEST_DESCRIPTION, quest->id, quest->description), sBonkQuests.IsCompleted(account, quest->id), 0 });
 
-    uint32 const cleared = GetMythicFloorsCleared();
-    for (uint32 floor : cards ? std::vector<uint32>{ 5, 10 } : std::vector<uint32>{ 15, 20 })
-        sources.push_back({ GetString(BONK_STRING_BAN_SOURCE_MYTHIC_FLOOR, { std::to_string(floor) }), GetString(BONK_STRING_BAN_SOURCE_CLEAR_FLOOR, { std::to_string(floor) }),
-            cleared >= floor, 0 });
+    uint32 const cleared = GetAccountBestLevel();
+    for (uint32 level : cards ? std::vector<uint32>{ 5, 10 } : std::vector<uint32>{ 15, 20 })
+        sources.push_back({ GetLevelName(level), GetString(BONK_STRING_UNLOCK_HINT_CLEAR, { GetLevelName(level) }), cleared >= level, 0 });
 
     BonkTalentEffect const effect = cards ? BONK_TALENT_CARD_BANS : BONK_TALENT_GLYPH_BANS;
     for (auto const& itr : sBonkMgr.GetTalents())
@@ -3283,7 +3263,6 @@ void BonkPlayer::SendTierList() const
 
 void BonkPlayer::OpenArena(Creature const* npc) const
 {
-    SendCheckpoints();
     SendNpcName(npc);
     SendArena(GetLocalName(npc));
 }
@@ -3319,11 +3298,10 @@ void BonkPlayer::SendArena(std::string const& npc) const
     if (m_addonReady)
         SendMapInfo();
 
-    for (BonkTier const* tierPtr : GetTiersInOrder())
+    for (BonkTier const* tierPtr : sBonkMgr.GetTiersInOrder())
     {
         BonkTier const& tier = *tierPtr;
         bool const unlocked = IsTierUnlocked(tier);
-        uint32 const best = GetBestStage(tier.id);
         if (m_addonReady)
         {
             std::string maps;
@@ -3336,12 +3314,12 @@ void BonkPlayer::SendArena(std::string const& npc) const
             for (BonkMap const* dungeon : sBonkMgr.GetDungeons())
                 dungeons += (dungeons.empty() ? "" : ",") + dungeon->key + ":" + dungeon->icon + ":" + Localize(BONK_FIELD_MAP_NAME, dungeon->id, dungeon->name) + ":" + (cleared ? "1" : "0");
             SendAddon("tier~" + std::to_string(tier.id) + "~" + tier.key + "~" + Localize(BONK_FIELD_TIER_NAME, tier.id, tier.name) + "~" + (unlocked ? "1" : "0") + "~" +
-                (unlocked ? "" : GetUnlockHint(tier)) + "~" + std::to_string(best) + "~" + Localize(BONK_FIELD_TIER_DESCRIPTION, tier.id, tier.description) + "~" + tier.art + "~" + maps + "~" +
-                std::to_string(tier.stages) + "~" + (tier.endless ? "1" : "0") + "~" + dungeons + "~" + Localize(BONK_FIELD_TIER_DETAILS, tier.id, tier.details));
-            SendFloorPreview(tier, GetRunBonuses());
+                (unlocked ? "" : GetUnlockHint(tier)) + "~" + std::to_string(GetTierBest(tier)) + "~" + Localize(BONK_FIELD_TIER_DESCRIPTION, tier.id, tier.description) + "~" + tier.art + "~" + maps + "~" +
+                std::to_string(tier.levels) + "~" + std::to_string(unlocked ? tier.GetBandLevel(GetOpenLevel(tier)) : 0) + "~" + dungeons + "~" + Localize(BONK_FIELD_TIER_DETAILS, tier.id, tier.details));
+            SendLevelPreview(tier, GetRunBonuses());
         }
         else if (unlocked)
-            ChatHandler(m_player).PSendSysMessage("  %s (best: floor %u): .bonk start %s", tier.name.c_str(), best, tier.key.c_str());
+            ChatHandler(m_player).PSendSysMessage("  %s: .bonk start %s %u", GetLevelName(GetOpenLevel(tier)).c_str(), tier.key.c_str(), tier.GetBandLevel(GetOpenLevel(tier)));
         else
         {
             std::string hint = GetUnlockHint(tier);
@@ -3371,86 +3349,30 @@ namespace
             result.resize(result.size() - 2);
         return result;
     }
-
-    std::string Ordinal(BonkPlayer const* bonk, uint32 value)
-    {
-        uint32 const tens = value % 100;
-        BonkString const suffix = (tens >= 11 && tens <= 13) ? BONK_STRING_ORDINAL_TH : value % 10 == 1 ? BONK_STRING_ORDINAL_ST :
-            value % 10 == 2 ? BONK_STRING_ORDINAL_ND : value % 10 == 3 ? BONK_STRING_ORDINAL_RD : BONK_STRING_ORDINAL_TH;
-        return bonk->GetString(suffix, { std::to_string(value) });
-    }
-
-    std::string FloorChangeKind(BonkTier const& tier, uint32 floor)
-    {
-        if (floor < 2)
-            return "";
-        if (BonkRun::MilestoneAffixes(tier, floor) > BonkRun::MilestoneAffixes(tier, floor - 1))
-            return "affix";
-        if (BonkRun::MilestoneVeteranChance(tier, floor) > BonkRun::MilestoneVeteranChance(tier, floor - 1))
-            return "veteran";
-        return "";
-    }
-
-    std::string DescribeFloorChange(BonkPlayer const* bonk, BonkTier const& tier, uint32 floor)
-    {
-        std::string const kind = FloorChangeKind(tier, floor);
-        if (kind == "affix")
-            return bonk->GetString(BONK_STRING_FLOOR_ELITES_GAIN_AFFIX, { Ordinal(bonk, tier.eliteAffixes + BonkRun::MilestoneAffixes(tier, floor)) });
-        if (kind == "veteran")
-            return bonk->GetString(BONK_STRING_FLOOR_MORE_VETERANS,
-                { Percent(BonkRun::MilestoneVeteranChance(tier, floor) - BonkRun::MilestoneVeteranChance(tier, floor - 1)) });
-        return "";
-    }
-
-    uint32 FloorBand(BonkTier const& tier, uint32 floor)
-    {
-        if (tier.floorKnee2 && floor > tier.floorKnee2)
-            return 3;
-        if (tier.floorKnee && floor > tier.floorKnee)
-            return 2;
-        return 1;
-    }
-
-    std::string DescribeFirstClear(BonkPlayer const* bonk, BonkTier const& tier, uint32 floor)
-    {
-        if (tier.key != "mythic")
-            return "";
-        std::vector<std::string> rewards;
-        if (floor % BONK_FLOORS_PER_TALENT_POINT == 0 && floor / BONK_FLOORS_PER_TALENT_POINT <= BONK_FLOOR_TALENT_POINTS_MAX)
-            rewards.push_back(bonk->GetString(BONK_STRING_FIRST_CLEAR_TALENT_POINT));
-        if (uint32 const tickets = GetFloorFirstClearTickets(floor))
-            rewards.push_back(FormatBonkShards(tickets, bonk->GetLocale()));
-        if (floor % BONK_TRAINING_FLOORS_PER_RANK == 0 && floor / BONK_TRAINING_FLOORS_PER_RANK <= BONK_TRAINING_MYTHIC_RANKS)
-            rewards.push_back(bonk->GetString(BONK_STRING_FIRST_CLEAR_TRAINING_CAP));
-        return bonk->JoinList(rewards, BONK_STRING_LIST_AND);
-    }
 }
 
-void BonkPlayer::SendFloorPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const
+void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const
 {
     static BonkString const CASTER_AIM[] = { BONK_STRING_CASTER_AIM_POOR, BONK_STRING_CASTER_AIM_GOOD, BONK_STRING_CASTER_AIM_PRECISE };
     static BonkString const BOSS_ATTACKS[] = { BONK_STRING_BOSS_ATTACKS_NORMAL, BONK_STRING_BOSS_ATTACKS_MORE, BONK_STRING_BOSS_ATTACKS_RELENTLESS };
     uint32 const step = std::min(2u, tier.eliteAffixes ? tier.eliteAffixes - 1u : 0u);
     SendAddon("tierinfo~" + std::to_string(tier.id) + "~" + GetString(CASTER_AIM[step]) + "~" + GetString(BOSS_ATTACKS[step]) + "~" +
         std::to_string((tier.chargeIntervalMs + 500) / 1000) + "~" + std::to_string(tier.maxAlive));
-    uint32 const cleared = GetMythicFloorsCleared();
-    uint32 const floors = std::min(tier.stages, BONK_MYTHIC_MILESTONE_FLOORS * 4);
-    for (uint32 floor = 1; floor <= floors; ++floor)
+    uint32 const best = GetTierBest(tier);
+    uint32 const shown = tier.IsEndlessLevels() ? best + 1 : tier.levels;
+    bool const mythic = tier.key == "mythic";
+    for (uint32 band = 1; band <= shown; ++band)
     {
-        float const health = BonkRun::TierHealthScale(tier, floor) * (1.0f + bonuses.enemyHealth / 100.0f);
-        float const damage = BonkRun::TierDamageScale(tier, floor) * (1.0f + bonuses.enemyDamage / 100.0f);
-        float const veterans = tier.veteranChance > 0.0f ? tier.veteranChance + BonkRun::MilestoneVeteranChance(tier, floor) : 0.0f;
-        uint32 const affixes = tier.eliteAffixes + bonuses.eliteAffixes + BonkRun::MilestoneAffixes(tier, floor);
-        float const gold = (BonkRun::FloorRewardScale(tier, floor) - 1.0f) * 100.0f;
-        float const legendary = BonkRun::BossLegendaryChance(tier, floor);
-        float const epic = (100.0f - legendary) * BonkRun::BossEpicChance(tier, floor) / 100.0f;
-        bool const mythic = tier.key == "mythic";
-        bool const firstCleared = tier.key == "mythic" && floor <= cleared;
-        SendAddon("floor~" + std::to_string(tier.id) + "~" + std::to_string(floor) + "~" + Percent((health - 1.0f) * 100.0f) + "~" +
-            Percent((damage - 1.0f) * 100.0f) + "~" + Percent(veterans) + "~" + std::to_string(affixes) + "~" + Percent(gold) + "~" +
-            (mythic ? Chance(legendary) : "") + "~" + DescribeFloorChange(this, tier, floor) + "~" + DescribeFirstClear(this, tier, floor) + "~" + (firstCleared ? "1" : "0") + "~" +
-            std::to_string(FloorBand(tier, floor)) + "~" + FloorChangeKind(tier, floor) + "~" +
-            (mythic ? Chance(epic) + "~" + Chance(100.0f - legendary - epic) : "~"));
+        BonkLevel const level = sBonkMgr.GetLevel(tier, band);
+        float const health = tier.healthMultiplier * level.health * (1.0f + bonuses.enemyHealth / 100.0f);
+        float const damage = tier.damageMultiplier * level.damage * (1.0f + bonuses.enemyDamage / 100.0f);
+        float const veterans = tier.veteranChance > 0.0f ? tier.veteranChance + level.veteranChance : 0.0f;
+        uint32 const affixes = tier.eliteAffixes + bonuses.eliteAffixes + level.extraAffixes;
+        float const legendary = BonkRun::BossLegendaryChance(tier, band);
+        float const epic = (100.0f - legendary) * BonkRun::BossEpicChance(tier, band) / 100.0f;
+        SendAddon("level~" + std::to_string(tier.id) + "~" + std::to_string(band) + "~" + Percent((health - 1.0f) * 100.0f) + "~" +
+            Percent((damage - 1.0f) * 100.0f) + "~" + Percent(veterans) + "~" + std::to_string(affixes) + "~" + Percent((level.reward - 1.0f) * 100.0f) + "~" +
+            (mythic ? Chance(legendary) + "~" + Chance(epic) + "~" + Chance(100.0f - legendary - epic) : "~~") + "~" + (band <= best ? "1" : "0"));
     }
 }
 
