@@ -845,6 +845,7 @@ class BonkRun
         float GetWeaponHasteRate(OwnedWeapon const& owned) const;
         uint32 GetWeaponCooldown(OwnedWeapon const& owned) const;
         float GetWeaponArea(OwnedWeapon const& owned) const;
+        float GetStrikeRange(OwnedWeapon const& owned) const;
         float GetWeaponRadius(OwnedWeapon const& owned) const;
         uint32 GetWeaponTargets(OwnedWeapon const& owned) const;
         void FireWeapon(OwnedWeapon& owned);

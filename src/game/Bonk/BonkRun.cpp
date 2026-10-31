@@ -5633,6 +5633,11 @@ void BonkRun::UpdateWeapons(uint32 diff)
     }
 }
 
+float BonkRun::GetStrikeRange(OwnedWeapon const& owned) const
+{
+    return owned.weapon.range * (owned.weapon.IsMeleeStrike() ? GetWeaponArea(owned) : 1.0f);
+}
+
 float BonkRun::GetWeaponArea(OwnedWeapon const& owned) const
 {
     if (owned.weapon.HasFlag(BONK_WEAPON_FLAG_AOE))
@@ -7842,7 +7847,7 @@ void BonkRun::UpdatePendingCasts(uint32 diff)
             Creature* target = map->GetCreature(cast.target);
             if (!target || !target->IsAlive())
             {
-                std::vector<Creature*> const mobs = GetMobsInRange(owned->weapon.range);
+                std::vector<Creature*> const mobs = GetMobsInRange(GetStrikeRange(*owned));
                 target = mobs.empty() ? nullptr : mobs.front();
             }
             if (target)

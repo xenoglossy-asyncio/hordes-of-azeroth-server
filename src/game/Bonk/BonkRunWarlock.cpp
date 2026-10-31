@@ -118,7 +118,7 @@ void BonkRun::AddWarlockStacks(OwnedWeapon const& owned, SpellEntry const* spell
 
 void BonkRun::SpreadCorruption(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
-    std::vector<Creature*> const mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> const mobs = GetMobsInRange(GetStrikeRange(owned));
     if (mobs.empty())
     {
         owned.timer = BONK_WARLOCK_POLL_MS;
@@ -130,7 +130,7 @@ void BonkRun::SpreadCorruption(OwnedWeapon& owned, SpellEntry const* spellInfo)
 
 void BonkRun::CurseWithAgony(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
-    std::vector<Creature*> mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> mobs = GetMobsInRange(GetStrikeRange(owned));
     if (mobs.empty())
     {
         owned.timer = BONK_WARLOCK_POLL_MS;
@@ -173,7 +173,7 @@ void BonkRun::DrainLife(OwnedWeapon& owned, SpellEntry const* spellInfo)
     Map* map = m_player->GetMap();
     uint32 const wanted = owned.weapon.baseTargets + GetSpellCount(owned);
     std::vector<ObjectGuid> closest;
-    for (Creature* mob : GetMobsInRange(owned.weapon.range))
+    for (Creature* mob : GetMobsInRange(GetStrikeRange(owned)))
     {
         if (closest.size() >= wanted)
             break;
@@ -293,7 +293,7 @@ void BonkRun::FireNightfall()
     while (!m_nightfallQueue.empty() && spellInfo && m_nightfallMs.size() < perSec)
     {
         m_nightfallQueue.pop_front();
-        std::vector<Creature*> const mobs = GetMobsInRange(owned->weapon.range);
+        std::vector<Creature*> const mobs = GetMobsInRange(GetStrikeRange(*owned));
         if (mobs.empty())
             break;
         StrikeWith(*owned, spellInfo, mobs.front(), share, true);

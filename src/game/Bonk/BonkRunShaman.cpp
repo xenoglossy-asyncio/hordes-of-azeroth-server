@@ -337,7 +337,7 @@ void BonkRun::SwingWindfury(OwnedWeapon& owned, SpellEntry const* spellInfo, Pen
     Creature* target = m_player->GetMap()->GetCreature(cast.target);
     if (!target || !target->IsAlive())
     {
-        std::vector<Creature*> const nearby = GetMobsInRange(owned.weapon.range);
+        std::vector<Creature*> const nearby = GetMobsInRange(GetStrikeRange(owned));
         target = nearby.empty() ? nullptr : nearby.front();
     }
     if (!target)
