@@ -1881,8 +1881,6 @@ void BonkRun::UpdateOffers()
         OfferUpgrades(OFFER_CHEST);
     else if (!m_pendingGear.empty())
         OfferGear();
-    else if (m_hearthSendPending)
-        OpenHearthSend();
     else if (m_pendingLevels && m_sandbox && m_sandboxQuietLevels)
         m_pendingLevels = 0;
     else if (m_pendingLevels)

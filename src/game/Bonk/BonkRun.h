@@ -300,6 +300,8 @@ class BonkRun
         };
         bool IsOwnVault(GameObject const* vault) const;
         void OpenVault();
+        void UseVault();
+        bool IsHearthVaultReady() const { return m_hearthVaultReady; }
         void CloseVault();
         bool SendHomeFromHearth(uint32 guidLow, std::string& error);
         bool PutInVault(uint32 guidLow, std::string& error);
@@ -1263,10 +1265,9 @@ class BonkRun
         void SendHearthBar(bool inside);
         bool IsHeroInHearthRing() const;
         void EndHearth();
-        void OpenHearthSend();
         bool m_hearthDropped = false;
         bool m_hearthActive = false;
-        bool m_hearthSendPending = false;
+        bool m_hearthVaultReady = false;
         bool m_hearthSending = false;
         uint32 m_hearthMs = 0;
         uint32 m_hearthSendMs = 0;

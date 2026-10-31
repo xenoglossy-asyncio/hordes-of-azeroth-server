@@ -860,6 +860,8 @@ enum BonkString : uint32
     BONK_STRING_RULE_GEAR_ROLLS                         = 917,
     BONK_STRING_NOTHING_TO_SEND_HOME_YET                = 918,
     BONK_STRING_USE_HEARTHSTONE_TO_SEND_HOME            = 919,
+    BONK_STRING_HEARTH_VAULT_READY                      = 920,
+    BONK_STRING_WAIT_FOR_HEARTH_RING                    = 921,
 };
 
 struct BonkStringText

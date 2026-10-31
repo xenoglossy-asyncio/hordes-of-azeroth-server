@@ -274,7 +274,7 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_SOLD_RUN_GEAR_PIECES,                    "You sold {1} pieces of run gear for {2}." },
         { BONK_STRING_HEARTHSTONE_RING_ALREADY_OPEN,           "Your Hearthstone's ring is already open." },
         { BONK_STRING_CANT_USE_THAT_RIGHT_NOW,                 "You can't use that right now." },
-        { BONK_STRING_RING_FILLS_WITH_LOOT,                    "The ring fills in {1} seconds. Be inside it when it does, then pick 1 piece to send home." },
+        { BONK_STRING_RING_FILLS_WITH_LOOT,                    "The ring fills in {1} seconds. Be inside it when it does, then open the vault to send 1 piece home." },
         { BONK_STRING_GLYPH_OF_BLOODLUST_AWAKENS,              "Your Glyph of Bloodlust awakens. You attack and damage over time ticks {1}% more often for {2} seconds." },
         { BONK_STRING_YOU_FOUND,                               "You found {1}!" },
         { BONK_STRING_SUMMONS_ANSWERED_ARRIVES_IN,             "Something answers the summons. It arrives in {1}." },
@@ -857,6 +857,8 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_RULE_GEAR_ROLLS,                         "From Mythic 11, bonus stats roll in the top half of their range; from Mythic 16, in the top quarter." },
         { BONK_STRING_NOTHING_TO_SEND_HOME_YET,                "You haven't found anything to send home yet." },
         { BONK_STRING_USE_HEARTHSTONE_TO_SEND_HOME,            "Use a Hearthstone to send a piece home." },
+        { BONK_STRING_HEARTH_VAULT_READY,                      "The ring is full. Open the vault beside it to send 1 piece home." },
+        { BONK_STRING_WAIT_FOR_HEARTH_RING,                    "Wait for the ring to fill first." },
     };
     return texts;
 }

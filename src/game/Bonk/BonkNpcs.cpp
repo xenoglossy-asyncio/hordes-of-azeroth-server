@@ -44,6 +44,7 @@ namespace
 
     uint32 const SENDER_VAULT_PUT  = GOSSIP_SENDER_MAIN + 1;
     uint32 const SENDER_VAULT_TAKE = GOSSIP_SENDER_MAIN + 2;
+    uint32 const SENDER_VAULT_SEND = GOSSIP_SENDER_MAIN + 3;
 }
 
 bool GossipHello_npc_bonk_run_master(Player* player, Creature* creature)
@@ -334,7 +335,16 @@ bool GOHello_go_bonk_vault(Player* player, GameObject* go)
 
     if (player->GetBonkPlayer()->IsAddonReady())
     {
-        run->OpenVault();
+        run->UseVault();
+        return true;
+    }
+
+    if (run->IsHearthVaultReady())
+    {
+        for (BonkRun::VaultFind const& find : run->GetVaultFinds())
+            if (ItemPrototype const* proto = sObjectMgr.GetItemPrototype(find.entry))
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, (std::string("Send home now: ") + proto->Name1).c_str(), SENDER_VAULT_SEND, find.guid.GetCounter());
+        player->SEND_GOSSIP_MENU(BONK_TEXT_VAULT, go->GetObjectGuid());
         return true;
     }
 
@@ -362,7 +372,9 @@ bool GOGossipSelect_go_bonk_vault(Player* player, GameObject* go, uint32 sender,
     }
 
     std::string error;
-    if (!(sender == SENDER_VAULT_TAKE ? run->TakeFromVault(action, error) : run->PutInVault(action, error)))
+    bool const done = sender == SENDER_VAULT_SEND ? run->SendHomeFromHearth(action, error) :
+        sender == SENDER_VAULT_TAKE ? run->TakeFromVault(action, error) : run->PutInVault(action, error);
+    if (!done)
         player->GetBonkPlayer()->Notify(error);
     player->PlayerTalkClass->ClearMenus();
     return GOHello_go_bonk_vault(player, go);

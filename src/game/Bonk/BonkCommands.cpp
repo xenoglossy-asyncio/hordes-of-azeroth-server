@@ -566,6 +566,11 @@ bool ChatHandler::HandleBonkGearCommand(char* args)
     {
         Player* player = m_session->GetPlayer();
         BonkRun* run = player->GetBonkPlayer()->GetRun();
+        if (run && run->IsHearthVaultReady())
+        {
+            run->UseVault();
+            return true;
+        }
         Item* stone = nullptr;
         for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END && !stone; ++slot)
             if (Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))

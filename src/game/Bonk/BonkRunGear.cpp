@@ -52,6 +52,8 @@ namespace
     uint32 const BONK_HEARTH_SEND_MS     = 250;
     char const* const BONK_HEARTH_MARK          = "hearth";
     uint32 const BONK_HEARTH_SWIRL_DISPLAY      = 18585;
+    uint32 const BONK_KIT_ASTRAL_RECALL         = 365;
+    float const BONK_VAULT_RING_OFFSET   = 2.5f;
     float const BONK_VAULT_REACH         = 8.0f;
 
     std::vector<uint8> GetEquipSlotsFor(uint32 inventoryType)
@@ -923,7 +925,7 @@ bool BonkRun::UseItem(Item* item)
         return false;
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
-    if (m_state != STATE_RUNNING || m_paused || m_hearthActive || m_hearthSendPending)
+    if (m_state != STATE_RUNNING || m_paused || m_hearthActive || m_hearthVaultReady)
     {
         bonk->Notify(m_hearthActive ? BONK_STRING_HEARTHSTONE_RING_ALREADY_OPEN : BONK_STRING_CANT_USE_THAT_RIGHT_NOW);
         return true;
@@ -938,6 +940,8 @@ bool BonkRun::UseItem(Item* item)
     m_hearthX = m_player->GetPositionX();
     m_hearthY = m_player->GetPositionY();
     m_hearthZ = GetBonkTelegraphGround(m_player->GetMap(), m_hearthX, m_hearthY, m_player->GetPositionZ(), BONK_HEARTH_RADIUS);
+    float const facing = m_player->GetOrientation();
+    PlaceVault(m_hearthX + BONK_VAULT_RING_OFFSET * std::cos(facing), m_hearthY + BONK_VAULT_RING_OFFSET * std::sin(facing), m_player->GetPositionZ());
     m_hearthActive = true;
     m_hearthMs = 0;
     m_hearthSendMs = 0;
@@ -965,11 +969,12 @@ void BonkRun::UpdateHearth(uint32 diff)
         EndHearth();
         if (!inside)
         {
+            DespawnVault();
             m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_WERENT_IN_RING_WHEN);
             return;
         }
-        m_hearthSendPending = true;
-        UpdateOffers();
+        m_hearthVaultReady = true;
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_HEARTH_VAULT_READY);
         return;
     }
     if (!m_hearthShown || inside != m_hearthInside || m_hearthSendMs >= BONK_HEARTH_SEND_MS)
@@ -1020,12 +1025,14 @@ void BonkRun::EndHearth()
     m_hearthSwirl.Clear();
 }
 
-void BonkRun::OpenHearthSend()
+void BonkRun::UseVault()
 {
-    m_hearthSendPending = false;
-    if (GetVaultFinds().empty())
+    if (m_hearthActive)
+    {
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_WAIT_FOR_HEARTH_RING);
         return;
-    m_hearthSending = true;
+    }
+    m_hearthSending = m_hearthVaultReady;
     OpenVault();
 }
 
@@ -1055,6 +1062,7 @@ void BonkRun::PlaceVault(float x, float y, float baseZ)
 
 void BonkRun::DespawnVault()
 {
+    m_hearthVaultReady = false;
     if (m_vaultGuid.IsEmpty())
         return;
     if (Map* map = m_player->FindMap())
@@ -1177,8 +1185,6 @@ void BonkRun::OpenVault()
 
 void BonkRun::CloseVault()
 {
-    if (m_hearthSending)
-        m_hearthSendPending = true;
     m_hearthSending = false;
     if (!m_vaultOpen)
         return;
@@ -1213,11 +1219,13 @@ void BonkRun::SendVault() const
 
 bool BonkRun::SendHomeFromHearth(uint32 guidLow, std::string& error)
 {
-    if (!m_hearthSending)
+    if (!m_hearthVaultReady)
     {
         error = GetString(BONK_STRING_USE_HEARTHSTONE_TO_SEND_HOME);
         return false;
     }
+    if (!CheckVaultReach(error))
+        return false;
     ObjectGuid const guid = FindRunGear(guidLow);
     Item* item = guid.IsEmpty() ? nullptr : m_player->GetItemByGuid(guid);
     uint8 quality = 0;
@@ -1252,8 +1260,11 @@ bool BonkRun::SendHomeFromHearth(uint32 guidLow, std::string& error)
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     bonk->Notify(BONK_STRING_HEARTH_SENT_HOME_ITS_WAITING, { name });
     bonk->AnnounceMailAtCamp();
-    m_hearthSending = false;
+    if (Map* map = m_player->FindMap())
+        if (GameObject* vault = map->GetGameObject(m_vaultGuid))
+            ShowKitAt(BONK_KIT_ASTRAL_RECALL, vault->GetPositionX(), vault->GetPositionY(), vault->GetPositionZ());
     CloseVault();
+    DespawnVault();
     bonk->SendAddon("vaultclose");
     return true;
 }
