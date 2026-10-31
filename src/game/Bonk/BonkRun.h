@@ -2932,6 +2932,7 @@ class BonkRun
             uint32 slow = 0;
             uint64 runUs = 0;
             uint32 worstRunUs = 0;
+            BonkCrowd::Cost crowd;
             void Add(uint32 tickMs, uint32 usedUs);
         };
         struct Stress
@@ -2963,6 +2964,7 @@ class BonkRun
         void UpdateStress();
         void CheckStressHolds();
         void ReportStress(StressTicks const& ticks, bool summary) const;
+        void ReportStressCrowd(StressTicks const& ticks) const;
         Stress m_stress;
 
         BonkMap const* GetSandboxMap() const;

@@ -11,6 +11,7 @@
 #include "Timer.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 namespace
@@ -53,6 +54,12 @@ namespace
     uint32 const BONK_CROWD_KEEP_OUT_PASSES = 2;
     float const BONK_CROWD_FLOW_RANGE       = 14.0f;
     float const BONK_CROWD_MIN_SHOVE        = 0.15f;
+
+    uint64 CrowdNowUs()
+    {
+        return uint64(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+    }
 
     bool WalkRay(uint32 mapId, float fromX, float fromY, float fromZ, float& x, float& y, float& z)
     {
@@ -161,6 +168,25 @@ std::vector<std::pair<char const*, float*>> BonkCrowd::GetTunables()
     };
 }
 
+void BonkCrowd::Cost::Add(Cost const& other)
+{
+    ticks += other.ticks;
+    totalUs += other.totalUs;
+    worstUs = std::max(worstUs, other.worstUs);
+    gatherUs += other.gatherUs;
+    goalUs += other.goalUs;
+    solveUs += other.solveUs;
+    steerUs += other.steerUs;
+    bodies += other.bodies;
+    driven += other.driven;
+    walkRays += other.walkRays;
+    paths += other.paths;
+    pathUs += other.pathUs;
+    sightChecks += other.sightChecks;
+    sightUs += other.sightUs;
+    launches += other.launches;
+}
+
 void BonkCrowd::Update(uint32 diff, Player* hero, std::vector<ObjectGuid> const& mobs, bool heroPerched, std::vector<Creature*>& stuck)
 {
     m_clockMs += diff;
@@ -168,6 +194,7 @@ void BonkCrowd::Update(uint32 diff, Player* hero, std::vector<ObjectGuid> const&
     if (m_tickTimer < BONK_CROWD_TICK_MS)
         return;
     m_tickTimer = 0;
+    uint64 const startUs = CrowdNowUs();
 
     Map* map = hero->GetMap();
     bool const hasNavMesh = MMAP::MMapFactory::createOrGetMMapManager()->GetNavMeshQuery(map->GetId()) != nullptr;
@@ -237,15 +264,30 @@ void BonkCrowd::Update(uint32 diff, Player* hero, std::vector<ObjectGuid> const&
         bodies.push_back(body);
     }
 
+    uint64 const gatheredUs = CrowdNowUs();
     for (Body& body : bodies)
         if (body.mover)
             PickGoal(body, hero, aimX, aimY, aimZ);
 
+    uint64 const goalsUs = CrowdNowUs();
     Solve(bodies, heroX, heroY);
 
+    uint64 const solvedUs = CrowdNowUs();
     for (Body& body : bodies)
         if (body.mover)
             Steer(body, bodies, heroX, heroY, heroMoving, stuck);
+
+    uint64 const steeredUs = CrowdNowUs();
+    uint32 const tickUs = uint32(steeredUs - startUs);
+    ++m_cost.ticks;
+    m_cost.totalUs += tickUs;
+    m_cost.worstUs = std::max(m_cost.worstUs, tickUs);
+    m_cost.gatherUs += gatheredUs - startUs;
+    m_cost.goalUs += goalsUs - gatheredUs;
+    m_cost.solveUs += solvedUs - goalsUs;
+    m_cost.steerUs += steeredUs - solvedUs;
+    m_cost.bodies += bodies.size();
+    m_cost.driven += m_drivenCount;
 
     for (auto itr = m_movers.begin(); itr != m_movers.end();)
     {
@@ -306,7 +348,10 @@ void BonkCrowd::PickGoal(Body& body, Player* hero, float heroX, float heroY, flo
         if (MillisecondsPassed(mover.sightCheckMs, m_clockMs, BONK_CROWD_SIGHT_CHECK_MS))
         {
             mover.sightCheckMs = m_clockMs;
+            uint64 const sightStartUs = CrowdNowUs();
             mover.canSeeHero = mob->IsWithinLOSInMap(hero);
+            ++m_cost.sightChecks;
+            m_cost.sightUs += CrowdNowUs() - sightStartUs;
         }
         if (mover.canSeeHero)
             body.stopDistance = std::max(body.stopDistance, holdRange * BONK_CROWD_RANGED_SHARE);
@@ -318,6 +363,7 @@ void BonkCrowd::PickGoal(Body& body, Player* hero, float heroX, float heroY, flo
     {
         mover.directCheckMs = m_clockMs;
         float hitX = heroX, hitY = heroY, hitZ = heroZ;
+        ++m_cost.walkRays;
         mover.direct = WalkRay(mob->GetMapId(), body.px, body.py, body.pz, hitX, hitY, hitZ) &&
             Distance2d(hitX, hitY, heroX, heroY) <= BONK_CROWD_DIRECT_REACH;
     }
@@ -399,8 +445,11 @@ void BonkCrowd::UpdatePath(Body& body, float heroX, float heroY, float heroZ)
         mover.pathGoalX = heroX;
         mover.pathGoalY = heroY;
         mover.corners.clear();
+        uint64 const pathStartUs = CrowdNowUs();
         PathFinder path(body.mob);
         path.calculate(heroX, heroY, heroZ, false);
+        ++m_cost.paths;
+        m_cost.pathUs += CrowdNowUs() - pathStartUs;
         if (path.getPathType() & (PATHFIND_NORMAL | PATHFIND_INCOMPLETE))
             for (size_t i = 1; i < path.getPath().size(); ++i)
                 mover.corners.push_back(path.getPath()[i]);
@@ -650,6 +699,7 @@ bool BonkCrowd::Launch(Body& body, float heading, float length, float heroX, flo
     }
 
     float hitX = x, hitY = y, hitZ = body.pz;
+    ++m_cost.walkRays;
     if (!WalkRay(mob->GetMapId(), body.px, body.py, body.pz, hitX, hitY, hitZ))
         return false;
     float const chord = Distance2d(body.px, body.py, x, y);
@@ -688,6 +738,7 @@ bool BonkCrowd::Launch(Body& body, float heading, float length, float heroX, flo
     init.SetWalk(velocity < body.speed * BONK_CROWD_WALK_SHARE);
     init.SetVelocity(velocity);
     init.Launch();
+    ++m_cost.launches;
 
     mover.sentMoving = true;
     mover.heading = TurnToward(startHeading, heading, turnRate * TickSeconds());

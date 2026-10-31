@@ -42,8 +42,29 @@ class BonkCrowd
             float levelPushSpeed = 10.0f;
         };
 
+        struct Cost
+        {
+            uint32 ticks = 0;
+            uint64 totalUs = 0;
+            uint32 worstUs = 0;
+            uint64 gatherUs = 0;
+            uint64 goalUs = 0;
+            uint64 solveUs = 0;
+            uint64 steerUs = 0;
+            uint64 bodies = 0;
+            uint64 driven = 0;
+            uint64 walkRays = 0;
+            uint64 paths = 0;
+            uint64 pathUs = 0;
+            uint64 sightChecks = 0;
+            uint64 sightUs = 0;
+            uint64 launches = 0;
+            void Add(Cost const& other);
+        };
+
         void Update(uint32 diff, Player* hero, std::vector<ObjectGuid> const& mobs, bool heroPerched, std::vector<Creature*>& stuck);
         void Clear() { m_movers.clear(); m_tickTimer = 0; }
+        Cost TakeCost() { Cost const cost = m_cost; m_cost = Cost(); return cost; }
         bool Shove(Creature* mob, Player* hero, float fromX, float fromY, float distance, float speed, uint32 gapMs);
         bool Halt(Creature* mob, Player* hero, uint32 haltMs, uint32 gapMs);
         static std::vector<std::pair<char const*, float*>> GetTunables();
@@ -127,6 +148,7 @@ class BonkCrowd
         uint32 m_holdCounts[MAX_HOLD] = {};
         uint32 m_deepPairs = 0;
         uint32 m_touchingCount = 0;
+        Cost m_cost;
 };
 
 #endif

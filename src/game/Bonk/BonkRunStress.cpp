@@ -124,6 +124,7 @@ void BonkRun::StartStress()
     SendLoadout();
 
     m_stress.startMs = m_stress.reportMs = m_stress.holdCheckMs = m_totalMs;
+    m_crowd.TakeCost();
 
     ChatHandler(m_player).PSendSysMessage("Stress test on: upgrades tree maxed, +%g%% Haste, +%g%% Area, Count %g, %u spells at rank %u; "
         "the crowd stays at %u. A report every %u seconds (also in Perf.log); .bonk stress again to stop.",
@@ -138,6 +139,8 @@ void BonkRun::StopStress()
     if (!m_stress.on)
         return;
 
+    BonkCrowd::Cost const crowd = m_crowd.TakeCost();
+    m_stress.total.crowd.Add(crowd);
     ReportStress(m_stress.total, true);
     m_stress = Stress();
     ApplyPassives();
@@ -154,6 +157,9 @@ void BonkRun::UpdateStress()
     if (m_totalMs - m_stress.reportMs >= BONK_STRESS_REPORT_MS)
     {
         m_stress.reportMs = m_totalMs;
+        BonkCrowd::Cost const crowd = m_crowd.TakeCost();
+        m_stress.window.crowd.Add(crowd);
+        m_stress.total.crowd.Add(crowd);
         ReportStress(m_stress.window, false);
         m_stress.window = StressTicks();
     }
@@ -223,6 +229,25 @@ void BonkRun::ReportStress(StressTicks const& ticks, bool summary) const
             "%u enemies (%u held), %u orbs, %u spell effects; level %u",
             seconds / MINUTE, seconds % MINUTE, tickAvg, ticks.worstMs, ticks.slow, BONK_STRESS_SLOW_TICK_MS,
             runAvg, ticks.worstRunUs / 1000.0f, m_stress.alive, m_stress.held, uint32(m_orbs.size()), effects, m_player->GetLevel());
+
+    ChatHandler(m_player).SendSysMessage(line);
+    sLog.Out(LOG_PERFORMANCE, LOG_LVL_BASIC, "%s: %s", m_player->GetName(), line);
+    ReportStressCrowd(ticks);
+}
+
+void BonkRun::ReportStressCrowd(StressTicks const& ticks) const
+{
+    BonkCrowd::Cost const& crowd = ticks.crowd;
+    float const steps = float(std::max(1u, crowd.ticks));
+
+    char line[640];
+    snprintf(line, sizeof(line), "Stress crowd step avg %.2f ms, worst %.1f ms: "
+        "gather %.2f, goals %.2f (paths %.2f, sight %.2f), solve %.2f, steer %.2f; per step %.0f bodies (%.0f driven), "
+        "%.1f walk rays, %.1f paths, %.1f sight checks, %.1f moves sent",
+        crowd.totalUs / 1000.0f / steps, crowd.worstUs / 1000.0f,
+        crowd.gatherUs / 1000.0f / steps, crowd.goalUs / 1000.0f / steps, crowd.pathUs / 1000.0f / steps, crowd.sightUs / 1000.0f / steps,
+        crowd.solveUs / 1000.0f / steps, crowd.steerUs / 1000.0f / steps, crowd.bodies / steps, crowd.driven / steps,
+        crowd.walkRays / steps, crowd.paths / steps, crowd.sightChecks / steps, crowd.launches / steps);
 
     ChatHandler(m_player).SendSysMessage(line);
     sLog.Out(LOG_PERFORMANCE, LOG_LVL_BASIC, "%s: %s", m_player->GetName(), line);
