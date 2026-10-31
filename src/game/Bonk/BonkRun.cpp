@@ -5488,6 +5488,7 @@ float BonkRun::GetStatCap(BonkPassiveEffect effect)
         case BONK_PASSIVE_DODGE:  return BONK_MAX_DODGE;
         case BONK_PASSIVE_AMOUNT: return BONK_MAX_COUNT;
         case BONK_PASSIVE_MOVE_SPEED: return BONK_MAX_MOVE_SPEED;
+        case BONK_PASSIVE_PICKUP: return (BONK_MAX_MAGNET_RANGE / BONK_ORB_MAGNET_RANGE - 1.0f) * 100.0f;
         default:                  return 0.0f;
     }
 }
