@@ -1116,7 +1116,7 @@ enum BonkTalentEffect : uint8
     MAX_BONK_TALENT_EFFECT
 };
 
-uint8 const BONK_TALENT_ENDLESS_RANKS = 255;
+uint32 const BONK_DARKMOON_FAVORS_TREE = 8;
 
 struct BonkTalent
 {
@@ -1138,7 +1138,6 @@ struct BonkTalent
             effect == BONK_TALENT_ELITE_AFFIX;
     }
     uint32 GetCost(uint8 ownedRanks) const;
-    bool IsEndless() const { return maxRank == BONK_TALENT_ENDLESS_RANKS; }
 };
 
 uint32 const BONK_FORTUNE_ROW_GATES[] = { 0, 0, 10, 30 };
