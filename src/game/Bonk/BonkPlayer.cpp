@@ -1,4 +1,5 @@
 #include "BonkPlayer.h"
+#include "BonkCoop.h"
 #include "Bag.h"
 #include "BonkEnchant.h"
 #include "BonkFoundGear.h"
@@ -202,6 +203,7 @@ void BonkPlayer::OnLogin()
     ResetReworkedTrinkets();
     TeachWeaponSkills();
     m_player->GetCamera().UpdateVisibilityForOwner();
+    BonkCoop::JoinHostGroup(m_player);
 }
 
 void BonkPlayer::TeachWeaponSkills()

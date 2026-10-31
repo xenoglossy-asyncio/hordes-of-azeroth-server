@@ -20,6 +20,7 @@ set (game_SRCS
     AuraRemovalMgr.cpp
     AutoBroadCastMgr.cpp
     Bonk/BonkCodex.cpp
+    Bonk/BonkCoop.cpp
     Bonk/BonkCommands.cpp
     Bonk/BonkCrowd.cpp
     Bonk/BonkEnchant.cpp
