@@ -1,4 +1,5 @@
 #include "BonkMgr.h"
+#include "BonkCoop.h"
 #include "BonkEnchant.h"
 #include "BonkFoundGear.h"
 #include "BonkLocale.h"
@@ -299,6 +300,8 @@ void BonkMgr::Load()
 
     if (!sObjectMgr.GetCreatureTemplate(BONK_SANGUINE_POOL))
         sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Vanilla Bonk: creature template %u is missing; Sanguine pools will heal without a look.", BONK_SANGUINE_POOL);
+
+    BonkCoop::DeleteGuestAccounts();
 }
 
 void BonkMgr::LoadTiers()

@@ -32,6 +32,7 @@
 #include "Utilities/Random.h"
 #include "SocialMgr.h"
 #include "Util.h"
+#include "Bonk/BonkCoop.h"
 
 /* differeces from off:
     -you can uninvite yourself - is is useful
@@ -239,6 +240,7 @@ void WorldSession::HandleGroupUninviteGuidOpcode(WorldPackets::Group::GroupUninv
     if (grp->IsMember(packet.guid))
     {
         Player::RemoveFromGroup(grp, packet.guid);
+        BonkCoop::OnUninvited(packet.guid);
         return;
     }
 
@@ -277,6 +279,7 @@ void WorldSession::HandleGroupUninviteOpcode(WorldPackets::Group::GroupUninvite 
             return;
         }
         Player::RemoveFromGroup(grp, guid);
+        BonkCoop::OnUninvited(guid);
         return;
     }
 
