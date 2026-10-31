@@ -6,26 +6,19 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012040000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012040000');
--- Add your query below.
 
-
--- Vanilla Bonk: ground spells. Blizzard, Rain of Fire and the like land on
--- the biggest pack of enemies and keep hurting it for a few seconds, without
--- a channel. Each is unlocked by an easy quest.
 ALTER TABLE `bonk_weapon`
     MODIFY COLUMN `target` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0 nearest enemies, 1 area around the player, 2 random enemies, 3 ground effect on the biggest pack',
     ADD COLUMN IF NOT EXISTS `duration_ms` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'how long the spell lasts; 0 = the spell''s own duration' AFTER `heal_pct`;
 
--- Non-channeled versions of each spell. For ground spells, `range` is how far
--- away they can land; their area is the spell's own radius, growing with level.
 DELETE FROM `bonk_weapon` WHERE `id` BETWEEN 22 AND 26;
 INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `target`, `cooldown_ms`, `range`, `damage_fraction`,
     `class_mask`, `starter_class_mask`, `max_level`, `evolves_from`, `evolve_passive`, `heal_pct`, `duration_ms`) VALUES
-(22, 'Blizzard',        'Spell_Frost_IceStorm',          'Ice rains on the biggest pack of enemies for 6 seconds and slows them.',  26607, 3, 5000, 28, 0.30,  128, 0, 8, 0, 0, 0, 6000), -- mage
-(23, 'Rain of Fire',    'Spell_Shadow_RainOfFire',       'Fire rains on the biggest pack of enemies for 6 seconds.',                19717, 3, 5000, 28, 0.35,  256, 0, 8, 0, 0, 0, 6000), -- warlock
-(24, 'Starfall',        'Spell_Holy_ElunesGrace',        'Stars fall over a wide area on the biggest pack of enemies for 6 seconds.', 26540, 3, 5500, 28, 0.25, 1040, 0, 8, 0, 0, 0, 6000), -- druid, priest
-(25, 'Lightning Cloud', 'Spell_Nature_StormReach',       'A storm cloud strikes the biggest pack of enemies, then crackles for 6 seconds.', 26550, 3, 5500, 28, 0.35, 64, 0, 8, 0, 0, 0, 6000), -- shaman
-(26, 'Poison Cloud',    'Spell_Nature_NatureTouchDecay', 'Leaves a cloud of poison where you stand for 6 seconds.',                 25198, 1, 4500,  8, 0.30,   12, 0, 8, 0, 0, 0, 6000); -- hunter, rogue
+(22, 'Blizzard',        'Spell_Frost_IceStorm',          'Ice rains on the biggest pack of enemies for 6 seconds and slows them.',  26607, 3, 5000, 28, 0.30,  128, 0, 8, 0, 0, 0, 6000),
+(23, 'Rain of Fire',    'Spell_Shadow_RainOfFire',       'Fire rains on the biggest pack of enemies for 6 seconds.',                19717, 3, 5000, 28, 0.35,  256, 0, 8, 0, 0, 0, 6000),
+(24, 'Starfall',        'Spell_Holy_ElunesGrace',        'Stars fall over a wide area on the biggest pack of enemies for 6 seconds.', 26540, 3, 5500, 28, 0.25, 1040, 0, 8, 0, 0, 0, 6000),
+(25, 'Lightning Cloud', 'Spell_Nature_StormReach',       'A storm cloud strikes the biggest pack of enemies, then crackles for 6 seconds.', 26550, 3, 5500, 28, 0.35, 64, 0, 8, 0, 0, 0, 6000),
+(26, 'Poison Cloud',    'Spell_Nature_NatureTouchDecay', 'Leaves a cloud of poison where you stand for 6 seconds.',                 25198, 1, 4500,  8, 0.30,   12, 0, 8, 0, 0, 0, 6000);
 
 DELETE FROM `bonk_quest` WHERE `id` BETWEEN 30 AND 34;
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `amount`, `reward_type`, `reward_value`) VALUES
@@ -35,8 +28,6 @@ INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`,
 (33, 'Eye of the Storm', 'Kill 150 enemies with Lightning Bolt.', 'Spell_Nature_StormReach',       2, 10, 150, 2, 25),
 (34, 'Toxic Tactics',    'Kill 5 elites.',                        'Spell_Nature_NatureTouchDecay', 1,  1,   5, 2, 26);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

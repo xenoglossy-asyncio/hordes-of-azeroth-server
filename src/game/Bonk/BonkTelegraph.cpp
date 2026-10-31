@@ -18,7 +18,7 @@ namespace
     uint32 const BONK_STANDIN_SIZE_COUNT = sizeof(BONK_STANDIN_SIZES) / sizeof(BONK_STANDIN_SIZES[0]);
     float const BONK_LINE_HALF_WIDTH = 1.5f;
     float const BONK_LINE_SHORTEST = 1.0f;
-    float const BONK_LINE_LONGEST = 36.0f;
+    float const BONK_LINE_LONGEST = 72.0f;
 
     uint32 const BONK_STANDIN_INVISIBLE   = 11686;
     uint32 const BONK_STANDIN_LOOK_FADE_MS = 3500;

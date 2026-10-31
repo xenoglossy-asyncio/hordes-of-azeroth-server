@@ -355,7 +355,7 @@ void BonkRun::FireMissileVolley(OwnedWeapon& owned, uint32 extraMissiles)
     SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(owned.weapon.spellId);
     if (!spellInfo)
         return;
-    std::vector<Creature*> mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> mobs = GetMobsInRange(GetStrikeRange(owned));
     KeepInSight(m_player, mobs);
     if (mobs.empty())
         return;

@@ -301,6 +301,7 @@ class WorldSession
         // Locales
         LocaleConstant GetSessionDbcLocale() const { return m_sessionDbcLocale; }
         int GetSessionDbLocaleIndex() const { return m_sessionDbLocaleIndex; }
+        void SetSessionDbLocaleIndex(int index) { m_sessionDbLocaleIndex = index; }
         char const* GetMangosString(int32 entry) const;
 
         // Public chat cooldown restriction functionality

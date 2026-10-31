@@ -6,14 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016180000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016180000');
--- Add your query below.
 
-
--- Vanilla Bonk: the Turkey Leg heal drop becomes a creature, so it can fly
--- to a hurt hero as the experience orbs do (game objects never move on the
--- client; user, 2026-10-16). It is the blue orb's template with the food
--- doodad as creature display 17994 (tools\telegraphs\Pickups.cs, patch-3),
--- at the old game object's size.
 DELETE FROM `creature_template` WHERE `entry` = 900116;
 DROP TEMPORARY TABLE IF EXISTS `bonk_turkey`;
 CREATE TEMPORARY TABLE `bonk_turkey` SELECT * FROM `creature_template` WHERE `entry` = 900100;
@@ -25,8 +18,6 @@ DELETE FROM `creature_display_info_addon` WHERE `display_id` = 17994;
 INSERT INTO `creature_display_info_addon` (`display_id`, `build`, `bounding_radius`, `combat_reach`, `speed_walk`, `speed_run`, `gender`, `display_id_other_gender`) VALUES
 (17994, 0, 0.5, 1, 1, 1.14286, 2, 0);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

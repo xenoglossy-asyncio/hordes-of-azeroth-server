@@ -6,15 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012150000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012150000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: affixes and elites (feature plan, Phase 1)
---
--- Elites roll 1/2/3 affixes by difficulty (mini-bosses one more), at most
--- one per category. Sanguine pools need a marker to show where they lie.
--- =============================================================
 
 ALTER TABLE `bonk_tier`
     ADD COLUMN `elite_affixes` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'affixes every elite rolls; mini-bosses roll one more' AFTER `elite_dodge`;
@@ -22,8 +13,6 @@ UPDATE `bonk_tier` SET `elite_affixes` = 1 WHERE `key` = 'easy';
 UPDATE `bonk_tier` SET `elite_affixes` = 2 WHERE `key` = 'medium';
 UPDATE `bonk_tier` SET `elite_affixes` = 3 WHERE `key` = 'hard';
 
--- Sanguine Pool: an invisible trigger (Onyxia Trigger's model); the run
--- puts the pool's look on it as an aura and sets its faction and flags.
 DROP TEMPORARY TABLE IF EXISTS `bonk_pool_template`;
 CREATE TEMPORARY TABLE `bonk_pool_template` SELECT * FROM `creature_template` WHERE `entry` = 12758 AND `patch` = 0;
 UPDATE `bonk_pool_template` SET `entry` = 900110, `name` = 'Sanguine Pool', `subname` = '', `faction` = 35, `npc_flags` = 0, `gossip_menu_id` = 0,
@@ -34,8 +23,6 @@ DELETE FROM `creature_template` WHERE `entry` = 900110;
 INSERT INTO `creature_template` SELECT * FROM `bonk_pool_template`;
 DROP TEMPORARY TABLE `bonk_pool_template`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

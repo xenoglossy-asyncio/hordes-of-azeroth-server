@@ -6,21 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015040000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015040000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: shrines (feature plan, Phase 3)
---
--- Each shrine's model (BonkRunShrines: 900030 + type), under its blue
--- objective pillar. The Ley Line is a blue rune ring on the ground, walked
--- into; the Greed Totem, the Challenge Altar, the Moonwell (a Fountain of
--- Elune) and the Summoning Stone (a meeting stone) are clicked
--- (go_bonk_shrine).
---
--- Swift Justice now asks for a boss before 5:00, which takes the Summoning
--- Stone (the plan's own example of a quest it opens up).
--- =============================================================
 
 DELETE FROM `gameobject_template` WHERE `entry` BETWEEN 900030 AND 900034;
 INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `flags`, `size`, `script_name`) VALUES
@@ -32,8 +17,6 @@ INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `flags`
 
 UPDATE `bonk_quest` SET `param` = 300, `description` = 'Kill a stage boss before 5:00. A Summoning Stone calls it early.' WHERE `id` = 207;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

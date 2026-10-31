@@ -6,18 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011200600');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011200600');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: the camp shops
--- =============================================================
--- Three NPCs join the run master on GM Island. All sell for gold, and
--- what a character buys stays with that character:
---   quartermaster:   permanent upgrades (bonk_upgrade)
---   talent trainer:  run unlocks and difficulty toggles (bonk_talent)
---   gear vendor:     jewelry and cloaks with no level requirement; their
---                    power (bonk_item_power) raises auto-weapon damage
 
 CREATE TABLE IF NOT EXISTS `bonk_upgrade` (
     `id`             INT UNSIGNED     NOT NULL,
@@ -57,12 +45,10 @@ CREATE TABLE IF NOT EXISTS `bonk_talent` (
 
 DELETE FROM `bonk_talent`;
 INSERT INTO `bonk_talent` (`id`, `name`, `description`, `effect`, `value_per_rank`, `gold_bonus`, `max_rank`, `cost`, `cost_growth`) VALUES
--- Difficulty toggles
 (1, 'Hardened Foes',   '+50% enemy health, +25% gold',          0,  50, 25, 1, 20000, 0.0),
 (2, 'Brutal Foes',     '+50% enemy damage, +25% gold',          1,  50, 25, 1, 20000, 0.0),
 (3, 'Swarming',        '+50% enemies per wave, +20% gold',      2,  50, 20, 1, 20000, 0.0),
 (4, 'Champions',       'twice as many elites, +15% gold',       3, 100, 15, 1, 15000, 0.0),
--- Perks
 (5, 'Second Thoughts', 'reroll an upgrade choice once per run', 4,   1,  0, 3, 10000, 1.0),
 (6, 'Banishment',      'banish an upgrade once per run',        5,   1,  0, 3, 10000, 1.0),
 (7, 'Second Wind',     'revive once per run at half health',    6,   1,  0, 1, 50000, 0.0),
@@ -74,8 +60,6 @@ CREATE TABLE IF NOT EXISTS `bonk_item_power` (
     PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk gear power';
 
--- Gear: neck, ring, trinket and cloak slots, which every class can wear at
--- level 1. Three tiers each; stamina and armor work as usual.
 DELETE FROM `item_template` WHERE `entry` BETWEEN 900101 AND 900112;
 INSERT INTO `item_template` (`entry`, `patch`, `class`, `subclass`, `name`, `description`, `display_id`, `quality`, `buy_count`, `buy_price`, `sell_price`,
     `inventory_type`, `allowable_class`, `allowable_race`, `item_level`, `required_level`, `stackable`, `stat_type1`, `stat_value1`, `armor`,
@@ -100,7 +84,6 @@ INSERT INTO `bonk_item_power` (`entry`, `power`) VALUES
 (900107, 4), (900108, 8), (900109, 12),
 (900110, 1), (900111, 2), (900112, 4);
 
--- The NPCs. static_flags1 262 = no xp, no loot, sessile.
 DELETE FROM `creature_template` WHERE `entry` IN (900002, 900003, 900004);
 INSERT INTO `creature_template` (`entry`, `patch`, `name`, `subname`, `level_min`, `level_max`, `faction`, `npc_flags`,
     `display_id1`, `display_probability1`, `display_total_probability`, `type`, `unit_class`, `inhabit_type`,
@@ -109,7 +92,6 @@ INSERT INTO `creature_template` (`entry`, `patch`, `name`, `subname`, `level_min
 (900003, 0, 'Lorelai Moonwhisper', 'Talents', 60, 60, 35, 1, 12033, 1, 1, 7, 1, 1, 262, 'npc_bonk_talents'),
 (900004, 0, 'Durgan Ironbelly',   'Gear',     60, 60, 35, 4,  5037, 1, 1, 7, 1, 1, 262, '');
 
--- Around the run master, all facing the camp spawn point.
 DELETE FROM `creature` WHERE `guid` IN (900002, 900003, 900004);
 INSERT INTO `creature` (`guid`, `id`, `map`, `position_x`, `position_y`, `position_z`, `orientation`,
     `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `movement_type`) VALUES
@@ -135,8 +117,6 @@ INSERT INTO `npc_text` (`ID`, `BroadcastTextID0`, `Probability0`) VALUES
 (900003, 900003, 1),
 (900004, 900004, 1);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

@@ -15,7 +15,7 @@ namespace BonkCodex
     void Send(Player* player, std::string const& npc, bool deck = false);
     void SendKeywordGlossary(BonkPlayer* bonk);
     void SendTermGlossary(BonkPlayer* bonk);
-    std::string DescribeCardTotal(BonkCard const& card, uint32_t copies);
+    std::string DescribeCardTotal(BonkCard const& card, uint32_t copies, LocaleConstant locale);
 }
 
 #endif

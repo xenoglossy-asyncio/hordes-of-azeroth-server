@@ -1,4 +1,5 @@
 #include "BonkSandbox.h"
+#include "BonkLocale.h"
 #include "BonkMgr.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
@@ -348,17 +349,17 @@ bool BonkPlayer::IsInSandbox() const
 bool BonkPlayer::StartSandbox(std::string& error)
 {
     if (!BonkSandbox::IsAllowed(m_player))
-        error = "The sandbox is for game masters.";
+        error = GetString(BONK_STRING_SANDBOX_IS_FOR_GAME_MASTERS);
     else if (m_run)
-        error = "You are already in a run. Use .bonk stop to leave it.";
+        error = GetString(BONK_STRING_YOU_ARE_ALREADY_IN_RUN);
     else if (!IsAtCamp())
-        error = "Go back to the Inn to enter the sandbox.";
+        error = GetString(BONK_STRING_GO_BACK_TO_INN_TO);
     else if (m_player->IsInCombat())
-        error = "You can't enter the sandbox while in combat.";
+        error = GetString(BONK_STRING_CANT_ENTER_SANDBOX_IN_COMBAT);
     else if (m_player->IsTaxiFlying())
-        error = "You can't enter the sandbox while flying.";
+        error = GetString(BONK_STRING_CANT_ENTER_SANDBOX_WHILE_FLYING);
     else if (!IsPlayableClass(m_player->GetClass()) || !sBonkMgr.HasStarterSpell(m_player->GetClassMask()))
-        error = "The " + GetClassName() + " is being reworked and can't enter the sandbox yet.";
+        error = GetString(BONK_STRING_CLASS_REWORKED_NO_SANDBOX, { GetClassName() });
     if (!error.empty())
         return false;
 
@@ -371,7 +372,7 @@ bool BonkPlayer::StartSandbox(std::string& error)
     }
     if (!map || map->creatures.empty() || !tier)
     {
-        error = "The sandbox map is not set up.";
+        error = GetString(BONK_STRING_SANDBOX_MAP_IS_NOT_SET);
         return false;
     }
 
@@ -398,7 +399,7 @@ bool BonkRun::TeleportToSandbox(std::string& error)
 {
     if (!m_player->TeleportTo(m_map.mapId, BONK_SANDBOX_X, BONK_SANDBOX_Y, BONK_SANDBOX_Z + 0.5f, BONK_SANDBOX_O))
     {
-        error = "You couldn't travel to the sandbox.";
+        error = GetString(BONK_STRING_YOU_COULDNT_TRAVEL_TO_SANDBOX);
         return false;
     }
     m_state = STATE_ENTERING;
@@ -410,8 +411,7 @@ void BonkRun::StartSandbox()
 {
     SendFullState();
     SummonSandboxKeeper();
-    m_player->GetBonkPlayer()->Notify("Welcome to the sandbox. Talk to the Sandbox Keeper behind you for dummies, enemies, levels and spells. "
-        "Nothing here counts.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_WELCOME_TO_SANDBOX_TALK_TO);
 }
 
 void BonkRun::SummonSandboxKeeper()
@@ -519,7 +519,7 @@ void BonkRun::ReviveInSandbox()
 {
     m_player->ResurrectPlayer(1.0f);
     m_player->SpawnCorpseBones();
-    m_player->GetBonkPlayer()->Notify("You fell, so the sandbox brought you back.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_FELL_SO_SANDBOX_BROUGHT);
 }
 
 void BonkRun::EndSandbox()
@@ -642,14 +642,15 @@ void BonkRun::SpawnSandboxDummies(uint32 count, BonkSpawnKind kind, float ringRa
         BonkMobAI::SetNextAffixCount(-1);
     }
 
-    std::string const kindName = kind == BONK_SPAWN_BOSS ? "boss " : kind == BONK_SPAWN_ELITE ? "elite " : "";
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     if (!spawned)
-        bonk->Notify("There is no room for dummies here.");
+        bonk->Notify(BONK_STRING_THERE_IS_NO_ROOM_FOR);
     else if (spawned == 1)
-        bonk->Notify((kind == BONK_SPAWN_ELITE ? "An " : "A ") + kindName + "training dummy stands ready.");
+        bonk->Notify(kind == BONK_SPAWN_BOSS ? BONK_STRING_BOSS_TRAINING_DUMMY_READY : kind == BONK_SPAWN_ELITE ? BONK_STRING_ELITE_TRAINING_DUMMY_READY :
+            BONK_STRING_TRAINING_DUMMY_READY);
     else
-        bonk->Notify(std::to_string(spawned) + " " + kindName + "training dummies stand ready.");
+        bonk->Notify(kind == BONK_SPAWN_BOSS ? BONK_STRING_BOSS_TRAINING_DUMMIES_READY : kind == BONK_SPAWN_ELITE ? BONK_STRING_ELITE_TRAINING_DUMMIES_READY :
+            BONK_STRING_TRAINING_DUMMIES_READY, { std::to_string(spawned) });
 }
 
 void BonkRun::QueueSandboxPack(uint32 count, bool meleeOnly)
@@ -660,8 +661,7 @@ void BonkRun::QueueSandboxPack(uint32 count, bool meleeOnly)
     uint32 const room = m_tier.maxAlive > busy ? m_tier.maxAlive - busy : 0;
     uint32 const queued = std::min(count, room);
     m_sandboxPackLeft += queued;
-    m_player->GetBonkPlayer()->Notify(queued ? std::to_string(queued) + " enemies are on their way." :
-        "The sandbox is full. Clear some enemies first.");
+    m_player->GetBonkPlayer()->Notify(queued ? BONK_STRING_ENEMIES_ON_THEIR_WAY : BONK_STRING_SANDBOX_IS_FULL, { std::to_string(queued) });
 }
 
 Creature* BonkRun::SpawnSandboxEnemy(uint32 entry)
@@ -669,7 +669,7 @@ Creature* BonkRun::SpawnSandboxEnemy(uint32 entry)
     BonkMapCreature const* creature = FindMapCreature(entry);
     if (!creature)
     {
-        m_player->GetBonkPlayer()->Notify("That enemy is not on any run map.");
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_THAT_ENEMY_IS_NOT_ON);
         return nullptr;
     }
 
@@ -677,12 +677,12 @@ Creature* BonkRun::SpawnSandboxEnemy(uint32 entry)
     if (!FindSpawnPositionAt(GetSandboxFront(), BONK_SANDBOX_ENEMY_DISTANCE, x, y, z) &&
         !FindMobPosition(x, y, z, m_map.spawnMinDistance, m_map.spawnMaxDistance))
     {
-        m_player->GetBonkPlayer()->Notify("There is no room for it here. Step into the open and try again.");
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_THERE_IS_NO_ROOM_FOR_IT);
         return nullptr;
     }
     Creature* mob = SpawnMobAt(*creature, x, y, z);
     if (mob)
-        m_player->GetBonkPlayer()->Notify(std::string(mob->GetName()) + " has arrived!");
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_ARRIVED, { std::string(mob->GetName()) });
     return mob;
 }
 
@@ -755,7 +755,7 @@ bool BonkRun::RunSandboxBossVerb(std::string const& verb, uint32 first, std::str
         Creature* mob = SpawnSandboxEnemy(first);
         BonkMobAI const* ai = mob ? dynamic_cast<BonkMobAI const*>(mob->AI()) : nullptr;
         if (ai && ai->GetKind() != BONK_SPAWN_BOSS && ai->GetKind() != BONK_SPAWN_MINIBOSS)
-            ChatHandler(m_player).SendSysMessage("That one is not a boss or mini-boss, so its moves are not reported.");
+            ChatHandler(m_player).SendSysMessage(GetString(BONK_STRING_SANDBOX_NOT_A_BOSS).c_str());
         if (mob)
             DescribeSandboxBoss(mob);
         return mob != nullptr;
@@ -764,16 +764,15 @@ bool BonkRun::RunSandboxBossVerb(std::string const& verb, uint32 first, std::str
     std::vector<Creature*> const bosses = GetSandboxBosses();
     if (bosses.empty())
     {
-        error = "No boss is here. Use .bonk sandbox boss <entry> first.";
+        error = GetString(BONK_STRING_NO_BOSS_IS_HERE_USE);
         return false;
     }
     if (verb == "bosshealth" && !first)
     {
         for (Creature* mob : bosses)
             if (BonkMobAI const* ai = dynamic_cast<BonkMobAI const*>(mob->AI()))
-                m_player->GetBonkPlayer()->Notify(std::string(mob->GetName()) + " has " + std::to_string(ai->GetTrueHealth(mob->GetHealth())) + " of " +
-                    std::to_string(ai->GetTrueHealth(mob->GetMaxHealth())) + " health, kept as " + std::to_string(mob->GetHealth()) + " at 1/" +
-                    std::to_string(ai->GetHealthOverflow()) + ".");
+                m_player->GetBonkPlayer()->Notify(BONK_STRING_SANDBOX_BOSS_TRUE_HEALTH, { mob->GetName(), std::to_string(ai->GetTrueHealth(mob->GetHealth())),
+                    std::to_string(ai->GetTrueHealth(mob->GetMaxHealth())), std::to_string(mob->GetHealth()), std::to_string(ai->GetHealthOverflow()) });
         return true;
     }
     if (verb == "bosshealth")
@@ -781,14 +780,14 @@ bool BonkRun::RunSandboxBossVerb(std::string const& verb, uint32 first, std::str
         float const percent = float(std::max(1u, std::min(first, 100u)));
         for (Creature* mob : bosses)
             mob->SetHealthPercent(percent);
-        m_player->GetBonkPlayer()->Notify("Bosses here are at " + std::to_string(int32(percent)) + "% health.");
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_BOSSES_HERE_ARE_AT_HEALTH, { std::to_string(int32(percent)) });
         return true;
     }
     for (Creature* mob : bosses)
         if (BonkMobAI* ai = dynamic_cast<BonkMobAI*>(mob->AI()))
             if (!ai->ForceAbility(first))
             {
-                error = std::string(mob->GetName()) + " has no move " + std::to_string(first) + ".";
+                error = GetString(BONK_STRING_ENEMY_HAS_NO_MOVE, { m_player->GetBonkPlayer()->GetLocalName(mob), std::to_string(first) });
                 return false;
             }
     return true;
@@ -802,21 +801,19 @@ void BonkRun::ToggleSandbox(uint32 toggle)
         bool const on = !bonk->IsTestGod();
         bonk->SetTestGod(on);
         m_player->SetCheatGod(on);
-        bonk->Notify(on ? "God mode is on: damage stops at 1 health." : "God mode is off.");
+        bonk->Notify(on ? BONK_STRING_GOD_MODE_ON : BONK_STRING_GOD_MODE_OFF);
         return;
     }
     if (toggle == TOGGLE_DEEP_DUMMIES)
     {
         m_sandboxDeepDummies = !m_sandboxDeepDummies;
-        bonk->Notify(m_sandboxDeepDummies ? "New dummies have 100 times the health and refill below half, so every hit counts on the meter." :
-            "New dummies are normal again.");
+        bonk->Notify(m_sandboxDeepDummies ? BONK_STRING_DEEP_DUMMIES_ON : BONK_STRING_DEEP_DUMMIES_OFF);
         return;
     }
     if (toggle == TOGGLE_REACH_REPORT)
     {
         m_sandboxReachReport = !m_sandboxReachReport;
-        bonk->Notify(m_sandboxReachReport ? "Each enemy melee swing now reports its distance and reach in chat." :
-            "Melee swing distances are no longer reported.");
+        bonk->Notify(m_sandboxReachReport ? BONK_STRING_REACH_REPORT_ON : BONK_STRING_REACH_REPORT_OFF);
         return;
     }
     if (toggle == TOGGLE_MOVES_OFF)
@@ -827,7 +824,7 @@ void BonkRun::ToggleSandbox(uint32 toggle)
             if (Creature* mob = map->GetCreature(guid))
                 if (BonkMobAI* ai = dynamic_cast<BonkMobAI*>(mob->AI()))
                     ai->SetMovesOff(m_sandboxMovesOff);
-        bonk->Notify(m_sandboxMovesOff ? "Enemy moves are off: enemies only walk and swing." : "Enemies use their moves again.");
+        bonk->Notify(m_sandboxMovesOff ? BONK_STRING_ENEMY_MOVES_OFF : BONK_STRING_ENEMY_MOVES_ON);
         return;
     }
     if (toggle != TOGGLE_PASSIVE && toggle != TOGGLE_UNKILLABLE)
@@ -848,9 +845,9 @@ void BonkRun::ToggleSandbox(uint32 toggle)
     }
 
     if (toggle == TOGGLE_PASSIVE)
-        bonk->Notify(setting ? "Enemies are passive now: they don't move, attack or cast." : "Enemies fight again.");
+        bonk->Notify(setting ? BONK_STRING_ENEMIES_PASSIVE_ON : BONK_STRING_ENEMIES_PASSIVE_OFF);
     else
-        bonk->Notify(setting ? "Enemies stop at 1 health now." : "Enemies die normally again.");
+        bonk->Notify(setting ? BONK_STRING_ENEMIES_UNKILLABLE_ON : BONK_STRING_ENEMIES_UNKILLABLE_OFF);
 }
 
 void BonkRun::ReportSandboxSwing(Creature const* mob) const
@@ -877,7 +874,7 @@ void BonkRun::GiveSandboxLevels(uint32 levels)
     }
 
     uint32 const after = m_player->GetLevel() + m_overcapLevel;
-    m_player->GetBonkPlayer()->Notify(after > before ? "You are now level " + std::to_string(after) + "." : std::string("You can't gain more levels."));
+    m_player->GetBonkPlayer()->Notify(after > before ? BONK_STRING_YOU_ARE_NOW_LEVEL : BONK_STRING_CANT_GAIN_MORE_LEVELS, { std::to_string(after) });
 }
 
 void BonkRun::SetSandboxLevel(uint32 level)
@@ -891,7 +888,7 @@ void BonkRun::SetSandboxLevel(uint32 level)
     m_lastLevel = m_player->GetLevel();
     m_player->SetHealth(m_player->GetMaxHealth());
     SendState();
-    m_player->GetBonkPlayer()->Notify("You are now level " + std::to_string(m_player->GetLevel()) + ".");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_ARE_NOW_LEVEL, { std::to_string(m_player->GetLevel()) });
 }
 
 void BonkRun::SpawnSandboxCrystals(Creature const* keeper)
@@ -917,8 +914,8 @@ void BonkRun::SpawnSandboxCrystals(Creature const* keeper)
         float const y = centerY + distance * std::sin(angle);
         SpawnOrb(x, y, GroundHeight(m_player, x, y, centerZ), xp, grunt.orb);
     }
-    m_player->GetBonkPlayer()->Notify(keeper ? "Experience crystals appear around " + std::string(keeper->GetName()) + "." :
-        "Experience crystals surround you.");
+    m_player->GetBonkPlayer()->Notify(keeper ? BONK_STRING_EXPERIENCE_CRYSTALS_AROUND : BONK_STRING_EXPERIENCE_CRYSTALS_SURROUND_YOU,
+        { keeper ? m_player->GetBonkPlayer()->GetLocalName(keeper) : std::string() });
 }
 
 BonkRun::OwnedWeapon* BonkRun::FindSandboxSpell(uint32 baseId)
@@ -937,16 +934,16 @@ bool BonkRun::AddSandboxGlyph(uint32 glyphId, std::string& error)
     BonkGlyph const* glyph = sBonkMgr.GetGlyph(glyphId);
     if (!glyph)
     {
-        error = "That Glyph does not exist.";
+        error = GetString(BONK_STRING_THAT_GLYPH_DOES_NOT_EXIST);
         return false;
     }
     if (std::find(m_glyphs.begin(), m_glyphs.end(), glyph) != m_glyphs.end())
     {
-        error = "You already have that Glyph.";
+        error = GetString(BONK_STRING_YOU_ALREADY_HAVE_THAT_GLYPH);
         return false;
     }
     TakeGlyph(*glyph);
-    m_player->GetBonkPlayer()->Notify("You gained " + glyph->name + ".");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_GAINED, { Localize(BONK_FIELD_GLYPH_NAME, glyph->id, glyph->name) });
     return true;
 }
 
@@ -964,7 +961,7 @@ bool BonkRun::SetSandboxBenchItem(uint32 entry, std::string& error)
         m_sandboxBenchItems.clear();
     else if (!sBonkMgr.GetItemStat(entry))
     {
-        error = "Item " + std::to_string(entry) + " has no Bonk stats.";
+        error = GetString(BONK_STRING_ITEM_HAS_NO_BONK_STATS, { std::to_string(entry) });
         return false;
     }
     else
@@ -990,12 +987,12 @@ bool BonkRun::SetSandboxTier(uint32 tierId, uint32 stage, std::string& error)
     BonkTier const* tier = sBonkMgr.GetTier(tierId);
     if (!tier)
     {
-        error = "That difficulty does not exist.";
+        error = GetString(BONK_STRING_THAT_DIFFICULTY_DOES_NOT_EXIST);
         return false;
     }
     m_tier = *tier;
     m_stage = std::max(1u, stage);
-    m_player->GetBonkPlayer()->Notify("Sandbox enemies now fight as " + m_tier.name + ", stage " + std::to_string(m_stage) + ".");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_SANDBOX_ENEMIES_NOW_FIGHT_AS, { Localize(BONK_FIELD_TIER_NAME, m_tier.id, m_tier.name), std::to_string(m_stage) });
     return true;
 }
 
@@ -1013,7 +1010,7 @@ bool BonkRun::AddSandboxCards(uint32 cardId, uint32 copies, std::string& error)
     BonkCard const* card = sBonkMgr.GetCard(cardId);
     if (!card)
     {
-        error = "That card does not exist.";
+        error = GetString(BONK_STRING_THAT_CARD_DOES_NOT_EXIST);
         return false;
     }
     for (uint32 i = 0; i < copies && error.empty(); ++i)
@@ -1032,7 +1029,7 @@ bool BonkRun::AddSandboxSpell(uint32 baseId, std::string& error)
         return false;
     if (UsesShotSources())
         WarmShotSources();
-    m_player->GetBonkPlayer()->Notify("You learned " + base->name + ".");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_LEARNED, { Localize(BONK_FIELD_WEAPON_NAME, base->id, base->name) });
     return true;
 }
 
@@ -1061,7 +1058,7 @@ void BonkRun::SetSandboxRank(uint32 baseId, uint32 rank, bool epicRoundRobin)
         ApplyStep(*owned, step);
     }
     SendLoadout();
-    m_player->GetBonkPlayer()->Notify(owned->weapon.name + " is now rank " + std::to_string(owned->rank) + ".");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_NOW_RANK, { Localize(BONK_FIELD_WEAPON_NAME, owned->weapon.id, owned->weapon.name), std::to_string(owned->rank) });
 }
 
 void BonkRun::PickUpgradesInTurn(OwnedWeapon const& owned, Offer& offer, size_t& nextUpgrade) const
@@ -1141,23 +1138,23 @@ void BonkRun::ResetSandbox(uint32 reset)
     {
         case RESET_CLEAR:
             ClearSandboxEnemies();
-            bonk->Notify("All enemies and dummies are gone.");
+            bonk->Notify(BONK_STRING_ALL_ENEMIES_AND_DUMMIES_ARE);
             break;
         case RESET_HEAL:
             HealInSandbox();
-            bonk->Notify("You are fully healed.");
+            bonk->Notify(BONK_STRING_YOU_ARE_FULLY_HEALED);
             break;
         case RESET_COOLDOWNS:
             ResetSandboxCooldowns();
-            bonk->Notify("All your cooldowns are ready.");
+            bonk->Notify(BONK_STRING_ALL_YOUR_COOLDOWNS_ARE_READY);
             break;
         case RESET_DUMMIES:
             RefillSandboxDummies();
-            bonk->Notify("The training dummies are whole again.");
+            bonk->Notify(BONK_STRING_TRAINING_DUMMIES_ARE_WHOLE_AGAIN);
             break;
         case RESET_SPELLS:
             RemoveSandboxSpells(0);
-            bonk->Notify("You forgot all your spells.");
+            bonk->Notify(BONK_STRING_YOU_FORGOT_ALL_YOUR_SPELLS);
             break;
         default:
             break;
@@ -1202,7 +1199,7 @@ void BonkRun::EnterSandboxBench()
     UpdateGear();
     ApplyPassives();
     HealInSandbox();
-    m_player->GetBonkPlayer()->Notify("Bench mode is on: talents, account upgrades and gear don't count until you leave the sandbox.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_BENCH_MODE_IS_ON_TALENTS);
 }
 
 void BonkRun::ResetSandboxCooldowns()
@@ -1431,9 +1428,9 @@ void BonkRun::SelectSandboxOption(Creature* keeper, uint32 sender, uint32 action
         case SENDER_SPELL_REMOVE:
             if (OwnedWeapon const* owned = FindSandboxSpell(action))
             {
-                std::string const name = owned->weapon.name;
+                std::string const name = Localize(BONK_FIELD_WEAPON_NAME, owned->weapon.id, owned->weapon.name);
                 RemoveSandboxSpells(action);
-                m_player->GetBonkPlayer()->Notify("You forgot " + name + ".");
+                m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_FORGOT, { name });
             }
             break;
         case SENDER_EVOLVE:
@@ -1446,7 +1443,7 @@ void BonkRun::SelectSandboxOption(Creature* keeper, uint32 sender, uint32 action
         {
             BonkCard const* card = sBonkMgr.GetCard(action);
             if (card && card->maxCopies && GetCardCopies(action) >= card->maxCopies)
-                error = "You already hold every copy of " + card->name + ".";
+                error = GetString(BONK_STRING_YOU_ALREADY_HOLD_EVERY_COPY, { Localize(BONK_FIELD_CARD_NAME, card->id, card->name) });
             else
                 GiveCard(action, error);
             break;
@@ -1512,7 +1509,7 @@ bool BonkRun::OfferSandboxGear(uint32 entry, std::string& error)
 {
     if (!sBonkMgr.GetGear(entry))
     {
-        error = "That isn't run gear.";
+        error = GetString(BONK_STRING_THAT_ISNT_RUN_GEAR);
         return false;
     }
     m_pendingGear.push_back(entry);
@@ -1524,7 +1521,7 @@ bool BonkRun::RunSandboxVerb(std::string const& verb, uint32 first, uint32 secon
 {
     if (m_state != STATE_RUNNING)
     {
-        error = "The sandbox is not ready yet.";
+        error = GetString(BONK_STRING_SANDBOX_IS_NOT_READY_YET);
         return false;
     }
 
@@ -1600,8 +1597,7 @@ bool BonkRun::RunSandboxVerb(std::string const& verb, uint32 first, uint32 secon
     else if (verb == "minute")
     {
         m_sandboxMinute = first ? float(first) : -1.0f;
-        bonk->Notify(first ? "New enemies are as tough as at minute " + std::to_string(first) + " of a run." :
-            "Enemy toughness follows your time in the sandbox again.");
+        bonk->Notify(first ? BONK_STRING_SANDBOX_TOUGHNESS_MINUTE : BONK_STRING_SANDBOX_TOUGHNESS_TIME, { std::to_string(first) });
     }
     else if (verb == "boss" || verb == "miniboss" || verb == "bosshealth" || verb == "ability")
         return RunSandboxBossVerb(verb, first, error);
@@ -1610,7 +1606,7 @@ bool BonkRun::RunSandboxVerb(std::string const& verb, uint32 first, uint32 secon
         std::vector<SandboxEnemy> const elites = ListEnemies(ENEMY_ELITE);
         if (elites.empty())
         {
-            error = "No elites are on any run map.";
+            error = GetString(BONK_STRING_NO_ELITES_ARE_ON_ANY);
             return false;
         }
         for (uint32 i = 0; i < std::max(1u, first); ++i)
@@ -1619,14 +1615,13 @@ bool BonkRun::RunSandboxVerb(std::string const& verb, uint32 first, uint32 secon
     else if (verb == "quiet")
     {
         m_sandboxQuietLevels = !m_sandboxQuietLevels;
-        bonk->Notify(m_sandboxQuietLevels ? "Level-ups no longer offer choices." : "Level-ups offer choices again.");
+        bonk->Notify(m_sandboxQuietLevels ? BONK_STRING_LEVEL_UPS_QUIET : BONK_STRING_LEVEL_UPS_OFFER_CHOICES);
     }
     else if (verb == "bench")
         EnterSandboxBench();
     else
     {
-        error = "Use .bonk sandbox pack|dummies|spell|evolve|rank|maxrank|passive|forget|level|clear|heal|cooldowns|god|passive|unkillable|moves|reach|deep|quiet|minute|"
-            "boss|miniboss|bosshealth|ability|bench|enchanter|valor.";
+        error = GetString(BONK_STRING_USE_BONK_SANDBOX_PACK_DUMMIES);
         return false;
     }
     return true;
@@ -1643,7 +1638,7 @@ bool ChatHandler::HandleBonkSandboxCommand(char* args)
             return true;
     }
     else if (!bonk->IsInSandbox())
-        error = "You are not in the sandbox. Use .bonk sandbox to enter it.";
+        error = bonk->GetString(BONK_STRING_YOU_ARE_NOT_IN_SANDBOX);
     else
     {
         uint32 first = 0, second = 0;

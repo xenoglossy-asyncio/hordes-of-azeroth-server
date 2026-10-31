@@ -6,10 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011200601');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011200601');
--- Add your query below.
 
-
--- Vanilla Bonk: what each character bought at camp.
 CREATE TABLE IF NOT EXISTS `bonk_character_upgrade` (
     `guid`    INT UNSIGNED     NOT NULL,
     `upgrade` INT UNSIGNED     NOT NULL,
@@ -25,8 +22,6 @@ CREATE TABLE IF NOT EXISTS `bonk_character_talent` (
     PRIMARY KEY (`guid`, `talent`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk run unlocks per character';
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

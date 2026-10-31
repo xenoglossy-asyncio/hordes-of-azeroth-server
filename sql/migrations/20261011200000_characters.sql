@@ -6,10 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011200000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011200000');
--- Add your query below.
 
-
--- Vanilla Bonk: each hero's record over all its runs, shown on the hero screen.
 CREATE TABLE IF NOT EXISTS `bonk_character_stats` (
     `guid`          INT UNSIGNED NOT NULL COMMENT 'characters.guid',
     `runs`          INT UNSIGNED NOT NULL DEFAULT 0,
@@ -20,8 +17,6 @@ CREATE TABLE IF NOT EXISTS `bonk_character_stats` (
     PRIMARY KEY (`guid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk hero records';
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

@@ -6,28 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016110000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016110000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk: run gear (Core loop v2, phase D1)
---
--- Elites, mini-bosses and bosses drop gear in a run (BonkRunGear.cpp):
--- a loot sack on the ground; walking over it offers Equip (worn for the
--- run) or Salvage (Valor). Greens and blues turn into gold when the run
--- ends; epics are kept by going home through the stage portal, as a
--- permanent copy by mail.
---
--- 105 run items: every armor slot for cloth, leather and mail, a neck,
--- back and ring for everyone, and each class's one weapon type, in green,
--- blue and epic. Looks come from vanilla items (greens of level 25-40,
--- dungeon blues, raid epics); stats are Bonk stats only, sized by quality
--- and slot. Run copies 900300-900404 (bonk_gear); the epics' permanent
--- copies are 1000 higher (901300+), which survive the login clean-up that
--- removes run copies.
--- =============================================================
-
--- The loot sack.
 DELETE FROM `gameobject_template` WHERE `entry` = 900040;
 DROP TEMPORARY TABLE IF EXISTS `bonk_loot_go`;
 CREATE TEMPORARY TABLE `bonk_loot_go` SELECT * FROM `gameobject_template` WHERE `entry` = 900007;
@@ -42,9 +21,6 @@ CREATE TABLE IF NOT EXISTS `bonk_gear` (
     PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk: gear that drops in runs (BonkRunGear.cpp)';
 
--- Class masks: 1 Warrior, 2 Paladin, 4 Hunter, 8 Rogue, 16 Priest,
--- 64 Shaman, 128 Mage, 256 Warlock, 1024 Druid. Weight: the slot's share
--- of a full piece's stats.
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_spec`;
 CREATE TEMPORARY TABLE `bonk_gear_spec` (
     `spec` INT NOT NULL,
@@ -58,7 +34,6 @@ CREATE TEMPORARY TABLE `bonk_gear_spec` (
     `dmg_max` FLOAT NOT NULL
 );
 INSERT INTO `bonk_gear_spec` VALUES
--- Cloth: Mage, Priest, Warlock.
 (1,  4, 1, '1',    400, 'armor', 1.0,  0, 0),
 (2,  4, 1, '3',    400, 'armor', 0.75, 0, 0),
 (3,  4, 1, '5,20', 400, 'armor', 1.0,  0, 0),
@@ -67,7 +42,6 @@ INSERT INTO `bonk_gear_spec` VALUES
 (6,  4, 1, '8',    400, 'armor', 0.75, 0, 0),
 (7,  4, 1, '9',    400, 'armor', 0.5,  0, 0),
 (8,  4, 1, '10',   400, 'armor', 0.75, 0, 0),
--- Leather: Rogue, Hunter, Shaman, Druid.
 (9,  4, 2, '1',    1100, 'armor', 1.0,  0, 0),
 (10, 4, 2, '3',    1100, 'armor', 0.75, 0, 0),
 (11, 4, 2, '5,20', 1100, 'armor', 1.0,  0, 0),
@@ -76,7 +50,6 @@ INSERT INTO `bonk_gear_spec` VALUES
 (14, 4, 2, '8',    1100, 'armor', 0.75, 0, 0),
 (15, 4, 2, '9',    1100, 'armor', 0.5,  0, 0),
 (16, 4, 2, '10',   1100, 'armor', 0.75, 0, 0),
--- Mail: Warrior, Paladin.
 (17, 4, 3, '1',    3, 'armor', 1.0,  0, 0),
 (18, 4, 3, '3',    3, 'armor', 0.75, 0, 0),
 (19, 4, 3, '5,20', 3, 'armor', 1.0,  0, 0),
@@ -85,19 +58,17 @@ INSERT INTO `bonk_gear_spec` VALUES
 (22, 4, 3, '8',    3, 'armor', 0.75, 0, 0),
 (23, 4, 3, '9',    3, 'armor', 0.5,  0, 0),
 (24, 4, 3, '10',   3, 'armor', 0.75, 0, 0),
--- Everyone: neck, back, ring.
 (25, 4, 0, '2',  1503, 'neck',   0.5, 0, 0),
 (26, 4, 1, '16', 1503, 'back',   0.5, 0, 0),
 (27, 4, 0, '11', 1503, 'finger', 0.5, 0, 0),
--- Each class's one weapon type.
-(28, 2, 7,  '13,21', 1,    'one',    1, 2, 5),     -- sword: Warrior
-(29, 4, 6,  '14',    65,   'shield', 1, 0, 0),     -- shield: Warrior, Shaman
-(30, 2, 4,  '13,21', 80,   'one',    1, 2, 5),     -- mace: Priest, Shaman
-(31, 2, 5,  '17',    2,    'two',    1, 4, 8),     -- two-handed mace: Paladin
-(32, 2, 15, '13',    8,    'one',    1, 2, 4),     -- dagger: Rogue
-(33, 2, 2,  '15',    4,    'two',    1, 2, 5),     -- bow: Hunter
-(34, 2, 10, '17',    1408, 'two',    1, 4, 8),     -- staff: Mage, Warlock, Druid
-(35, 4, 0,  '23',    16,   'held',   1, 0, 0);     -- held in off-hand: Priest
+(28, 2, 7,  '13,21', 1,    'one',    1, 2, 5),
+(29, 4, 6,  '14',    65,   'shield', 1, 0, 0),
+(30, 2, 4,  '13,21', 80,   'one',    1, 2, 5),
+(31, 2, 5,  '17',    2,    'two',    1, 4, 8),
+(32, 2, 15, '13',    8,    'one',    1, 2, 4),
+(33, 2, 2,  '15',    4,    'two',    1, 2, 5),
+(34, 2, 10, '17',    1408, 'two',    1, 4, 8),
+(35, 4, 0,  '23',    16,   'held',   1, 0, 0);
 
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_pick`;
 CREATE TEMPORARY TABLE `bonk_gear_pick` SELECT `s`.`spec`, `q`.`quality`, `s`.`classes`, `s`.`kind`, `s`.`weight`, `s`.`dmg_min`, `s`.`dmg_max`,
@@ -139,14 +110,11 @@ UPDATE `bonk_gear_items` SET
     `spellid_4` = 0, `spelltrigger_4` = 0, `spellid_5` = 0, `spelltrigger_5` = 0,
     `start_quest` = 0, `page_text` = 0, `lock_id` = 0, `random_property` = 0, `set_id` = 0, `max_durability` = 0, `disenchant_id` = 0;
 
--- Run copies, then the epics' permanent copies.
 DELETE FROM `item_template` WHERE `entry` BETWEEN 900300 AND 900499 OR `entry` BETWEEN 901300 AND 901499;
 INSERT INTO `item_template` SELECT * FROM `bonk_gear_items`;
 UPDATE `bonk_gear_items` SET `entry` = `entry` + 1000, `description` = '' WHERE `quality` >= 4;
 INSERT INTO `item_template` SELECT * FROM `bonk_gear_items` WHERE `entry` >= 901300;
 
--- Bonk stats by quality (P Power, A Armor, J a secondary stat for a full
--- piece) and slot weight, in quarter points.
 DELETE FROM `bonk_item_stat` WHERE `entry` BETWEEN 900300 AND 900499 OR `entry` BETWEEN 901300 AND 901499;
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_stat`;
 CREATE TEMPORARY TABLE `bonk_gear_stat` SELECT `entry`, `quality`,
@@ -185,8 +153,6 @@ DROP TEMPORARY TABLE IF EXISTS `bonk_gear_pick`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_items`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_stat`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

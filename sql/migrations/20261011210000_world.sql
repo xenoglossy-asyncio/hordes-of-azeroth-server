@@ -6,42 +6,29 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011210000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011210000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: weapon evolutions
--- =============================================================
 
 ALTER TABLE `bonk_weapon`
     ADD COLUMN `evolves_from` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'weapon this replaces once that is at max level; 0 = not an evolution',
     ADD COLUMN `evolve_passive` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'bonk_passive the player must own for the evolution';
 
--- Evolved weapons keep the level of the weapon they replace (8), so their
--- damage and cooldown already include its level bonus.
 DELETE FROM `bonk_weapon` WHERE `id` BETWEEN 101 AND 110;
 INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `target`, `cooldown_ms`, `range`, `damage_fraction`,
     `class_mask`, `starter_class_mask`, `max_level`, `evolves_from`, `evolve_passive`) VALUES
-(101, 'Frostbolt Volley',   'Spell_Frost_IceStorm',        'Frost bolts at every enemy within 20 yards; they slow.',     22643, 1, 1800, 20, 0.45, 0, 0, 8, 13, 2),  -- Frostbolt + Haste
-(102, 'Fireball Volley',    'Spell_Fire_SelfDestruct',     'Fireballs at every enemy within 20 yards.',                  15285, 1, 2400, 20, 0.60, 0, 0, 8, 14, 1),  -- Fireball + Might
-(103, 'Shadow Bolt Volley', 'Spell_Shadow_DeathCoil',      'Shadow bolts at every enemy within 30 yards.',               20741, 1, 2000, 30, 0.45, 0, 0, 8, 17, 3),  -- Shadow Bolt + Duplicator
-(104, 'Lightning Wave',     'Spell_Nature_CallStorm',      'Lightning that leaps between up to 10 enemies.',             24819, 0, 1800, 30, 0.60, 0, 0, 8, 10, 4),  -- Lightning Bolt + Swiftness
-(105, 'Starfire',           'Spell_Arcane_StarFire',       'Falling stars hit the closest enemies hard.',                 2912, 0, 1500, 35, 1.20, 0, 0, 8, 20, 8),  -- Wrath + Growth
-(106, 'Shockwave',          'Ability_WarStomp',            'Hits and stuns everything within 20 yards.',                 25425, 1, 4500, 20, 0.70, 0, 0, 8,  1, 5),  -- Thunder Clap + Vitality
-(107, 'Poisoned Blades',    'Spell_Nature_NullifyPoison',  'Poison bolts at every enemy within 30 yards; they burn on.', 24099, 1, 1800, 30, 0.30, 0, 0, 8,  9, 4),  -- Throwing Knives + Swiftness
-(108, 'Arcane Barrage',     'Ability_Hunter_AimedShot',    'Arcane arrows twice as fast. Needs a bow or gun.',            3044, 0,  850, 35, 0.50, 0, 0, 8,  7, 3),  -- Arcane Shot + Duplicator
-(109, 'Holy Fire',          'Spell_Holy_SearingLight',     'Holy flame that keeps burning the closest enemies.',         15261, 0, 1500, 30, 1.00, 0, 0, 8,  6, 6),  -- Smite + Recovery
-(110, 'Divine Wrath',       'Spell_Holy_Excorcism_02',     'Holy light that leaps between up to 50 enemies.',            23979, 0, 3000, 30, 0.45, 0, 0, 8,  3, 5);  -- Consecration + Vitality
-
--- =============================================================
--- Vanilla Bonk: experience orbs and the Magnet passive
--- =============================================================
+(101, 'Frostbolt Volley',   'Spell_Frost_IceStorm',        'Frost bolts at every enemy within 20 yards; they slow.',     22643, 1, 1800, 20, 0.45, 0, 0, 8, 13, 2),
+(102, 'Fireball Volley',    'Spell_Fire_SelfDestruct',     'Fireballs at every enemy within 20 yards.',                  15285, 1, 2400, 20, 0.60, 0, 0, 8, 14, 1),
+(103, 'Shadow Bolt Volley', 'Spell_Shadow_DeathCoil',      'Shadow bolts at every enemy within 30 yards.',               20741, 1, 2000, 30, 0.45, 0, 0, 8, 17, 3),
+(104, 'Lightning Wave',     'Spell_Nature_CallStorm',      'Lightning that leaps between up to 10 enemies.',             24819, 0, 1800, 30, 0.60, 0, 0, 8, 10, 4),
+(105, 'Starfire',           'Spell_Arcane_StarFire',       'Falling stars hit the closest enemies hard.',                 2912, 0, 1500, 35, 1.20, 0, 0, 8, 20, 8),
+(106, 'Shockwave',          'Ability_WarStomp',            'Hits and stuns everything within 20 yards.',                 25425, 1, 4500, 20, 0.70, 0, 0, 8,  1, 5),
+(107, 'Poisoned Blades',    'Spell_Nature_NullifyPoison',  'Poison bolts at every enemy within 30 yards; they burn on.', 24099, 1, 1800, 30, 0.30, 0, 0, 8,  9, 4),
+(108, 'Arcane Barrage',     'Ability_Hunter_AimedShot',    'Arcane arrows twice as fast. Needs a bow or gun.',            3044, 0,  850, 35, 0.50, 0, 0, 8,  7, 3),
+(109, 'Holy Fire',          'Spell_Holy_SearingLight',     'Holy flame that keeps burning the closest enemies.',         15261, 0, 1500, 30, 1.00, 0, 0, 8,  6, 6),
+(110, 'Divine Wrath',       'Spell_Holy_Excorcism_02',     'Holy light that leaps between up to 50 enemies.',            23979, 0, 3000, 30, 0.45, 0, 0, 8,  3, 5);
 
 DELETE FROM `bonk_passive` WHERE `id` = 9;
 INSERT INTO `bonk_passive` (`id`, `name`, `icon`, `description`, `effect`, `value_per_rank`, `max_rank`) VALUES
 (9, 'Magnet', 'INV_Misc_Gem_Pearl_04', 'Experience orbs fly to you from 30% further away.', 8, 30, 5);
 
--- Orbs look like a Night Elf wisp; the run sets their faction and flags.
 DROP TEMPORARY TABLE IF EXISTS `bonk_orb_template`;
 CREATE TEMPORARY TABLE `bonk_orb_template` SELECT * FROM `creature_template` WHERE `entry` = 3681 AND `patch` = 0;
 UPDATE `bonk_orb_template` SET `subname` = '', `faction` = 35, `npc_flags` = 0, `gossip_menu_id` = 0, `level_min` = 1, `level_max` = 1,
@@ -57,10 +44,6 @@ INSERT INTO `creature_template` SELECT * FROM `bonk_orb_template`;
 UPDATE `bonk_orb_template` SET `entry` = 900102, `name` = 'Huge Experience Orb', `display_scale1` = 0.9;
 INSERT INTO `creature_template` SELECT * FROM `bonk_orb_template`;
 DROP TEMPORARY TABLE `bonk_orb_template`;
-
--- =============================================================
--- Vanilla Bonk: enemy variety
--- =============================================================
 
 CREATE TABLE IF NOT EXISTS `bonk_mob` (
     `entry`   INT UNSIGNED     NOT NULL COMMENT 'creature_template entry',
@@ -95,7 +78,6 @@ INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
 
 DELETE FROM `bonk_mob_ability`;
 INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `first_ms`, `min_range`, `max_range`, `damage`, `comment`) VALUES
--- Westfall
 (  454,  6268, 1,  9000,  2000, 6,  30, 0,   'Young Goretusk: Rushing Charge (speed burst)'),
 (  157,  6268, 1,  9000,  2000, 6,  30, 0,   'Goretusk: Rushing Charge'),
 (  127, 11831, 1, 15000,  3000, 0,   8, 0.6, 'Murloc Tidehunter: Frost Nova'),
@@ -113,7 +95,6 @@ INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `f
 (  647,  5532, 0,  7000,  2000, 0,   5, 0,   'Captain Greenskin: Cleave'),
 (  644,  6304, 0, 12000,  4000, 0,   5, 1.5, 'Rhahk''Zor: Slam'),
 (  646,  6432, 1, 15000,  6000, 0,  10, 0,   'Mr. Smite: Smite Stomp'),
--- Molten Core
 (12265, 19391, 0,  4000,  1500, 0,  30, 0.9, 'Lava Spawn: Fireball'),
 (11669, 20602, 1,  1000,     0, 0,  10, 1.5, 'Flame Imp: explodes (Fire Nova)'),
 (12099, 19497, 1,  1000,     0, 0,  15, 2.5, 'Firesworn: Eruption'),
@@ -135,14 +116,12 @@ INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `f
 (12259, 19728, 0,  6000,  3000, 0,  35, 1.5, 'Gehennas: Shadow Bolt'),
 (12259, 19716, 1, 25000,  8000, 0,  40, 0,   'Gehennas: Gehennas'' Curse');
 
--- Westfall gets casters and an exploder.
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 1 AND `entry` IN (589, 517, 480);
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `min_sec`, `max_sec`, `weight`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
-(1, 589, 0,  90, 0, 5, 0.8, 1.0, 0.70, 1.0),  -- Defias Pillager
-(1, 517, 0, 180, 0, 4, 0.8, 1.0, 0.70, 1.0),  -- Murloc Oracle
-(1, 480, 0, 120, 0, 4, 0.5, 1.0, 0.95, 0.8);  -- Rusty Harvest Golem
+(1, 589, 0,  90, 0, 5, 0.8, 1.0, 0.70, 1.0),
+(1, 517, 0, 180, 0, 4, 0.8, 1.0, 0.70, 1.0),
+(1, 480, 0, 120, 0, 4, 0.5, 1.0, 0.95, 0.8);
 
--- Rings close in from all sides; rushes charge in from one.
 DELETE FROM `bonk_map_event` WHERE `event` IN (4, 5);
 INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (1, 150, 4, 16),
@@ -153,8 +132,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (2, 390, 4, 26),
 (2, 510, 5, 32);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

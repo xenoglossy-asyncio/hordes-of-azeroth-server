@@ -6,19 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015160000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015160000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: core balance, step 1 (feature plan, Balance spec)
---
--- The stage timeline (bonk_wave) replaces the spawn curve: blocks of
--- build-ups, walls, lulls and mini-bosses with rotating rosters. Enemy
--- damage becomes a share of the hero's base health and enemy toughness a
--- curve over run time (bonk_scaling). Difficulty lives in the tiers; maps
--- no longer scale enemies. Map events keep only their chests (mini-bosses,
--- elites and swarms come from the timeline). Spirit regen is weaker.
--- =============================================================
 
 DROP TABLE IF EXISTS `bonk_wave`;
 CREATE TABLE `bonk_wave` (
@@ -79,27 +66,20 @@ INSERT INTO `bonk_scaling` (`minute`, `hit_share`, `health`) VALUES
 
 DROP TABLE IF EXISTS `bonk_spawn_curve`;
 
--- A grunt hit's share by archetype: swarmers 0.6, bruisers 2.
 UPDATE `bonk_archetype` SET `damage_multiplier` = 0.6 WHERE `id` = 0;
 UPDATE `bonk_archetype` SET `damage_multiplier` = 1.0 WHERE `id` IN (1, 3, 4);
 UPDATE `bonk_archetype` SET `damage_multiplier` = 2.0 WHERE `id` = 2;
 
--- Difficulty: Medium x1.25, Hard x1.5 enemy health and damage.
 UPDATE `bonk_tier` SET `health_multiplier` = 1.0,  `damage_multiplier` = 1.0  WHERE `key` = 'easy';
 UPDATE `bonk_tier` SET `health_multiplier` = 1.25, `damage_multiplier` = 1.25 WHERE `key` = 'medium';
 UPDATE `bonk_tier` SET `health_multiplier` = 1.5,  `damage_multiplier` = 1.5  WHERE `key` = 'hard';
 
--- Zones no longer decide difficulty.
 UPDATE `bonk_map` SET `health_multiplier` = 1, `damage_multiplier` = 1, `health_growth_per_min` = 0, `damage_growth_per_min` = 0;
 
--- Map events: chests only (3); the timeline brings the rest.
 DELETE FROM `bonk_map_event` WHERE `event` <> 3;
 
--- Regen stays weak, as in Megabonk.
 UPDATE `bonk_passive` SET `value_per_rank` = 0.2, `description` = 'Regain 0.2% of your health every second.' WHERE `id` = 6;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

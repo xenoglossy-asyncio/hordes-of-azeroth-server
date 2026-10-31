@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
 #include "BonkTelegraph.h"
@@ -53,22 +54,14 @@ namespace
 
     BonkTrinket const BONK_TRINKETS[MAX_BONK_TRINKET_EFFECT] =
     {
-        { "Gnomish Battle Goggles", "inv_helmet_47",
-          "Your spells deal up to 50% more damage the lower your health is." },
-        { "Goblin Land Mine", "inv_misc_bomb_05",
-          "Every 6 sec, drop a land mine at your feet. The first enemy to touch it sets it off, hitting enemies within 6 yards for 60% of a normal enemy's health." },
-        { "Nifty Stopwatch", "inv_misc_pocketwatch_01",
-          "Moving raises your dodge chance by 1% per sec, up to 5%. Standing still lowers it again." },
-        { "Goblin Rocket Boots", "inv_gizmo_rocketboot_01",
-          "Your Dash goes 50% farther, but has a 5% chance to backfire and launch you in a random direction." },
-        { "Demonic Rune", "inv_misc_rune_04",
-          "+25% Power. You lose 1% of your health every second, down to 30%." },
-        { "Rumsey Rum", "inv_drink_03",
-          "Gain 1% critical strike chance every 2 sec, up to 10%. Being hit halves it." },
-        { "Grinning Skull of Wrath", "inv_misc_bone_elfskull_01",
-          "Your spells deal 30% more damage, but you take 30% more damage." },
-        { "Goblin Pocket Gold", "inv_misc_coin_03",
-          "+1% Power for every 50 silver you pick up this run, up to 8%. You move 5% slower." },
+        { BONK_STRING_TRINKET_GNOMISH_BATTLE_GOGGLES, "inv_helmet_47", BONK_STRING_TRINKET_GNOMISH_BATTLE_GOGGLES_TEXT },
+        { BONK_STRING_TRINKET_GOBLIN_LAND_MINE, "inv_misc_bomb_05", BONK_STRING_TRINKET_GOBLIN_LAND_MINE_TEXT },
+        { BONK_STRING_TRINKET_NIFTY_STOPWATCH, "inv_misc_pocketwatch_01", BONK_STRING_TRINKET_NIFTY_STOPWATCH_TEXT },
+        { BONK_STRING_TRINKET_GOBLIN_ROCKET_BOOTS, "inv_gizmo_rocketboot_01", BONK_STRING_TRINKET_GOBLIN_ROCKET_BOOTS_TEXT },
+        { BONK_STRING_TRINKET_DEMONIC_RUNE, "inv_misc_rune_04", BONK_STRING_TRINKET_DEMONIC_RUNE_TEXT },
+        { BONK_STRING_TRINKET_RUMSEY_RUM, "inv_drink_03", BONK_STRING_TRINKET_RUMSEY_RUM_TEXT },
+        { BONK_STRING_TRINKET_GRINNING_SKULL_OF_WRATH, "inv_misc_bone_elfskull_01", BONK_STRING_TRINKET_GRINNING_SKULL_OF_WRATH_TEXT },
+        { BONK_STRING_TRINKET_GOBLIN_POCKET_GOLD, "inv_misc_coin_03", BONK_STRING_TRINKET_GOBLIN_POCKET_GOLD_TEXT },
     };
 }
 
@@ -240,7 +233,7 @@ void BonkRun::DetonateLandMine(float x, float y, float z)
         return;
     PlayKitAt(ObjectGuid(), x, y, z, BONK_KIT_LAND_MINE, true);
     BonkTrinket const& trinket = BonkMgr::GetTrinket(BONK_TRINKET_LAND_MINE);
-    SupportScope scope(*this, { trinket.icon, trinket.name });
+    SupportScope scope(*this, { trinket.icon, GetString(trinket.name) });
     float const damage = GetProcBaseHealth() * BONK_LAND_MINE_HEALTH_SHARE;
     Map* map = m_player->GetMap();
     std::vector<Creature*> targets;

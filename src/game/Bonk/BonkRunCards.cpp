@@ -1,5 +1,6 @@
 #include "BonkRun.h"
 #include "BonkCodex.h"
+#include "BonkLocale.h"
 #include "BonkMgr.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
@@ -230,7 +231,7 @@ void BonkRun::GiveStartCard()
         return;
     BonkCard const& card = *pool[urand(0, uint32(pool.size()) - 1)];
     AddCard(card);
-    m_player->GetBonkPlayer()->Notify("Lucky Draw gave you " + card.name + "!");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_LUCKY_DRAW_GAVE_YOU, { Localize(BONK_FIELD_CARD_NAME, card.id, card.name) });
 }
 
 bool BonkRun::IsCardCapped(BonkCard const& card) const
@@ -336,7 +337,7 @@ bool BonkRun::OfferCards(size_t offerSize, std::vector<Offer> const* avoid, std:
         uint32 const gold = m_map.goldPerKill * 25;
         uint32 const paid = uint32(gold * GetGoldMultiplier());
         GiveGold(gold);
-        m_player->GetBonkPlayer()->Notify(paid ? "The deck is empty, so you get " + FormatBonkMoney(paid) + " instead." : std::string("The deck is empty."));
+        m_player->GetBonkPlayer()->Notify(paid ? BONK_STRING_DECK_EMPTY_GOLD : BONK_STRING_DECK_EMPTY, { FormatBonkMoney(paid, GetLocale()) });
         return false;
     }
 
@@ -437,11 +438,11 @@ bool BonkRun::GiveCard(uint32 cardId, std::string& error)
     BonkCard const* card = sBonkMgr.GetCard(cardId);
     if (!card)
     {
-        error = "There is no card " + std::to_string(cardId) + ".";
+        error = GetString(BONK_STRING_THERE_IS_NO_CARD, { std::to_string(cardId) });
         return false;
     }
     AddCard(*card);
-    m_player->GetBonkPlayer()->Notify(card->name + "!");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_EXCLAIM, { Localize(BONK_FIELD_CARD_NAME, card->id, card->name) });
     return true;
 }
 
@@ -485,10 +486,8 @@ void BonkRun::UpdateCards(uint32 diff)
         {
             m_cardSurgeUntilMs = m_totalMs + uint32(charm->values[1]);
             StartCardCooldown(BONK_CARD_POWER_SURGE, charm->cooldownMs);
-            char surge[64];
-            snprintf(surge, sizeof(surge), " gives you %g%% more Power for %g seconds!", GetCardTotal(BONK_CARD_POWER_SURGE, 0),
-                charm->values[1] / 1000.0f);
-            m_player->GetBonkPlayer()->Notify(charm->name + surge);
+            m_player->GetBonkPlayer()->Notify(BONK_STRING_POWER_SURGE, { Localize(BONK_FIELD_CARD_NAME, charm->id, charm->name), FormatBonkNumber(GetCardTotal(BONK_CARD_POWER_SURGE, 0)),
+                FormatBonkNumber(charm->values[1] / 1000.0f) });
         }
 
     if (m_cardHasteUntilMs && m_totalMs >= m_cardHasteUntilMs)
@@ -551,31 +550,31 @@ std::string BonkRun::DescribeCardNow(BonkCard const& card) const
         case BONK_CARD_KILL_POWER:
         {
             float const power = std::min(card.values[1], card.values[0] * m_cardKills) * GetCopySum(GetCardCopies(card.id));
-            return "Now: +" + percent(power) + "% Power";
+            return GetString(BONK_STRING_CARD_NOW_POWER, { percent(power) });
         }
         case BONK_CARD_UNHIT_POWER:
         {
             float const seconds = float(m_totalMs - (m_hurt ? m_lastHurtMs : 0)) / IN_MILLISECONDS;
             float const power = std::min(GetCardTotal(BONK_CARD_UNHIT_POWER, 1), GetCardTotal(BONK_CARD_UNHIT_POWER, 0) * std::floor(seconds));
-            return "Now: +" + percent(power) + "% Power";
+            return GetString(BONK_STRING_CARD_NOW_POWER, { percent(power) });
         }
         case BONK_CARD_HASTE_BURST:
             if (m_cardHasteUntilMs > m_totalMs)
-                return "Active: +" + percent(GetCardTotal(BONK_CARD_HASTE_BURST, 1)) + "% Haste";
+                return GetString(BONK_STRING_CARD_ACTIVE_HASTE, { percent(GetCardTotal(BONK_CARD_HASTE_BURST, 1)) });
             return "";
         case BONK_CARD_POWER_SURGE:
             if (m_cardSurgeUntilMs > m_totalMs)
             {
                 uint32 const left = (m_cardSurgeUntilMs - m_totalMs + 999) / IN_MILLISECONDS;
-                return "Active: +" + percent(GetCardTotal(BONK_CARD_POWER_SURGE, 0)) + "% Power for " + std::to_string(left) +
-                    (left == 1 ? " more second" : " more seconds");
+                return GetString(left == 1 ? BONK_STRING_CARD_ACTIVE_POWER_ONE : BONK_STRING_CARD_ACTIVE_POWER,
+                    { percent(GetCardTotal(BONK_CARD_POWER_SURGE, 0)), std::to_string(left) });
             }
             return "";
         case BONK_CARD_SOULSTONE:
-            return std::to_string(m_soulstones) + (m_soulstones == 1 ? " charge left" : " charges left");
+            return GetString(m_soulstones == 1 ? BONK_STRING_CARD_CHARGES_LEFT_ONE : BONK_STRING_CARD_CHARGES_LEFT, { std::to_string(m_soulstones) });
         case BONK_CARD_ASCENSION:
             if (OwnedWeapon const* owned = FindAscensionWeapon())
-                return "Ready: your next level-up offers the evolution of " + owned->weapon.name;
+                return GetString(BONK_STRING_CARD_ASCENSION_READY, { Localize(BONK_FIELD_WEAPON_NAME, owned->weapon.id, owned->weapon.name) });
             return "";
         default:
             return "";
@@ -780,8 +779,6 @@ void BonkRun::OnHeroHit(Unit* victim, double damage, SpellEntry const* spell)
         return;
 
     float const multiplier = std::max(0.1f, GetDamageMultiplier(nullptr, victim, 1.0f, GetCastChargePower(spell, victim)));
-    float const castScale = owned->weapon.HasFlag(BONK_WEAPON_FLAG_AOE) ? 1.0f : 1.0f + float(GetSpellCount(*owned));
-    damage *= castScale;
 
     if (SpendCastCharge(*owned, BONK_CARD_DEATH_RAY))
         victim->SendPlaySpellVisualKit(BONK_KIT_DEATH_RAY);
@@ -824,7 +821,7 @@ void BonkRun::OnHeroHit(Unit* victim, double damage, SpellEntry const* spell)
                 m_cardProc = false;
                 if (struck)
                 {
-                    SupportScope scope(*this, { blade->icon, blade->name });
+                    SupportScope scope(*this, { blade->icon, Localize(BONK_FIELD_CARD_NAME, blade->id, blade->name) });
                     HealHero(ReduceHealing(uint32(burst * multiplier * struck * BONK_SHADOW_BURST_HEAL)));
                 }
             }
@@ -849,16 +846,17 @@ void BonkRun::OnHeroHit(Unit* victim, double damage, SpellEntry const* spell)
         }
 }
 
-std::string BonkRun::DescribeHeldCard(BonkCard const& card, uint32 copies)
+std::string BonkRun::DescribeHeldCard(BonkCard const& card, uint32 copies, LocaleConstant locale)
 {
+    std::string const description = sBonkLocale.Localize(BONK_FIELD_CARD_DESCRIPTION, card.id, card.description, locale);
     if (copies <= 1)
-        return card.description;
-    std::string const total = BonkCodex::DescribeCardTotal(card, copies);
+        return description;
+    std::string const total = BonkCodex::DescribeCardTotal(card, copies, locale);
     if (total.empty())
-        return card.description;
+        return description;
     if (card.effect == BONK_CARD_NONE)
-        return total + ".";
-    return card.description + BONK_LINE_BREAK + "Current: " + total + ".";
+        return sBonkLocale.GetString(BONK_STRING_SENTENCE, locale, { total });
+    return description + BONK_LINE_BREAK + sBonkLocale.GetString(BONK_STRING_CURRENT_TOTAL, locale, { total });
 }
 
 void BonkRun::SendCards() const
@@ -872,7 +870,8 @@ void BonkRun::SendCards() const
     bonk->SendAddon(line);
     for (OwnedCard const& owned : m_cards)
         if (!m_glyphCardIds.count(owned.card->id))
-            bonk->SendAddon("cardtip~" + std::to_string(owned.card->id) + "~" + owned.card->name + "~" + DescribeHeldCard(*owned.card, owned.copies));
+            bonk->SendAddon("cardtip~" + std::to_string(owned.card->id) + "~" + Localize(BONK_FIELD_CARD_NAME, owned.card->id, owned.card->name) + "~" +
+                DescribeHeldCard(*owned.card, owned.copies, GetLocale()));
     SendCardCooldowns();
     SendCardStatus(true);
 }

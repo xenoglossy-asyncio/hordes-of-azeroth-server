@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
 #include "Creature.h"
@@ -882,17 +883,15 @@ bool BonkRun::GetPaladinStrength(BonkWeapon const& weapon, float damageBonus, We
         return false;
     if (GetRootWeapon(weapon) == BONK_WEAPON_SEAL_OF_RIGHTEOUSNESS)
     {
-        strength.lead = "Each hit also deals ";
-        strength.tail = " of its damage as Holy damage";
-        strength.label = "Extra Holy damage, % of the hit";
+        strength.sentence = BONK_STRING_STRENGTH_HOLY_HIT;
+        strength.label = BONK_STRING_STRENGTH_HOLY_HIT_LABEL;
         strength.value = GetRighteousShare(weapon, damageBonus);
         return true;
     }
     if (GetRootWeapon(weapon) != BONK_WEAPON_SEAL_OF_LIGHT)
         return false;
-    strength.lead = "Each strike heals you for ";
-    strength.tail = " of your maximum health";
-    strength.label = "Healing per strike, % of maximum health";
+    strength.sentence = BONK_STRING_STRENGTH_STRIKE_HEAL;
+    strength.label = BONK_STRING_STRENGTH_STRIKE_HEAL_LABEL;
     strength.value = GetSealOfLightHeal(damageBonus);
     return true;
 }

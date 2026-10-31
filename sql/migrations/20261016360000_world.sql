@@ -6,17 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016360000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016360000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk, Phase 4 hidden encounters (BonkRunHidden.cpp): now and then
--- a stage hides something at a spot 80-180 yd away, with no pin on the map.
--- Hogger waits in a suspicious bush (use it); Old Murk-Eye's murloc camp is
--- a lone campfire that springs its ambush on a hero who comes within 25 yd.
--- Beaten, a chest, and a Discovery quest moves on (type 13, target the
--- encounter's id). trigger: 0 use the object, 1 come near.
--- =============================================================
 CREATE TABLE IF NOT EXISTS `bonk_hidden` (
     `id`            INT UNSIGNED NOT NULL,
     `name`          VARCHAR(64) NOT NULL,
@@ -34,7 +24,6 @@ CREATE TABLE IF NOT EXISTS `bonk_hidden` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='Vanilla Bonk hidden encounters';
 
--- The objects: a bush to poke (a goober, like the portal), a campfire.
 DELETE FROM `gameobject_template` WHERE `entry` IN (900060, 900061);
 DROP TEMPORARY TABLE IF EXISTS `bonk_go_copy`;
 CREATE TEMPORARY TABLE `bonk_go_copy` SELECT * FROM `gameobject_template` WHERE `entry` = 900003;
@@ -51,14 +40,11 @@ INSERT INTO `bonk_hidden` (`id`, `name`, `map_id`, `chance`, `trigger`, `object_
 (1, 'Hogger',       1, 15, 0, 900060, 448, 1.3, 117, 4, 4, 'Grrr... fresh meat!',  'Something big was hiding in that bush... it''s Hogger!'),
 (2, 'Old Murk-Eye', 1, 15, 1, 900061, 391, 1.5, 126, 6, 4, 'Mrrglllglglgl!',      'A murloc camp! Old Murk-Eye and his band charge out of the surf!');
 
--- Their Discovery quests (category 4).
 DELETE FROM `bonk_quest` WHERE `id` IN (500, 501);
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `param`, `amount`, `reward_type`, `reward_value`, `class`, `category`) VALUES
 (500, 'Hogger!',             'Find Hogger hiding in a Westfall run and defeat him.',          'Spell_Nature_NatureTouchGrow', 13, 1, 0, 1, 1, 5, 0, 4),
 (501, 'King of the Murlocs', 'Find Old Murk-Eye''s camp in a Westfall run and defeat him.',  'INV_Misc_Head_Murloc_01',      13, 2, 0, 1, 1, 5, 0, 4);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

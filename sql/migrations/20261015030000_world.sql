@@ -6,21 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015030000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015030000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: the quest framework (feature plan, Phase 1 content frameworks)
---
--- New quest types (BonkQuests.h), new reward types (class, Epic spell rank,
--- talent capstone, title), titles, and a category per quest for the quest
--- board's tabs. Quests unlock content and currencies buy power, so the two
--- quests that unlocked fortunes pay tickets or gold instead (their fortunes
--- are open to everyone now). One quest of each new type that today's game
--- can count: the class unlocks of the plan for Rogue, Priest, Paladin and
--- Druid (classes are not locked yet; done quests keep them unlocked once
--- they are), Mastery 10 with each starting class, and a fast boss kill.
--- =============================================================
 
 ALTER TABLE `bonk_quest`
     MODIFY COLUMN `type` TINYINT UNSIGNED NOT NULL COMMENT '0 kills, 1 kills of a kind, 2 kills with a weapon, 3 stage on a tier, 4 level in one run, 5 Darkmoon Tickets found, 6 crits in one run, 7 health healed, 8 kills of a creature type, 9 Ley Lines, 10 Greed stacks at a stage clear, 11 stage cleared with classes, 12 boss killed before a time, 13 hidden encounter, 14 shrine kinds, 15 heirlooms extracted, 16 Mastery level',
@@ -39,16 +24,14 @@ CREATE TABLE IF NOT EXISTS `bonk_title` (
 DELETE FROM `bonk_title` WHERE `id` = 1;
 INSERT INTO `bonk_title` (`id`, `name`) VALUES (1, 'the Swift');
 
--- Tabs for the quests there are.
 UPDATE `bonk_quest` SET `category` = 0 WHERE `type` IN (0, 1, 2);
 UPDATE `bonk_quest` SET `category` = 1 WHERE `type` = 3;
 UPDATE `bonk_quest` SET `category` = 3 WHERE `type` = 4;
 UPDATE `bonk_quest` SET `category` = 5 WHERE `type` = 5;
 UPDATE `bonk_quest` SET `category` = 2 WHERE `class` <> 0;
 
--- No quest unlocks a fortune any more.
-UPDATE `bonk_quest` SET `reward_type` = 1, `reward_value` = 3 WHERE `id` = 6;          -- Boss Bonker: 3 Darkmoon Tickets
-UPDATE `bonk_quest` SET `reward_type` = 0, `reward_value` = 10000 WHERE `id` = 13;     -- Ticket Collector: 1 gold
+UPDATE `bonk_quest` SET `reward_type` = 1, `reward_value` = 3 WHERE `id` = 6;
+UPDATE `bonk_quest` SET `reward_type` = 0, `reward_value` = 10000 WHERE `id` = 13;
 
 DELETE FROM `bonk_quest` WHERE `id` BETWEEN 200 AND 207;
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `param`, `amount`, `reward_type`, `reward_value`, `class`, `category`) VALUES
@@ -61,8 +44,6 @@ INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`,
 (206, 'Seasoned Mage', 'Reach Mastery level 10 with a Mage.', 'Spell_Holy_MagicalSentry', 16, 8, 0, 10, 1, 5, 0, 2),
 (207, 'Swift Justice', 'Kill a stage boss before the stage clock reaches 10:45.', 'Ability_Rogue_Sprint', 12, 0, 645, 1, 10, 1, 0, 3);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

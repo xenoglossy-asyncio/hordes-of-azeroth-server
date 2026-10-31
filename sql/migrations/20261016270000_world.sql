@@ -6,18 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016270000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016270000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk, Phase F2: four new Heroic zones (bonk_map 10-13), drafted
--- from docs/zones/heroic_*.sql and reviewed: every enemy ability is either
--- a dodgeable bolt, a melee hit, a self buff, or an area round the enemy of
--- at most 10 yards (warned by the server); no damage over time, no chains.
--- =============================================================
-
--- Heroic run zone: Desolace (bonk_map 10). Reviewed 2026-10-16.
--- Start: open plain between Thunder Axe Fortress and Ghost Walker Post (Raging Thunder Lizard / Gritjaw spawns, z 89-93 within 160 yd).
 
 DELETE FROM `bonk_map` WHERE `id` = 10;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
@@ -27,37 +15,29 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 10;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(10, 4696, 0, 0, 0, 180, 7, 0, 1, 1, 0.85, 1),        -- Scorpashi Snapper (Scorpion x1.0)
-(10, 12222, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),     -- Creeping Sludge (SlimeLesser x1.0), exploder
-(10, 4689, 0, 0, 360, 0, 5, 0, 1, 1, 0.9, 1),         -- Starving Bonepaw (Hyena x0.85)
--- grunts
-(10, 4634, 0, 1, 0, 210, 10, 0, 1, 1, 0.75, 1),       -- Kolkar Mauler (CentaurWarrior x1.15)
-(10, 4670, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),        -- Hatefury Rogue (Satyr x1.15)
-(10, 4646, 0, 1, 120, 360, 8, 0, 1, 1, 0.85, 1),      -- Gelkis Outrunner (Centaur x1.0)
-(10, 4693, 0, 1, 210, 450, 7, 0, 1, 1, 0.9, 1),       -- Dread Flyer (CarrionBird x1.15)
-(10, 11577, 0, 1, 270, 510, 6, 0, 1, 1, 0.8, 1),      -- Whirlwind Stormwalker (AirElemental x1.0)
-(10, 4654, 0, 1, 300, 540, 6, 0, 1, 1, 0.8, 1),       -- Maraudine Scout (Centaur x1.15)
-(10, 4673, 0, 1, 360, 0, 6, 0, 1, 1, 0.8, 1),         -- Hatefury Betrayer (Satyr x1.3)
--- bruisers
-(10, 11561, 0, 2, 0, 0, 5, 0, 1, 1, 0.65, 1),         -- Undead Ravager (SkeletonNaked x2.0)
-(10, 4714, 0, 2, 0, 0, 4, 0, 1, 1, 0.7, 1),           -- Slitherblade Myrmidon (NagaMale x1.5)
--- casters
-(10, 4635, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Kolkar Windchaser (CentaurCaster x1.0)
-(10, 4684, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Nether Sorceress (Succubus x1.0)
--- charger
-(10, 4726, 0, 4, 420, 0, 2, 2, 1, 1, 0.8, 1),         -- Raging Thunder Lizard (ThunderLizard x1.15)
--- elites
-(10, 11687, 1, 1, 0, 0, 3, 0, 1, 1, 0.8, 1.2),        -- Ghostly Marauder (Centaur x1.5, ghost)
-(10, 4680, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Doomwarder Captain (FelGuard x1.15)
-(10, 11778, 1, 1, 200, 0, 2, 0, 1, 1, 0.7, 1.2),      -- Shadowshard Smasher (ElementalEarth x1.0)
-(10, 4716, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1),     -- Slitherblade Tidehunter (NagaMale x2.0)
--- stage boss
-(10, 12201, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),       -- Princess Theradras (Tharazun x2.0)
--- mini-bosses
-(10, 12203, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1),          -- Landslide (MountainGiant x1.6, already huge)
-(10, 12236, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3),       -- Lord Vyletongue (Satyr x2.0)
-(10, 12258, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1);          -- Razorlash (Lasher x2.5, already huge)
+(10, 4696, 0, 0, 0, 180, 7, 0, 1, 1, 0.85, 1),
+(10, 12222, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(10, 4689, 0, 0, 360, 0, 5, 0, 1, 1, 0.9, 1),
+(10, 4634, 0, 1, 0, 210, 10, 0, 1, 1, 0.75, 1),
+(10, 4670, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),
+(10, 4646, 0, 1, 120, 360, 8, 0, 1, 1, 0.85, 1),
+(10, 4693, 0, 1, 210, 450, 7, 0, 1, 1, 0.9, 1),
+(10, 11577, 0, 1, 270, 510, 6, 0, 1, 1, 0.8, 1),
+(10, 4654, 0, 1, 300, 540, 6, 0, 1, 1, 0.8, 1),
+(10, 4673, 0, 1, 360, 0, 6, 0, 1, 1, 0.8, 1),
+(10, 11561, 0, 2, 0, 0, 5, 0, 1, 1, 0.65, 1),
+(10, 4714, 0, 2, 0, 0, 4, 0, 1, 1, 0.7, 1),
+(10, 4635, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(10, 4684, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(10, 4726, 0, 4, 420, 0, 2, 2, 1, 1, 0.8, 1),
+(10, 11687, 1, 1, 0, 0, 3, 0, 1, 1, 0.8, 1.2),
+(10, 4680, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),
+(10, 11778, 1, 1, 200, 0, 2, 0, 1, 1, 0.7, 1.2),
+(10, 4716, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1),
+(10, 12201, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(10, 12203, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1),
+(10, 12236, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3),
+(10, 12258, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (12222, 4635, 4684);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -93,9 +73,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (10, 330, 3, 1),
 (10, 540, 3, 1);
 
--- Heroic run zone: Badlands (bonk_map 11). Reviewed 2026-10-16.
--- Start: central Badlands floor among Elder Crag Coyote spawns (z 241-245 within 150 yd), ~110 yd from the small Dustbelcher bonfire camp.
-
 DELETE FROM `bonk_map` WHERE `id` = 11;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -104,36 +81,28 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 11;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(11, 2725, 0, 0, 0, 180, 7, 0, 1, 1, 0.9, 1),         -- Scalding Whelp (DragonWhelp x1.3)
-(11, 2739, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),      -- Shadowforge Tunneler (DwarfMale x1.0), exploder
--- grunts
-(11, 2727, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Crag Coyote (Wolf x1.0)
-(11, 2743, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),       -- Shadowforge Warrior (DwarfMale x1.0)
-(11, 2731, 0, 1, 120, 360, 8, 0, 1, 1, 0.85, 1),      -- Ridge Stalker (Tiger x1.15)
-(11, 4851, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),      -- Stonevault Rockchewer (Troglodyte x1.3)
-(11, 2831, 0, 1, 270, 510, 6, 0, 1, 1, 0.85, 1),      -- Giant Buzzard (CarrionBird x1.5)
-(11, 2893, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),      -- Stonevault Bonesnapper (Troglodyte x1.5)
-(11, 2728, 0, 1, 360, 0, 6, 0, 1, 1, 0.85, 1),        -- Feral Crag Coyote (Wolf x1.15)
--- bruisers
-(11, 2717, 0, 2, 0, 0, 5, 0, 1, 1, 0.65, 1),          -- Dustbelcher Mauler (Ogre x1.9)
-(11, 2736, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- Greater Rock Elemental (ElementalEarth x1.0)
--- casters
-(11, 2892, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Stonevault Seer (Troglodyte x1.15)
-(11, 2740, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Shadowforge Darkweaver (DwarfMale x1.0)
--- charger
-(11, 2734, 0, 4, 420, 0, 2, 2, 1, 1, 0.8, 1),         -- Ridge Stalker Patriarch (Tiger x1.5)
--- elites
-(11, 2726, 1, 1, 0, 0, 3, 0, 1, 1, 0.85, 1.2),        -- Scorched Guardian (Drake x0.85)
-(11, 2716, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Dustbelcher Wyrmhunter (Ogre x1.75)
-(11, 2749, 1, 1, 200, 0, 2, 0, 1, 1, 0.7, 1.2),       -- Siege Golem (GolemStone x1.3)
-(11, 2754, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1.2),  -- Anathemus (MountainGiant x1.3)
--- stage boss
-(11, 2748, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),        -- Archaedas (StoneKeeper x1.5)
--- mini-bosses
-(11, 7228, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),         -- Ironaya (TitanFemale x1.2)
-(11, 4854, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.2),         -- Grimlok (Troglodyte x2.0)
-(11, 7291, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3);        -- Galgann Firehammer (DwarfMale x1.0)
+(11, 2725, 0, 0, 0, 180, 7, 0, 1, 1, 0.9, 1),
+(11, 2739, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(11, 2727, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(11, 2743, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),
+(11, 2731, 0, 1, 120, 360, 8, 0, 1, 1, 0.85, 1),
+(11, 4851, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),
+(11, 2831, 0, 1, 270, 510, 6, 0, 1, 1, 0.85, 1),
+(11, 2893, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),
+(11, 2728, 0, 1, 360, 0, 6, 0, 1, 1, 0.85, 1),
+(11, 2717, 0, 2, 0, 0, 5, 0, 1, 1, 0.65, 1),
+(11, 2736, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(11, 2892, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(11, 2740, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(11, 2734, 0, 4, 420, 0, 2, 2, 1, 1, 0.8, 1),
+(11, 2726, 1, 1, 0, 0, 3, 0, 1, 1, 0.85, 1.2),
+(11, 2716, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),
+(11, 2749, 1, 1, 200, 0, 2, 0, 1, 1, 0.7, 1.2),
+(11, 2754, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1.2),
+(11, 2748, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(11, 7228, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(11, 4854, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.2),
+(11, 7291, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (2739, 2892, 2740);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -168,9 +137,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (11, 330, 3, 1),
 (11, 540, 3, 1);
 
--- Heroic run zone: Arathi Highlands (bonk_map 12). Reviewed 2026-10-16.
--- Start: open grassland ~270 yd east of Refuge Pointe (Highland Thrasher / Plains Creeper spawns, z 46-54 within 120 yd, only herbs and ore nearby).
-
 DELETE FROM `bonk_map` WHERE `id` = 12;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -179,37 +145,29 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 12;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(12, 2563, 0, 0, 0, 180, 7, 0, 1, 1, 0.85, 1),        -- Plains Creeper (Tarantula x0.85)
-(12, 4062, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),      -- Dark Iron Bombardier (DwarfMale x1.0), exploder
-(12, 2572, 0, 0, 360, 0, 5, 0, 1, 1, 0.9, 1),         -- Drywhisker Kobold (Kobold x1.3)
--- grunts
-(12, 2560, 0, 1, 0, 210, 10, 0, 1, 1, 0.9, 1),        -- Highland Thrasher (Raptor x0.6)
-(12, 2586, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),       -- Syndicate Highwayman (HumanMale x1.0)
-(12, 2556, 0, 1, 120, 360, 8, 0, 1, 1, 0.75, 1),      -- Witherbark Headhunter (Troll male/female)
-(12, 2559, 0, 1, 210, 450, 7, 0, 1, 1, 0.9, 1),       -- Highland Strider (Raptor x1.15)
-(12, 2565, 0, 1, 270, 510, 6, 0, 1, 1, 0.8, 1),       -- Giant Plains Creeper (Tarantula x1.15)
-(12, 2589, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),      -- Syndicate Mercenary (Human male/female)
-(12, 2760, 0, 1, 360, 0, 6, 0, 1, 1, 0.8, 1),         -- Burning Exile (FireElemental x0.75)
--- bruisers
-(12, 2566, 0, 2, 0, 0, 5, 0, 1, 1, 0.7, 1),           -- Boulderfist Brute (Ogre x1.44)
-(12, 2569, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- Boulderfist Mauler (Ogre x1.6)
--- casters
-(12, 2553, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Witherbark Shadowcaster (Troll male/female)
-(12, 2591, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Syndicate Magus (Human male/female)
--- charger
-(12, 2561, 0, 4, 420, 0, 2, 2, 1, 1, 0.85, 1),        -- Highland Fleshstalker (Raptor x1.3)
--- elites
-(12, 2762, 1, 1, 0, 0, 3, 0, 1, 1, 0.8, 1.2),         -- Thundering Exile (AirElemental x1.25)
-(12, 2779, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Prince Nazjak (NagaMale x1.5)
-(12, 2571, 1, 1, 200, 0, 2, 0, 1, 1, 0.7, 1.2),       -- Boulderfist Lord (Ogre x1.75)
-(12, 2604, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1.2),  -- Molok the Crusher (Ogre x1.75)
--- stage boss
-(12, 2611, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),        -- Fozruk (MountainGiant x1.3)
--- mini-bosses
-(12, 2606, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3),        -- Nimar the Slayer (TrollMale x1.0)
-(12, 2609, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),         -- Geomancer Flintdagger (Kobold x1.75)
-(12, 2793, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);         -- Korgresh Coldrage (OgreMage x1.6)
+(12, 2563, 0, 0, 0, 180, 7, 0, 1, 1, 0.85, 1),
+(12, 4062, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(12, 2572, 0, 0, 360, 0, 5, 0, 1, 1, 0.9, 1),
+(12, 2560, 0, 1, 0, 210, 10, 0, 1, 1, 0.9, 1),
+(12, 2586, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),
+(12, 2556, 0, 1, 120, 360, 8, 0, 1, 1, 0.75, 1),
+(12, 2559, 0, 1, 210, 450, 7, 0, 1, 1, 0.9, 1),
+(12, 2565, 0, 1, 270, 510, 6, 0, 1, 1, 0.8, 1),
+(12, 2589, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),
+(12, 2760, 0, 1, 360, 0, 6, 0, 1, 1, 0.8, 1),
+(12, 2566, 0, 2, 0, 0, 5, 0, 1, 1, 0.7, 1),
+(12, 2569, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(12, 2553, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(12, 2591, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(12, 2561, 0, 4, 420, 0, 2, 2, 1, 1, 0.85, 1),
+(12, 2762, 1, 1, 0, 0, 3, 0, 1, 1, 0.8, 1.2),
+(12, 2779, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),
+(12, 2571, 1, 1, 200, 0, 2, 0, 1, 1, 0.7, 1.2),
+(12, 2604, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1.2),
+(12, 2611, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(12, 2606, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3),
+(12, 2609, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(12, 2793, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (4062, 2553, 2591);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -245,9 +203,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (12, 330, 3, 1),
 (12, 540, 3, 1);
 
--- Heroic run zone: Swamp of Sorrows (bonk_map 13). Reviewed 2026-10-16.
--- Start: dry patch ~220 yd east of Stonard among Swamp Jaguar spawns (z 21.5-23.4); shallow water (z 17.5) 70-100 yd east and west.
-
 DELETE FROM `bonk_map` WHERE `id` = 13;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -256,36 +211,28 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 13;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(13, 858, 0, 0, 0, 180, 7, 0, 1, 1, 0.85, 1),         -- Sorrow Spinner (Tarantula x0.85)
-(13, 5235, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),      -- Fungal Ooze (Slime x1.5, same size as the Ungoro Primal Ooze), exploder
--- grunts
-(13, 1084, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Young Sawtooth Crocolisk (Crocodile x0.85)
-(13, 757, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),         -- Lost One Fisherman (LostOne x1.0)
-(13, 767, 0, 1, 120, 360, 8, 0, 1, 1, 0.9, 1),        -- Swamp Jaguar (Tiger x1.15)
-(13, 750, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),        -- Marsh Inkspewer (Murloc x1.5)
-(13, 769, 0, 1, 270, 510, 6, 0, 1, 1, 0.85, 1),       -- Deathstrike Tarantula (Tarantula x1.0)
-(13, 5263, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),      -- Mummified Atalai (Troll male/female)
-(13, 922, 0, 1, 360, 0, 6, 0, 1, 1, 0.75, 1),         -- Silt Crawler (Crab x1.3)
--- bruisers
-(13, 765, 0, 2, 0, 0, 5, 0, 1, 1, 0.65, 1),           -- Swampwalker Elder (BogBeast x1.5)
-(13, 1087, 0, 2, 0, 0, 4, 0, 1, 1, 0.7, 1),           -- Sawtooth Snapper (Crocodile x1.15)
--- casters
-(13, 759, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),        -- Lost One Hunter (LostOne x1.0)
-(13, 5269, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Atalai Priest (Troll male/female)
--- charger
-(13, 768, 0, 4, 420, 0, 2, 2, 1, 1, 0.8, 1),          -- Shadow Panther (Tiger x1.15)
--- elites
-(13, 746, 1, 1, 0, 0, 3, 0, 1, 1, 0.7, 1),            -- Elder Dragonkin (DragonSpawn x1.5, already big)
-(13, 5399, 1, 1, 120, 0, 2, 0, 1, 1, 0.8, 1.2),       -- Veyzhak the Cannibal (TrollMale x1.0)
-(13, 744, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1),         -- Green Scalebane (DragonSpawnArmored x1.5, already big)
-(13, 1081, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1),    -- Mire Lord (BogBeast x1.75)
--- stage boss
-(13, 8443, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),          -- Avatar of Hakkar (SkeletalSerpent x2.5, already huge)
--- mini-bosses
-(13, 8580, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1),           -- Atalalarion (TrollDire x2.0, already huge)
-(13, 5709, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3),        -- Shade of Eranikus (Dragon x0.8)
-(13, 5715, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);         -- Hukku (TrollMale x1.0)
+(13, 858, 0, 0, 0, 180, 7, 0, 1, 1, 0.85, 1),
+(13, 5235, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(13, 1084, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(13, 757, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),
+(13, 767, 0, 1, 120, 360, 8, 0, 1, 1, 0.9, 1),
+(13, 750, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),
+(13, 769, 0, 1, 270, 510, 6, 0, 1, 1, 0.85, 1),
+(13, 5263, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),
+(13, 922, 0, 1, 360, 0, 6, 0, 1, 1, 0.75, 1),
+(13, 765, 0, 2, 0, 0, 5, 0, 1, 1, 0.65, 1),
+(13, 1087, 0, 2, 0, 0, 4, 0, 1, 1, 0.7, 1),
+(13, 759, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(13, 5269, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(13, 768, 0, 4, 420, 0, 2, 2, 1, 1, 0.8, 1),
+(13, 746, 1, 1, 0, 0, 3, 0, 1, 1, 0.7, 1),
+(13, 5399, 1, 1, 120, 0, 2, 0, 1, 1, 0.8, 1.2),
+(13, 744, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1),
+(13, 1081, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1),
+(13, 8443, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(13, 8580, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1),
+(13, 5709, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3),
+(13, 5715, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (5235, 759, 5269);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -320,8 +267,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (13, 330, 3, 1),
 (13, 540, 3, 1);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

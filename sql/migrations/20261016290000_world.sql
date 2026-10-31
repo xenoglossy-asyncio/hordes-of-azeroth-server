@@ -6,21 +6,11 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016290000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016290000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk, Phase 3 pickups: four new power-ups lying in the arena
--- beside Restoration, Berserking and Speed (BonkRun::UsePowerup):
--- Goblin Magnet (every experience orb flies in), Holy Nova (normal enemies
--- within 40 yd die), Frost Nova (enemies within 40 yd are Frozen; elites and
--- bosses shrug it off) and a Valor Pouch (half a chest's price in Valor).
--- =============================================================
 ALTER TABLE `bonk_powerup`
     ADD COLUMN IF NOT EXISTS `effect` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0 spell, 1 magnet, 2 holy nova, 3 frost nova, 4 valor' AFTER `weight`,
     ADD COLUMN IF NOT EXISTS `value` FLOAT NOT NULL DEFAULT 0 COMMENT 'yards for the novas, chest prices for valor' AFTER `effect`;
 
--- Their looks: copies of the Restoration rune (type 5, looks only).
 DELETE FROM `gameobject_template` WHERE `entry` BETWEEN 900050 AND 900053;
 DROP TEMPORARY TABLE IF EXISTS `bonk_go_copy`;
 CREATE TEMPORARY TABLE `bonk_go_copy` SELECT * FROM `gameobject_template` WHERE `entry` = 900004;
@@ -34,7 +24,6 @@ UPDATE `bonk_go_copy` SET `entry` = 900053, `displayId` = 6484, `name` = 'Valor 
 INSERT INTO `gameobject_template` SELECT * FROM `bonk_go_copy`;
 DROP TEMPORARY TABLE `bonk_go_copy`;
 
--- The draw: Restoration most often, the rare novas and magnet least.
 DELETE FROM `bonk_powerup` WHERE `entry` BETWEEN 900050 AND 900053;
 INSERT INTO `bonk_powerup` (`entry`, `spell_id`, `weight`, `effect`, `value`) VALUES
 (900050, 0,     1, 1, 0),
@@ -44,8 +33,6 @@ INSERT INTO `bonk_powerup` (`entry`, `spell_id`, `weight`, `effect`, `value`) VA
 UPDATE `bonk_powerup` SET `weight` = 3 WHERE `entry` = 900004;
 UPDATE `bonk_powerup` SET `weight` = 2 WHERE `entry` IN (900005, 900006);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

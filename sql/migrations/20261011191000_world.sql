@@ -6,16 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011191000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011191000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: endless runs made of stages
--- =============================================================
--- A run picks a tier (difficulty) and plays maps from its pool one
--- after another. Each stage ends with a boss; killing it opens a
--- portal to the next, harder stage or home. Elites, mini-bosses and
--- bosses drop free chests; other chests cost coins earned in the run.
 
 CREATE TABLE IF NOT EXISTS `bonk_tier` (
     `id`                  TINYINT UNSIGNED NOT NULL,
@@ -40,8 +30,6 @@ INSERT INTO `bonk_tier` (`id`, `key`, `name`, `health_multiplier`, `damage_multi
 (1, 'easy', 'Easy', 1.0, 1.0, 0.75, 0.35, 0.20, 20, 1.0, 0, 0),
 (2, 'hard', 'Hard', 1.0, 1.0, 0.90, 0.40, 0.25, 30, 1.0, 1, 3);
 
--- Maps belong to a tier's pool instead of having a difficulty, and the
--- victory reward becomes a reward for every stage boss.
 ALTER TABLE `bonk_map`
     CHANGE `difficulty`   `tier`         TINYINT UNSIGNED NOT NULL DEFAULT 1    COMMENT 'bonk_tier whose pool the map is in',
     CHANGE `duration_sec` `duration_sec` INT UNSIGNED     NOT NULL DEFAULT 600  COMMENT 'the stage boss arrives after this long',
@@ -58,14 +46,12 @@ ALTER TABLE `bonk_map_creature`
 
 DELETE FROM `bonk_map_creature` WHERE `kind` = 3;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `min_sec`, `max_sec`, `weight`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- Westfall: mini-bosses
-(1,   644, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Rhahk'Zor
-(1,   646, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Mr. Smite
-(1,   647, 3,   0,   0,  1, 1.0, 1.0, 0.80, 1.3),  -- Captain Greenskin
--- Molten Core: mini-bosses
-(2, 12118, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),  -- Lucifron
-(2, 12259, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),  -- Gehennas
-(2, 12057, 3,   0,   0,  1, 1.2, 1.0, 0.70, 0.5);  -- Garr
+(1,   644, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(1,   646, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(1,   647, 3,   0,   0,  1, 1.0, 1.0, 0.80, 1.3),
+(2, 12118, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),
+(2, 12259, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),
+(2, 12057, 3,   0,   0,  1, 1.2, 1.0, 0.70, 0.5);
 
 CREATE TABLE IF NOT EXISTS `bonk_map_event` (
     `bonk_map_id` TINYINT UNSIGNED NOT NULL,
@@ -77,7 +63,6 @@ CREATE TABLE IF NOT EXISTS `bonk_map_event` (
 
 DELETE FROM `bonk_map_event`;
 INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
--- Westfall
 (1,   0, 3,  2),
 (1, 120, 3,  1),
 (1, 180, 2, 20),
@@ -86,7 +71,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (1, 420, 1,  2),
 (1, 480, 2, 30),
 (1, 540, 3,  1),
--- Molten Core
 (2,   0, 3,  2),
 (2, 150, 2, 25),
 (2, 240, 3,  1),
@@ -96,7 +80,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (2, 480, 2, 40),
 (2, 540, 3,  1);
 
--- Chests and the portal: goobers whose use is handled by scripts.
 DELETE FROM `gameobject_template` WHERE `entry` IN (900001, 900002, 900003);
 INSERT INTO `gameobject_template` (`entry`, `patch`, `type`, `displayId`, `name`, `size`, `script_name`) VALUES
 (900001, 0, 10,  259, 'Treasure Chest', 1.0, 'go_bonk_chest'),
@@ -117,8 +100,6 @@ UPDATE `broadcast_text` SET
     `female_text` = 'Back already, $n? Pick a difficulty and I\'ll send you in. Every stage is harder than the last, so go as deep as you dare.$B$BWin or lose, you wake up right here.'
 WHERE `entry` = 900001;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

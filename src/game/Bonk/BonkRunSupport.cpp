@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkPlayer.h"
 #include "Player.h"
 
@@ -6,7 +7,7 @@
 
 namespace
 {
-    BonkSupportSource const BONK_SUPPORT_OTHER = { "INV_Misc_QuestionMark", "Other" };
+    char const BONK_SUPPORT_OTHER_ICON[] = "INV_Misc_QuestionMark";
 
     std::string CleanField(std::string text)
     {
@@ -17,15 +18,15 @@ namespace
 
 BonkRun::SupportCredit& BonkRun::GetSupportCredit(BonkSupportSource const& source)
 {
-    BonkSupportSource const& named = source.name.empty() ? BONK_SUPPORT_OTHER : source;
-    auto itr = m_supportCredits.find(named.name);
+    std::string const name = source.name.empty() ? GetString(BONK_STRING_SUPPORT_OTHER) : source.name;
+    auto itr = m_supportCredits.find(name);
     if (itr == m_supportCredits.end())
     {
         SupportCredit credit;
         credit.order = uint32(m_supportCredits.size());
-        itr = m_supportCredits.emplace(named.name, credit).first;
+        itr = m_supportCredits.emplace(name, credit).first;
     }
-    itr->second.icon = named.icon.empty() ? BONK_SUPPORT_OTHER.icon : named.icon;
+    itr->second.icon = source.name.empty() || source.icon.empty() ? BONK_SUPPORT_OTHER_ICON : source.icon;
     return itr->second;
 }
 
@@ -87,7 +88,7 @@ std::string BonkRun::DescribeSupport() const
 
 BonkSupportSource BonkRun::WeaponSupport(OwnedWeapon const& owned) const
 {
-    return { owned.weapon.icon, owned.weapon.name };
+    return { owned.weapon.icon, Localize(BONK_FIELD_WEAPON_NAME, owned.weapon.id, owned.weapon.name) };
 }
 
 BonkSupportSource BonkRun::SpellSupport(uint32 spellId) const
@@ -104,21 +105,21 @@ BonkSupportSource BonkRun::PassiveSupport(BonkPassiveEffect effect) const
     for (auto const& itr : m_passiveRanks)
         if (BonkPassive const* passive = sBonkMgr.GetPassive(itr.first))
             if (passive->effect == effect)
-                return { passive->icon, passive->name };
+                return { passive->icon, Localize(BONK_FIELD_PASSIVE_NAME, passive->id, passive->name) };
     return {};
 }
 
 BonkSupportSource BonkRun::CardSupport(BonkCardEffect effect) const
 {
     if (BonkCard const* card = m_cardByEffect[effect])
-        return { card->icon, card->name };
+        return { card->icon, Localize(BONK_FIELD_CARD_NAME, card->id, card->name) };
     return {};
 }
 
 BonkSupportSource BonkRun::GlyphSupport(BonkGlyphEffect effect) const
 {
     if (BonkGlyph const* glyph = GetGlyph(effect))
-        return { glyph->icon, glyph->name };
+        return { glyph->icon, Localize(BONK_FIELD_GLYPH_NAME, glyph->id, glyph->name) };
     return {};
 }
 
@@ -127,7 +128,7 @@ BonkSupportSource BonkRun::TalentSupport(BonkMasteryEffect effect) const
     for (auto const& itr : m_player->GetBonkPlayer()->GetMasteryRanks())
         if (BonkMasteryNode const* node = itr.second ? sBonkMastery.GetNode(itr.first) : nullptr)
             if (node->effect == effect)
-                return { node->icon, node->name };
+                return { node->icon, Localize(BONK_FIELD_MASTERY_NAME, node->id, node->name) };
     return {};
 }
 
@@ -136,6 +137,6 @@ BonkSupportSource BonkRun::CapstoneSupport(BonkCapstone capstone) const
     for (auto const& itr : m_player->GetBonkPlayer()->GetMasteryRanks())
         if (BonkMasteryNode const* node = itr.second ? sBonkMastery.GetNode(itr.first) : nullptr)
             if (node->effect == BONK_MASTERY_CAPSTONE && node->target == uint32(capstone))
-                return { node->icon, node->name };
+                return { node->icon, Localize(BONK_FIELD_MASTERY_NAME, node->id, node->name) };
     return {};
 }

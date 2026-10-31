@@ -6,24 +6,13 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016160000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016160000');
--- Add your query below.
 
-
--- Vanilla Bonk: the Venture Co. Peon is a goblin. Its template also rolled
--- an ogre, a gnoll and a dwarf (10% each): the "tiny ogres" among the
--- Barrens swarm (user, 2026-10-16).
 UPDATE `creature_template` SET `display_probability2` = 0, `display_probability3` = 0, `display_probability4` = 0,
     `display_total_probability` = `display_probability1`
 WHERE `entry` = 3285;
 
--- Westfall: the Harvest Golem's model is 0.85 of the Harvest Reaper's
--- (1.15); grown to match, so every harvester bruiser reads as one.
 UPDATE `bonk_map_creature` SET `scale` = 1.35 WHERE `bonk_map_id` = 1 AND `entry` = 36 AND `kind` = 0;
 
--- Areas round run enemies are warned by a red circle as big as the
--- spell's reach (BonkMobAI::StartArea), at most 15 yards; these reached
--- further, or an exploder's blast too far to step out of. -1 leaves a
--- field as it is. Radius index 13 is 10 yards, 29 is 6.
 INSERT INTO `spell_effect_mod` (`Id`, `EffectIndex`, `Effect`, `EffectDieSides`, `EffectBaseDice`, `EffectDicePerLevel`, `EffectRealPointsPerLevel`,
     `EffectBasePoints`, `EffectAmplitude`, `EffectPointsPerComboPoint`, `EffectChainTarget`, `EffectMultipleValue`, `EffectMechanic`,
     `EffectImplicitTargetA`, `EffectImplicitTargetB`, `EffectRadiusIndex`, `EffectApplyAuraName`, `EffectItemType`, `EffectMiscValue`,
@@ -37,8 +26,6 @@ INSERT INTO `spell_effect_mod` (`Id`, `EffectIndex`, `Effect`, `EffectDieSides`,
 (28361, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 29, -1, -1, -1, -1, 'Vanilla Bonk: Disease Cloud 6 yards (was 10)')
 ON DUPLICATE KEY UPDATE `EffectRadiusIndex` = VALUES(`EffectRadiusIndex`);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

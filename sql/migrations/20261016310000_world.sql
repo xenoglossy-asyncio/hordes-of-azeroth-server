@@ -6,22 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016310000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016310000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk, Phase F2 (later list): three more Mythic zones (bonk_map
--- 17-19), drafted from docs/zones/mythic_feralas|searinggorge|felwood.sql
--- and reviewed with the same ability rules: Feralas with Dire Maul's
--- bosses, Searing Gorge with the Blackrock bosses Burning Steppes does not
--- use, Felwood with Kazzak, Kroshius and the Jadefire princes.
--- =============================================================
-
--- Mythic run zone: Feralas (bonk_map 17). Reviewed 2026-10-16.
--- Start: open floor of the Lower Wilds below the Gordunni Outpost cliff (a Longtooth Runner spawn 19 yd away, 12 Runner/Ironfur Bear spawns
--- within 150 yd); terrain within 60 yd varies 5 yd (cliffs rise past 80 yd to the north and west), no water within 290 yd, zone border 450 yd,
--- nearest humanoids the Gordunni ogres 170 yd away and 80 yd higher, nearest building 158 yd. Bosses from Dire Maul (North, East and West).
--- The Dire Maul creatures are creature_template patch 1 rows (1.3); the server runs WowPatch 10, so they load.
 
 DELETE FROM `bonk_map` WHERE `id` = 17;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
@@ -31,39 +15,31 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 17;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(17, 13022, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),        -- Whip Lasher, DM East (Lasher x0.75, template draws it at 1.0: radius 1.0, as the Plagued Rat)
-(17, 13276, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),     -- Wildspawn Imp, DM East (Grell x1.0, tiny), exploder
-(17, 12418, 0, 0, 390, 0, 4, 0, 1, 1, 0.95, 1),       -- Gordok Hyena (Hyena x1.15)
--- grunts
-(17, 5286, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Longtooth Runner (Wolf x1.0)
-(17, 5255, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),        -- Woodpaw Reaver (gnoll x1.5)
-(17, 11452, 0, 1, 120, 360, 7, 0, 1, 1, 0.85, 1),     -- Wildspawn Rogue, DM East (Satyr x1.3)
-(17, 5292, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),       -- Feral Scar Yeti (Wendigo x1.15)
-(17, 11476, 0, 1, 270, 510, 6, 0, 1, 1, 0.75, 1),     -- Skeletal Highborne, DM West (SkeletonNaked x1.3)
-(17, 7725, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),      -- Grimtotem Raider (tauren male/female, template draws them at 1.35)
-(17, 11462, 0, 1, 420, 0, 5, 0, 1, 1, 0.7, 1),        -- Warpwood Treant, DM East (Ent x1.5)
--- bruisers (radius 2.1 and 2.0, over 1.3x the biggest grunt: no bruiser growth)
-(17, 11441, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),          -- Gordok Brute, DM North (Ogre x2.35)
-(17, 13285, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),         -- Death Lash, DM East (Lasher x2.0)
--- casters
-(17, 5254, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Woodpaw Mystic (GnollCaster x1.5)
-(17, 11466, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),      -- Highborne Summoner, DM West (night elf male/female)
--- charger
-(17, 5288, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),         -- Rabid Longtooth (Wolf x1.3)
--- elites
-(17, 11457, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),       -- Wildspawn Hellcaller, DM East (Satyr x1.75)
-(17, 11445, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1),       -- Gordok Captain, DM North (OgreWarlord x2.5, already big)
-(17, 11484, 1, 1, 200, 0, 2, 0, 1, 1, 0.8, 1.2),      -- Residual Monstrosity, DM West (ManaFiend x1.5)
-(17, 11465, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1),    -- Warpwood Stomper, DM East (Ent x2.5, already big)
--- stage bosses
-(17, 11501, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),         -- King Gordok, DM North (OgreWarlord x2.8, already huge)
-(17, 11486, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),       -- Prince Tortheldrin, DM West (NightElfMale x1.0)
--- mini-bosses
-(17, 11492, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1),         -- Alzzin the Wildshaper, DM East (Satyr x2.5, already big)
-(17, 11489, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),         -- Tendris Warpwood, DM West (AncientofWar x2.0, already huge)
-(17, 11496, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1),          -- Immolthar, DM West (VoidTerror x3.0, already huge)
-(17, 11487, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);        -- Magister Kalendris, DM West (NightElfMale x1.2)
+(17, 13022, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),
+(17, 13276, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(17, 12418, 0, 0, 390, 0, 4, 0, 1, 1, 0.95, 1),
+(17, 5286, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(17, 5255, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),
+(17, 11452, 0, 1, 120, 360, 7, 0, 1, 1, 0.85, 1),
+(17, 5292, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),
+(17, 11476, 0, 1, 270, 510, 6, 0, 1, 1, 0.75, 1),
+(17, 7725, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),
+(17, 11462, 0, 1, 420, 0, 5, 0, 1, 1, 0.7, 1),
+(17, 11441, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),
+(17, 13285, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(17, 5254, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(17, 11466, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(17, 5288, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),
+(17, 11457, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),
+(17, 11445, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1),
+(17, 11484, 1, 1, 200, 0, 2, 0, 1, 1, 0.8, 1.2),
+(17, 11465, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1),
+(17, 11501, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(17, 11486, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(17, 11492, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1),
+(17, 11489, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),
+(17, 11496, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1),
+(17, 11487, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (13276, 5254, 11466);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -108,12 +84,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (17, 330, 3, 1),
 (17, 540, 3, 1);
 
--- Mythic run zone: Searing Gorge (bonk_map 18). Reviewed 2026-10-16.
--- Start: the Sea of Cinders among the Searing Lava Spider spawns (one 16 yd away, 13 within 130 yd); terrain within 60 yd varies 6 yd,
--- no lava or water within 500 yd, Burning Steppes border 270 yd south-west behind a ridge, Dark Iron lookouts and their tower 157-194 yd
--- east; the bounding box of the Blackrock Mountain model ends 54 yd west (its centre is 690 yd off), no other building within 200 yd.
--- Bosses from Blackrock Depths / Blackrock Spire that Burning Steppes does not use.
-
 DELETE FROM `bonk_map` WHERE `id` = 18;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -122,39 +92,31 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 18;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(18, 5857, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),         -- Searing Lava Spider (Tarantula x1.0)
-(18, 5839, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),      -- Dark Iron Geologist (DwarfMale x1.0), exploder
-(18, 8921, 0, 0, 390, 0, 4, 0, 1, 1, 0.95, 1),        -- Bloodhound, BRD (DarkHound x1.0)
--- grunts
-(18, 9318, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Incendosaur (Diemetradon x1.0)
-(18, 5844, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),       -- Dark Iron Slaver (DwarfMale)
-(18, 5855, 0, 1, 120, 360, 7, 0, 1, 1, 0.7, 1),       -- Magma Elemental (ElementalEarth x1.0)
-(18, 5846, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),      -- Dark Iron Taskmaster (DwarfMale)
-(18, 5850, 0, 1, 270, 510, 6, 0, 1, 1, 0.75, 1),      -- Blazing Elemental (FireElemental x1.0)
-(18, 8892, 0, 1, 300, 540, 6, 0, 1, 1, 0.8, 1),       -- Anvilrage Footman, BRD (DwarfMale)
-(18, 8893, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),         -- Anvilrage Soldier, BRD (DwarfMale)
--- bruisers (the bruiser rule grows the Heavy War Golem about 1.17x past the Magma Elemental; the construct is big enough)
-(18, 5854, 0, 2, 0, 0, 6, 0, 1, 1, 0.65, 1),          -- Heavy War Golem (GolemStone x1.5)
-(18, 8907, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- Wrath Hammer Construct, BRD (GolemCannonStone x1.8)
--- casters
-(18, 5858, 0, 3, 150, 330, 3, 3, 1, 1, 0.75, 1),      -- Greater Lava Spider (Tarantula x1.15)
-(18, 8900, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Doomforge Arcanasmith, BRD (DwarfMale)
--- charger
-(18, 8922, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),         -- Bloodhound Mastiff, BRD (DarkHound x1.15)
--- elites
-(18, 8898, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),        -- Anvilrage Marshal, BRD (DwarfMale)
-(18, 8899, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Doomforge Dragoon, BRD (DwarfMale)
-(18, 8894, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Anvilrage Medic, BRD (DwarfMale)
-(18, 8910, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.75, 1.2),  -- Blazing Fireguard, BRD (FireElemental x1.0)
--- stage bosses
-(18, 10429, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),       -- Warchief Rend Blackhand, UBRS (OrcMale x1.2)
-(18, 10430, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),         -- The Beast, UBRS (FelBeast x3.0, already huge)
--- mini-bosses
-(18, 9033, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),         -- General Angerforge, BRD (DwarfMale x1.25)
-(18, 8983, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),         -- Golem Lord Argelmach, BRD (DwarfMale x1.1)
-(18, 9816, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.5),         -- Pyroguard Emberseer, UBRS (FireElemental x0.75, template draws it at 1.0)
-(18, 10220, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1);         -- Halycon, LBRS (DireWolf x2.0, already big)
+(18, 5857, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),
+(18, 5839, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(18, 8921, 0, 0, 390, 0, 4, 0, 1, 1, 0.95, 1),
+(18, 9318, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(18, 5844, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),
+(18, 5855, 0, 1, 120, 360, 7, 0, 1, 1, 0.7, 1),
+(18, 5846, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),
+(18, 5850, 0, 1, 270, 510, 6, 0, 1, 1, 0.75, 1),
+(18, 8892, 0, 1, 300, 540, 6, 0, 1, 1, 0.8, 1),
+(18, 8893, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),
+(18, 5854, 0, 2, 0, 0, 6, 0, 1, 1, 0.65, 1),
+(18, 8907, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(18, 5858, 0, 3, 150, 330, 3, 3, 1, 1, 0.75, 1),
+(18, 8900, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(18, 8922, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),
+(18, 8898, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),
+(18, 8899, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),
+(18, 8894, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1.2),
+(18, 8910, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.75, 1.2),
+(18, 10429, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(18, 10430, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(18, 9033, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(18, 8983, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(18, 9816, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.5),
+(18, 10220, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (5839, 5858, 8900);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -199,11 +161,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (18, 330, 3, 1),
 (18, 540, 3, 1);
 
--- Mythic run zone: Felwood (bonk_map 19). Reviewed 2026-10-16.
--- Start: the flat floor of Irontree Woods among the Irontree treant spawns (a Stomper 42 yd away, 7 within 85 yd); terrain within 60 yd varies 6.5 yd
--- (the Irontree Cavern hill rises past 75 yd south and east), a shallow pond 75 yd north-west, zone border 470 yd, nearest NPC 357 yd,
--- Irontree Cavern 128 yd. No dungeon: the Jaedenar, Shadow Hold, Shatter Scar Vale and Deadwood leaders, and Lord Kazzak.
-
 DELETE FROM `bonk_map` WHERE `id` = 19;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -212,38 +169,30 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 19;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(19, 7125, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),         -- Jaedenar Hound (FelHound x1.15)
-(19, 7092, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),      -- Tainted Ooze (Slime x1.5, as the Primal Ooze), exploder
-(19, 7097, 0, 0, 390, 0, 4, 0, 1, 1, 0.9, 1),         -- Ironbeak Owl (Owl x1.0)
--- grunts
-(19, 8956, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Angerclaw Bear (Bear x1.3)
-(19, 7105, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),        -- Jadefire Satyr (Satyr x1.3)
-(19, 7153, 0, 1, 120, 360, 7, 0, 1, 1, 0.75, 1),      -- Deadwood Warrior (Furbolg x1.4)
-(19, 9878, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),       -- Entropic Beast (FireElementalGreen x1.0)
-(19, 7139, 0, 1, 270, 510, 6, 0, 1, 1, 0.7, 1),       -- Irontree Stomper (Ent x1.75)
-(19, 7110, 0, 1, 300, 540, 6, 0, 1, 1, 0.85, 1),      -- Jadefire Shadowstalker (Satyr x1.5)
-(19, 7126, 0, 1, 420, 0, 5, 0, 1, 1, 0.85, 1),        -- Jaedenar Hunter (FelHound x1.3)
--- bruisers (the bruiser rule grows the Infernal Sentry about 1.26x past the Deadwood Warrior, to about Infernal x2.0)
-(19, 7101, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),           -- Warpwood Shredder (BogBeast x1.75)
-(19, 7136, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- Infernal Sentry (Infernal x1.6)
--- casters
-(19, 7109, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Jadefire Felsworn (Satyr x1.3)
-(19, 7158, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Deadwood Shaman (Furbolg x1.4)
--- charger
-(19, 8961, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),         -- Felpaw Ravager (Wolf x1.3)
--- elites
-(19, 7111, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),        -- Jadefire Hellcaller (Satyr x2.0)
-(19, 9862, 1, 1, 120, 0, 2, 0, 1, 1, 0.8, 1.2),       -- Jaedenar Legionnaire (FelGuard x1.5)
-(19, 8957, 1, 1, 200, 0, 2, 0, 1, 1, 0.85, 1.2),      -- Angerclaw Grizzly (Bear x1.75)
-(19, 7108, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.8, 1.2),   -- Jadefire Betrayer (Satyr x1.75)
--- stage bosses
-(19, 12397, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),         -- Lord Kazzak, Blasted Lands world boss (LordKezzak x1.5, template draws him at 2.2: radius 4.4, already huge)
-(19, 14467, 2, 1, 0, 0, 1, 0, 1, 1, 0.8, 1),          -- Kroshius, Shatter Scar Vale (Infernal x3.0, already huge)
--- mini-bosses
-(19, 9517, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.5),         -- Shadow Lord Feldan, Jaedenar (OrcMale x1.0)
-(19, 9877, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.4),        -- Prince Xavalis, Shadow Hold (Satyr x2.0)
-(19, 9464, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);         -- Overlord Ror, Deadwood Village (Furbolg x1.7)
+(19, 7125, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),
+(19, 7092, 0, 0, 240, 480, 3, 3, 1, 1, 0.95, 1),
+(19, 7097, 0, 0, 390, 0, 4, 0, 1, 1, 0.9, 1),
+(19, 8956, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(19, 7105, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),
+(19, 7153, 0, 1, 120, 360, 7, 0, 1, 1, 0.75, 1),
+(19, 9878, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),
+(19, 7139, 0, 1, 270, 510, 6, 0, 1, 1, 0.7, 1),
+(19, 7110, 0, 1, 300, 540, 6, 0, 1, 1, 0.85, 1),
+(19, 7126, 0, 1, 420, 0, 5, 0, 1, 1, 0.85, 1),
+(19, 7101, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),
+(19, 7136, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(19, 7109, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(19, 7158, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(19, 8961, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),
+(19, 7111, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),
+(19, 9862, 1, 1, 120, 0, 2, 0, 1, 1, 0.8, 1.2),
+(19, 8957, 1, 1, 200, 0, 2, 0, 1, 1, 0.85, 1.2),
+(19, 7108, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.8, 1.2),
+(19, 12397, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(19, 14467, 2, 1, 0, 0, 1, 0, 1, 1, 0.8, 1),
+(19, 9517, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.5),
+(19, 9877, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.4),
+(19, 9464, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (7092, 7109, 7158);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -283,8 +232,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (19, 330, 3, 1),
 (19, 540, 3, 1);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

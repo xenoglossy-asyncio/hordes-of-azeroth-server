@@ -265,6 +265,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "starter",        SEC_PLAYER,         false, &ChatHandler::HandleBonkStarterCommand,         "", nullptr },
         { "perfdip",        SEC_PLAYER,         false, &ChatHandler::HandleBonkPerfDipCommand,         "", nullptr },
         { "stop",           SEC_PLAYER,         false, &ChatHandler::HandleBonkStopCommand,            "", nullptr },
+        { "home",           SEC_PLAYER,         false, &ChatHandler::HandleBonkHomeCommand,            "", nullptr },
         { "pick",           SEC_PLAYER,         false, &ChatHandler::HandleBonkPickCommand,            "", nullptr },
         { "reroll",         SEC_PLAYER,         false, &ChatHandler::HandleBonkRerollCommand,          "", nullptr },
         { "banish",         SEC_PLAYER,         false, &ChatHandler::HandleBonkBanishCommand,          "", nullptr },

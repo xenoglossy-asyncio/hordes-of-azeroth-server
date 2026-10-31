@@ -6,21 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015000000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015000000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: renames (feature plan, Phase 1 content frameworks)
---
--- Display strings only; ids, tables and columns keep their old names.
--- - The Talents NPC becomes Sayge, the Darkmoon Faire fortune teller; her
---   tree is Sayge's Fortunes, with a Fortune side and a Dark Fortune side.
--- - Talent Shards become Darkmoon Tickets.
--- - The Mastery trainer teaches talents (Mastery XP and levels keep their
---   name).
--- - The upgrades vendor's Fortune tree becomes Utility, so Sayge alone has
---   fortunes.
--- =============================================================
 
 UPDATE `creature_template` SET `name` = 'Sayge', `subname` = 'Darkmoon Faire', `display_id1` = 491 WHERE `entry` = 900003;
 UPDATE `creature_template` SET `subname` = 'Talent Trainer' WHERE `entry` = 900008;
@@ -49,8 +34,6 @@ UPDATE `bonk_quest` SET `icon` = 'INV_Misc_Ticket_Darkmoon_01' WHERE `icon` = 'I
 
 UPDATE `bonk_tier` SET `description` = REPLACE(`description`, 'Talent Shards', 'Darkmoon Tickets');
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

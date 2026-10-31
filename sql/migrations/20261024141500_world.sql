@@ -7,7 +7,6 @@ DECLARE displayId INT DEFAULT 18507;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261024141500');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261024141500');
--- Add your query below.
 
 DELETE FROM `creature_display_info_addon` WHERE `display_id` BETWEEN 18507 AND 18599;
 WHILE displayId <= 18599 DO
@@ -19,8 +18,6 @@ END WHILE;
 
 UPDATE `item_template` SET `description` = 'Lets you escape the run early, for emergencies. Opens a ring at your feet that fills over 15 sec. Be inside it when it fills to return to the Inn with 1 item from the Extraction Vault. Disappears when the run ends.' WHERE `entry` = 900230;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

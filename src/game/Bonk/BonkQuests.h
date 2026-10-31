@@ -130,7 +130,8 @@ class BonkQuests
         bool IsDisabled(uint32 account, BonkQuestReward type, uint32 id) const;
         bool IsInPool(uint32 account, BonkQuestReward type, uint32 id) const { return !IsLocked(account, type, id) && !IsDisabled(account, type, id); }
         static bool IsTogglable(BonkQuestReward type) { return type == BONK_REWARD_CARD || type == BONK_REWARD_GLYPH; }
-        bool SetDisabled(uint32 account, BonkQuestReward type, uint32 id, bool disabled, uint32 slots, std::string& error);
+        bool SetDisabled(uint32 account, BonkQuestReward type, uint32 id, bool disabled, uint32 slots, std::string& error,
+            LocaleConstant locale = LOCALE_enUS);
         void TrimDisabled(uint32 account, BonkQuestReward type, uint32 slots);
         std::vector<std::pair<BonkQuestReward, uint32>> GetDisabled(uint32 account) const;
         uint32 CountDisabled(uint32 account, BonkQuestReward type) const;
@@ -174,7 +175,7 @@ class BonkQuests
         uint32 CountCompleted(uint32 account) const;
         static bool Counts(Player const* player, BonkQuest const& quest);
         static uint32 GetShownProgress(BonkQuest const& quest, Progress const& entry);
-        std::string DescribeReward(BonkQuest const& quest, std::string* icon) const;
+        std::string DescribeReward(BonkQuest const& quest, std::string* icon, LocaleConstant locale = LOCALE_enUS) const;
         uint32 GetRootWeapon(uint32 spellId, uint32 classMask) const;
 
         std::map<uint32, BonkQuest> m_quests;

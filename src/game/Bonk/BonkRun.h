@@ -22,6 +22,8 @@ class Creature;
 class GameObject;
 class Item;
 class Player;
+enum BonkString : uint32;
+enum BonkTextField : uint8;
 
 enum BonkMiniEventType : uint8
 {
@@ -146,6 +148,9 @@ class BonkRun
         bool OffersChest(ObjectGuid chest, Player* opener) const;
         uint32 OpenChestFor(GameObject* chest, Player* opener);
         void ReviveFromGroup(float health);
+        std::string GetString(BonkString id, std::vector<std::string> const& args = {}) const;
+        std::string Localize(BonkTextField field, uint32 id, std::string const& english) const;
+        LocaleConstant GetLocale() const;
         void Update(uint32 diff);
         void Abort();
         void Surrender();
@@ -204,6 +209,7 @@ class BonkRun
         size_t ChooseAutoPick() const;
         bool IsAutoPicking() const { return m_autoPickCatchUp && m_catchUpLevels && m_offerSource == OFFER_LEVEL; }
         bool AutoPickCatchUp(std::string& error);
+        bool RunAutoPicks(std::string& error);
         static float TierKneeHealthSteps(BonkTier const& tier, uint32 stage);
         static float TierDamageScale(BonkTier const& tier, uint32 stage);
         static uint32 FloorMilestones(BonkTier const& tier, uint32 stage);
@@ -667,6 +673,17 @@ class BonkRun
         float GetSectorAngle(uint32 sector) const;
         uint32 GetSectorOf(float x, float y) const;
         std::vector<float> CountSectorCrowd() const;
+        struct SpawnOpenness
+        {
+            float fill;
+            bool guardGap;
+            uint32 guardHalfWidth;
+        };
+        SpawnOpenness GetSpawnOpenness() const;
+        std::vector<uint32> CountNearSectors(float range) const;
+        std::vector<bool> GetGuardedSectors() const;
+        void UpdateRingSample(uint32 diff);
+        void LogRing();
         int32 PickSector(std::vector<float> const& crowd, bool frontOnly) const;
         bool FindSectorPosition(uint32 sector, float minDistance, float maxDistance, float& x, float& y, float& z) const;
         void SpawnTrashPacks(uint32 count);
@@ -852,6 +869,7 @@ class BonkRun
         float GetWeaponHasteRate(OwnedWeapon const& owned) const;
         uint32 GetWeaponCooldown(OwnedWeapon const& owned) const;
         float GetWeaponArea(OwnedWeapon const& owned) const;
+        float GetStrikeRange(OwnedWeapon const& owned) const;
         float GetWeaponRadius(OwnedWeapon const& owned) const;
         uint32 GetWeaponTargets(OwnedWeapon const& owned) const;
         void FireWeapon(OwnedWeapon& owned);
@@ -995,12 +1013,10 @@ class BonkRun
         std::string DescribeBareRankUp(Offer const& offer) const;
         struct WeaponStrength
         {
-            std::string lead;
-            std::string tail;
-            std::string label;
+            BonkString sentence{};
+            BonkString label{};
             float value = 0.0f;
             BonkSpellUpgrade folded = BONK_SPELL_UPGRADE_NONE;
-            std::string Describe() const;
         };
         bool GetWeaponStrength(BonkWeapon const& weapon, float damageBonus, float const* upgrades, WeaponStrength& strength) const;
         void AddRankGains(OwnedWeapon& owned, Offer const& offer) const;
@@ -1139,7 +1155,7 @@ class BonkRun
         void SendCardCooldown(BonkCardEffect effect) const;
         void SendCardCooldowns() const;
         std::string DescribeCardNow(BonkCard const& card) const;
-        static std::string DescribeHeldCard(BonkCard const& card, uint32 copies);
+        static std::string DescribeHeldCard(BonkCard const& card, uint32 copies, LocaleConstant locale);
         void SendCardStatus(bool force) const;
         mutable std::map<uint32, std::string> m_cardNowSent;
         uint32 m_cardCooldownTotals[MAX_BONK_CARD_EFFECT] = {};
@@ -1218,7 +1234,7 @@ class BonkRun
         std::string DescribeFoundDrop(BonkFoundGear const& found) const;
         void AddEliteScrap();
         bool GetKeepInfo(uint32 entry, uint32& keepEntry, uint8& quality) const;
-        void MailKeptPiece(uint32 entry, std::string const& subject, std::string const& body, BonkFoundGear const* found);
+        void MailKeptPiece(uint32 entry, std::string const& body, BonkFoundGear const* found);
         uint32 GetScrapPoints(Item const* item) const;
         void GetOwnedTiers(uint32 entry, uint32& bestTier, bool& owned) const;
         uint8 RollGearQuality(BonkSpawnKind kind) const;
@@ -1257,7 +1273,15 @@ class BonkRun
         uint32 m_pillarObjective = 0;
         bool m_pillarRaised = false;
         bool m_pillarMode = false;
-        std::vector<std::pair<uint32, uint32>> m_pillarSent;
+        struct PillarSentPiece
+        {
+            uint32 entry = 0;
+            uint32 floor = 0;
+            uint32 tier = 0;
+            std::string lines;
+            std::string extra;
+        };
+        std::vector<PillarSentPiece> m_pillarSent;
         uint32 m_floorMiniBosses = 0;
         ObjectGuid FindRunGear(uint32 guidLow) const;
         bool IsInVault(ObjectGuid const& guid) const;
@@ -1321,6 +1345,7 @@ class BonkRun
         uint32 m_startFloor = 1;
         uint32 m_catchUpLevels = 0;
         bool m_autoPickCatchUp = false;
+        bool m_autoPickRunning = false;
         uint32 m_floorBestAtStart = 0;
         void ApplyInvader();
 
@@ -1496,11 +1521,11 @@ class BonkRun
             bool boss = false;
             int32 leftMs = 0;
             int32 glowMs = 0;
-            std::string countdown;
+            bool countdown = false;
         };
         std::vector<PendingSummon> m_pendingSummons;
         void QueueSummon(BonkMapCreature const* creature, float x, float y, float z, uint32 affixes, ObjectGuid const& altar, bool boss,
-            std::string const& countdown);
+            bool countdown);
         void UpdatePendingSummons(uint32 diff);
         bool IsAltarWaking(ObjectGuid const& altar) const;
         uint32 m_shrinesToPlace = 0;
@@ -1513,6 +1538,7 @@ class BonkRun
         uint32 m_captureSendMs = 0;
         uint32 m_greedStacks = 0;
         float m_shrineBonuses[MAX_BONK_PASSIVE_EFFECT] = {};
+        uint32 m_shrinePicks[MAX_BONK_PASSIVE_EFFECT] = {};
         struct LeyBuff
         {
             BonkPassiveEffect effect = BONK_PASSIVE_POWER;
@@ -1594,6 +1620,10 @@ class BonkRun
         mutable std::vector<uint32> m_sectorBlockedUntil;
         int32 m_lanes[2] = { -1, -1 };
         uint32 m_laneTimer = 0;
+        uint32 m_ringTimer = 0;
+        uint32 m_ringSamples = 0;
+        uint32 m_ringBlocked = 0;
+        uint32 m_ringClosed = 0;
         bool m_perched = false;
         uint32 m_perchTimer = 0;
         uint32 m_perchChecks = 0;

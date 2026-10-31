@@ -16,7 +16,7 @@ namespace
 
     struct BonkEnchantGrade
     {
-        char const* name;
+        BonkString name;
         uint32 weight;
         float multiplier;
         float piecePercent;
@@ -24,11 +24,11 @@ namespace
 
     BonkEnchantGrade const BONK_ENCHANT_GRADES[] =
     {
-        { "Minor",    40, 1.0f, 10.0f },
-        { "Lesser",   30, 1.5f, 20.0f },
-        { "Greater",  20, 2.2f, 30.0f },
-        { "Superior",  8, 3.2f, 40.0f },
-        { "Godly",     2, 5.0f, 50.0f },
+        { BONK_STRING_ENCHANT_GRADE_MINOR,    40, 1.0f, 10.0f },
+        { BONK_STRING_ENCHANT_GRADE_LESSER,   30, 1.5f, 20.0f },
+        { BONK_STRING_ENCHANT_GRADE_GREATER,  20, 2.2f, 30.0f },
+        { BONK_STRING_ENCHANT_GRADE_SUPERIOR,  8, 3.2f, 40.0f },
+        { BONK_STRING_ENCHANT_GRADE_GODLY,     2, 5.0f, 50.0f },
     };
     uint8 const BONK_ENCHANT_GRADE_COUNT = uint8(sizeof(BONK_ENCHANT_GRADES) / sizeof(BONK_ENCHANT_GRADES[0]));
 
@@ -111,9 +111,9 @@ float BonkEnchanting::GetValue(BonkEnchant const& enchant, float const* pieceSta
     return std::round(value * 10.0f) / 10.0f;
 }
 
-char const* BonkEnchanting::GetGradeName(uint8 grade)
+BonkString BonkEnchanting::GetGradeName(uint8 grade)
 {
-    return grade < BONK_ENCHANT_GRADE_COUNT ? BONK_ENCHANT_GRADES[grade].name : "";
+    return grade < BONK_ENCHANT_GRADE_COUNT ? BONK_ENCHANT_GRADES[grade].name : BonkString(0);
 }
 
 std::string BonkEnchanting::Describe(BonkEnchant const& enchant, float const* pieceStats)

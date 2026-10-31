@@ -6,20 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016320000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016320000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk, Phase 3 Glyphs (BonkRunGlyphs.cpp): the two big picks of a
--- run, 1 of 4 at its start and 1 of 4 after its first mini-boss. Pool v2:
--- the plan's v1 pool less what Darkmoon Cards and the run legendaries now
--- do; the legendary Glyphs renamed away from the legendary items. 8 starter
--- Glyphs, 9 more from quests (bought at the Spellbook, as cards are).
--- Effects (bonk_glyph.effect): 0 card only, 1 packrat, 2 thrift, 3 second
--- wind, 4 ley line, 5 kill haste, 6 chest trap, 7 half armor, 8 divine
--- shield, 9 soul harvest, 10 vengeance, 11 no heals, 12 gambler, 13 storm,
--- 14 meteor. Rarity 0-4, common to legendary.
--- =============================================================
 CREATE TABLE IF NOT EXISTS `bonk_glyph` (
     `id`          INT UNSIGNED NOT NULL,
     `name`        VARCHAR(64) NOT NULL,
@@ -36,7 +23,6 @@ CREATE TABLE IF NOT EXISTS `bonk_glyph` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='Vanilla Bonk Glyphs';
 
--- The hidden cards some Glyphs give (never in chests, never in the card row).
 DELETE FROM `bonk_card` WHERE `id` BETWEEN 150 AND 159;
 INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`, `stat1_value`, `stat2`, `stat2_value`, `effect`, `value1`, `value2`, `value3`, `cooldown_ms`, `max_copies`, `in_chests`) VALUES
 (150, 'Glyph of the Scholar',         'INV_Misc_Book_11',               '+15% experience.',                      0, 7,   15,  255, 0, 0,  0,  0, 0, 0, 1, 0),
@@ -49,7 +35,6 @@ INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`,
 
 DELETE FROM `bonk_glyph`;
 INSERT INTO `bonk_glyph` (`id`, `name`, `icon`, `description`, `drawback`, `rarity`, `effect`, `value1`, `value2`, `value3`, `card_id`, `starter`) VALUES
--- The starter set.
 (1,  'Glyph of the Scholar',        'INV_Misc_Book_11',               '+15% experience.', '', 0, 0, 0, 0, 0, 150, 1),
 (2,  'Glyph of the Packrat',        'INV_Misc_Bag_10',                '+20% pickup range, and power-ups lie about 50% longer.', '', 0, 1, 50, 0, 0, 151, 1),
 (3,  'Glyph of Thrift',             'INV_Misc_Coin_03',               'Chests cost 15% less Valor.', '', 0, 2, 15, 0, 0, 0, 1),
@@ -58,7 +43,6 @@ INSERT INTO `bonk_glyph` (`id`, `name`, `icon`, `description`, `drawback`, `rari
 (6,  'Glyph of the Ley Line',       'Spell_Nature_AstralRecal',       'Ley Lines capture twice as fast and offer 4 blessings.', '', 1, 4, 100, 1, 0, 0, 1),
 (7,  'Glyph of Windfury',           'Spell_Nature_Windfury',          '15% chance for any spell to go off a second time.', '', 2, 0, 0, 0, 0, 153, 1),
 (8,  'Glyph of Bloodlust',          'Spell_Nature_BloodLust',         'Every 50 kills: +30% Haste for 8 seconds.', '', 2, 5, 50, 30, 8000, 0, 1),
--- From quests.
 (9,  'Glyph of Goblin Engineering', 'INV_Misc_Bomb_04',               '+30% Valor.', '1 chest in 10 blows up in your face for 10% of your maximum health.', 1, 6, 10, 10, 0, 154, 0),
 (10, 'Glyph of Berserker Rage',     'Spell_Nature_AncestralGuardian', '+25% Power.', 'Your Armor is halved.', 2, 7, 0, 0, 0, 155, 0),
 (11, 'Glyph of Divine Shield',      'Spell_Holy_DivineIntervention',  'Once each stage, death instead brings you back at 40% health.', '', 3, 8, 40, 0, 0, 0, 0),
@@ -69,7 +53,6 @@ INSERT INTO `bonk_glyph` (`id`, `name`, `icon`, `description`, `drawback`, `rari
 (16, 'Glyph of the Windseeker',     'Spell_Nature_CallStorm',         'Every 5 seconds, lightning strikes up to 5 enemies near you. These strikes always crit.', '', 4, 13, 5000, 5, 2, 0, 0),
 (17, 'Glyph of Ragnaros',           'Spell_Fire_Fireball02',          'Every 10 seconds, a meteor crashes into the thickest crowd of enemies near you.', '', 4, 14, 10000, 4, 8, 0, 0);
 
--- The quests that unlock the rest (bought at the Spellbook once done).
 DELETE FROM `bonk_quest` WHERE `id` BETWEEN 400 AND 408;
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `param`, `amount`, `reward_type`, `reward_value`, `class`, `category`) VALUES
 (400, 'Tinkerer',          'Buy 25 chests with Valor.',                         'INV_Misc_Bomb_04',               31, 0, 0,  25,    12, 9,  0, 3),
@@ -82,8 +65,6 @@ INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`,
 (407, 'Eye of the Storm',  'Clear Mythic.',                                     'Spell_Nature_CallStorm',         3,  2, 0,  4,     12, 16, 0, 3),
 (408, 'Firelord''s Favor', 'Kill 25 stage bosses.',                             'Spell_Fire_Fireball02',          1,  2, 0,  25,    12, 17, 0, 3);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

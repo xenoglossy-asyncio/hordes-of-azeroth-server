@@ -7,17 +7,6 @@ DECLARE displayId INT DEFAULT 18012;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261014012000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261014012000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: telegraph stand-ins, creatures that wear the warnings'
--- models (tools/telegraphs/StandIns.cs: displays 18012-18506, every shape's
--- outline and fills in every size, and a line's pieces). The server sizes a
--- creature from its display's addon row, so each gets one, copied from
--- Blizzard's red wisp as the projectiles' are. Replaces the prototype's four
--- rows (20261014011000).
--- =============================================================
 
 DELETE FROM `creature_display_info_addon` WHERE `display_id` BETWEEN 18012 AND 18999;
 WHILE displayId <= 18506 DO
@@ -27,8 +16,6 @@ WHILE displayId <= 18506 DO
     SET displayId = displayId + 1;
 END WHILE;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

@@ -6,18 +6,13 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012080000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012080000');
--- Add your query below.
 
-
--- Vanilla Bonk: the spellbook at camp. Speaking to him opens the addon's
--- Spellbook window: every spell, unlock and evolution, and what each needs.
 DELETE FROM `creature_template` WHERE `entry` = 900006;
 INSERT INTO `creature_template` (`entry`, `patch`, `name`, `subname`, `level_min`, `level_max`, `faction`, `npc_flags`,
     `display_id1`, `display_probability1`, `display_total_probability`, `type`, `unit_class`, `inhabit_type`,
     `static_flags1`, `script_name`) VALUES
 (900006, 0, 'Archmage Tovin Quill', 'Spellbook', 60, 60, 35, 1, 1595, 1, 1, 7, 8, 1, 262, 'npc_bonk_codex');
 
--- South-east of the camp's centre, facing it.
 DELETE FROM `creature` WHERE `guid` = 900006;
 INSERT INTO `creature` (`guid`, `id`, `map`, `position_x`, `position_y`, `position_z`, `orientation`,
     `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `movement_type`) VALUES
@@ -30,8 +25,6 @@ INSERT INTO `broadcast_text` (`entry`, `male_text`, `female_text`) VALUES
 DELETE FROM `npc_text` WHERE `ID` = 900006;
 INSERT INTO `npc_text` (`ID`, `BroadcastTextID0`, `Probability0`) VALUES (900006, 900006, 1);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

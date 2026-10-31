@@ -6,15 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261013019000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261013019000');
--- Add your query below.
 
-
--- Vanilla Bonk: projectiles. A hero's bolt flies as a creature the server
--- moves in a straight line, wearing the spell's own missile model, and hits
--- the enemies it touches (BonkRun projectiles). Their displays come with the
--- client patch (tools/telegraphs/Projectiles.cs: 18002-18011); the server
--- loads a creature only if its display has an addon row, copied here from
--- Blizzard's red wisp like the wisps' own.
 DELETE FROM `creature_display_info_addon` WHERE `display_id` BETWEEN 18002 AND 18011;
 INSERT INTO `creature_display_info_addon` (`display_id`, `build`, `bounding_radius`, `combat_reach`, `speed_walk`, `speed_run`, `gender`, `display_id_other_gender`)
 SELECT d.`id`, a.`build`, a.`bounding_radius`, a.`combat_reach`, a.`speed_walk`, a.`speed_run`, a.`gender`, a.`display_id_other_gender`
@@ -23,8 +15,6 @@ JOIN (SELECT 18002 AS `id` UNION SELECT 18003 UNION SELECT 18004 UNION SELECT 18
       UNION SELECT 18007 UNION SELECT 18008 UNION SELECT 18009 UNION SELECT 18010 UNION SELECT 18011) d
 WHERE a.`display_id` = 16587;
 
--- The projectile: invisible until the run sets its missile's display; no
--- name, no level of its own (the run gives it the hero's).
 DROP TEMPORARY TABLE IF EXISTS `bonk_projectile_template`;
 CREATE TEMPORARY TABLE `bonk_projectile_template` SELECT * FROM `creature_template` WHERE `entry` = 900111;
 UPDATE `bonk_projectile_template` SET `entry` = 900113, `name` = 'Projectile', `inhabit_type` = 7;
@@ -32,11 +22,6 @@ DELETE FROM `creature_template` WHERE `entry` = 900113;
 INSERT INTO `creature_template` SELECT * FROM `bonk_projectile_template`;
 DROP TEMPORARY TABLE `bonk_projectile_template`;
 
--- Which spells fly as projectiles, with what model, how fast and how wide.
--- A weapon whose spell (or alt spell) has a row fires it as a projectile;
--- every other spell still lands on its target. Speeds are the client's own
--- missile speeds; radius is how close to its path an enemy (plus its own
--- size) gets hit.
 CREATE TABLE IF NOT EXISTS `bonk_projectile` (
     `spell_id`   INT UNSIGNED NOT NULL COMMENT 'the spell a weapon casts',
     `display_id` INT UNSIGNED NOT NULL COMMENT 'creature display wearing its missile model',
@@ -61,8 +46,6 @@ INSERT INTO `bonk_projectile` (`spell_id`, `display_id`, `speed`, `radius`, `sca
 ( 1978, 18010, 40, 0.7, 1.0, 'Serpent Sting'),
 (16075, 18011, 20, 1.0, 1.0, 'Throw Axe: Heroic Throw');
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

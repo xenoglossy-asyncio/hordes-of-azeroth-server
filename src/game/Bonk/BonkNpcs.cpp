@@ -1,4 +1,5 @@
 #include "BonkCodex.h"
+#include "BonkLocale.h"
 #include "BonkMastery.h"
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
@@ -63,7 +64,7 @@ bool GossipHello_npc_bonk_run_master(Player* player, Creature* creature)
         {
             std::string hint = bonk->GetUnlockHint(tier);
             if (!hint.empty())
-                hint[0] = char(tolower(hint[0]));
+                hint[0] = char(tolower(static_cast<unsigned char>(hint[0])));
             text += " (locked: " + hint + ")";
         }
         else if (uint32 const best = bonk->GetBestStage(tier.id))
@@ -256,9 +257,9 @@ bool GossipHello_npc_bonk_tier_vendor(Player* player, Creature* creature)
         player->GetSession()->SendListInventory(creature->GetObjectGuid());
         return true;
     }
-    std::string const exchange = "Refit " + std::to_string(foreign.size()) + (foreign.size() == 1 ? " set piece" : " set pieces") +
-        " from another class for yours (" + FormatBonkMoney(bonk->GetTierExchangeFee(foreign)) + ")";
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, "Show me your set pieces", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+    std::string const exchange = bonk->GetString(foreign.size() == 1 ? BONK_STRING_REFIT_SET_PIECE : BONK_STRING_REFIT_SET_PIECES,
+        { std::to_string(foreign.size()), FormatBonkMoney(bonk->GetTierExchangeFee(foreign), bonk->GetLocale()) });
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, bonk->GetString(BONK_STRING_SHOW_SET_PIECES).c_str(), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, exchange.c_str(), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
     player->SEND_GOSSIP_MENU(BONK_TEXT_TIER_VENDOR, creature->GetObjectGuid());
     return true;
@@ -297,10 +298,11 @@ bool GOHello_go_bonk_portal(Player* player, GameObject* go)
     {
         BonkTier const& tier = run->GetTier();
         bool const endless = tier.stages && run->GetStage() + 1 > tier.stages;
-        std::string const text = std::string(endless ? "Go on to Endless floor " : "Go on to floor ") + std::to_string(run->GetStage() + 1) + ": " + next->name;
+        std::string const text = run->GetString(endless ? BONK_STRING_PORTAL_NEXT_ENDLESS_FLOOR : BONK_STRING_PORTAL_NEXT_FLOOR,
+            { std::to_string(run->GetStage() + 1), run->Localize(BONK_FIELD_MAP_NAME, next->id, next->name) });
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_BATTLE, text.c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_NEXT);
     }
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, "Return to the Inn (ends the run)", GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME);
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, run->GetString(BONK_STRING_PORTAL_RETURN_HOME).c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME);
     player->SEND_GOSSIP_MENU(BONK_TEXT_PORTAL, go->GetObjectGuid());
     return true;
 }
@@ -314,11 +316,17 @@ bool GOGossipSelect_go_bonk_portal(Player* player, GameObject* go, uint32 , uint
         return true;
     }
 
+    if (action == PORTAL_ACTION_HOME && player->GetBonkPlayer()->IsAddonReady())
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->GetBonkPlayer()->SendAddon(std::string("portalhome~") + (run->IsVaultEmptyWithFinds() ? "1" : "0"));
+        return true;
+    }
     if (action == PORTAL_ACTION_HOME && run->IsVaultEmptyWithFinds())
     {
         player->PlayerTalkClass->ClearMenus();
-        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, "Go home anyway", GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME_SURE);
-        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Back", GOSSIP_SENDER_MAIN, PORTAL_ACTION_BACK);
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, run->GetString(BONK_STRING_PORTAL_GO_HOME_ANYWAY).c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME_SURE);
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, run->GetString(BONK_STRING_PORTAL_BACK).c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_BACK);
         player->SEND_GOSSIP_MENU(BONK_TEXT_VAULT_EMPTY, go->GetObjectGuid());
         return true;
     }

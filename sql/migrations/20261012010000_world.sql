@@ -6,17 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012010000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012010000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: gear stats, Defense and item sets
---
--- Items no longer explain Power in their description; the addon adds a
--- plain "+3% Power" line to the tooltip and the character sheet explains
--- what it does. Gear can now also carry Defense (less damage taken in a
--- run), and two epic sets give bonuses for wearing their pieces together.
--- =============================================================
 
 RENAME TABLE `bonk_item_power` TO `bonk_item_stat`;
 ALTER TABLE `bonk_item_stat`
@@ -41,36 +30,28 @@ CREATE TABLE IF NOT EXISTS `bonk_item_set_bonus` (
     PRIMARY KEY (`set_id`, `pieces`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk item set bonuses';
 
--- The tooltip shows the stats now.
 UPDATE `item_template` SET `description` = '' WHERE `entry` BETWEEN 900101 AND 900112;
 
--- New pieces are cloth so every class can wear them; their looks are
--- borrowed from well-known armor.
 DELETE FROM `item_template` WHERE `entry` BETWEEN 900113 AND 900132;
 INSERT INTO `item_template` (`entry`, `patch`, `class`, `subclass`, `name`, `description`, `display_id`, `quality`, `buy_count`, `buy_price`, `sell_price`,
     `inventory_type`, `allowable_class`, `allowable_race`, `item_level`, `required_level`, `stackable`, `stat_type1`, `stat_value1`, `armor`,
     `bonding`, `material`, `max_durability`) VALUES
--- Recruit's: green
 (900113, 0, 4, 1, 'Recruit\'s Sash',                '', 17121, 2, 1,   3000, 0,  6, -1, -1, 10, 0, 1, 0, 0, 0, 1, 7, 0),
 (900114, 0, 4, 1, 'Recruit\'s Sandals',             '',  3036, 2, 1,   3000, 0,  8, -1, -1, 10, 0, 1, 0, 0, 0, 1, 7, 0),
 (900115, 0, 4, 1, 'Recruit\'s Bracers',             '', 17009, 2, 1,   3000, 0,  9, -1, -1, 10, 0, 1, 0, 0, 0, 1, 7, 0),
 (900116, 0, 4, 1, 'Recruit\'s Gloves',              '', 17061, 2, 1,   3000, 0, 10, -1, -1, 10, 0, 1, 0, 0, 0, 1, 7, 0),
--- Warden's: blue
 (900117, 0, 4, 1, 'Warden\'s Girdle',               '', 31353, 3, 1,  15000, 0,  6, -1, -1, 30, 0, 1, 0, 0, 0, 1, 7, 0),
 (900118, 0, 4, 1, 'Warden\'s Boots',                '', 31354, 3, 1,  15000, 0,  8, -1, -1, 30, 0, 1, 0, 0, 0, 1, 7, 0),
 (900119, 0, 4, 1, 'Warden\'s Bracers',              '', 31509, 3, 1,  15000, 0,  9, -1, -1, 30, 0, 1, 0, 0, 0, 1, 7, 0),
 (900120, 0, 4, 1, 'Warden\'s Gauntlets',            '', 31507, 3, 1,  15000, 0, 10, -1, -1, 30, 0, 1, 0, 0, 0, 1, 7, 0),
--- Juggernaut: epic
 (900121, 0, 4, 1, 'Juggernaut Belt',                '', 31019, 4, 1,  50000, 0,  6, -1, -1, 50, 0, 1, 0, 0, 0, 1, 7, 0),
 (900122, 0, 4, 1, 'Juggernaut Sabatons',            '', 31025, 4, 1,  50000, 0,  8, -1, -1, 50, 0, 1, 0, 0, 0, 1, 7, 0),
 (900123, 0, 4, 1, 'Juggernaut Bracers',             '', 31020, 4, 1,  50000, 0,  9, -1, -1, 50, 0, 1, 0, 0, 0, 1, 7, 0),
 (900124, 0, 4, 1, 'Juggernaut Gauntlets',           '', 31022, 4, 1,  50000, 0, 10, -1, -1, 50, 0, 1, 0, 0, 0, 1, 7, 0),
--- Battlegear of the Unbroken: epic set, Defense
 (900125, 0, 4, 1, 'Helm of the Unbroken',           '', 34215, 4, 1, 150000, 0,  1, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
 (900126, 0, 4, 1, 'Pauldrons of the Unbroken',      '', 34253, 4, 1, 120000, 0,  3, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
 (900127, 0, 4, 1, 'Breastplate of the Unbroken',    '', 33983, 4, 1, 180000, 0,  5, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
 (900128, 0, 4, 1, 'Legplates of the Unbroken',      '', 33986, 4, 1, 150000, 0,  7, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
--- Regalia of Slaughter: epic set, Power
 (900129, 0, 4, 1, 'Crown of Slaughter',             '', 34369, 4, 1, 150000, 0,  1, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
 (900130, 0, 4, 1, 'Mantle of Slaughter',            '', 34022, 4, 1, 120000, 0,  3, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
 (900131, 0, 4, 1, 'Robes of Slaughter',             '', 34014, 4, 1, 180000, 0, 20, -1, -1, 60, 0, 1, 0, 0, 0, 1, 7, 0),
@@ -89,7 +70,6 @@ INSERT INTO `bonk_item_set` (`id`, `name`) VALUES
 (1, 'Battlegear of the Unbroken'),
 (2, 'Regalia of Slaughter');
 
--- passive_effect: 1 weapon cooldown, 4 max health, 5 recovery, 9 leech.
 DELETE FROM `bonk_item_set_bonus` WHERE `set_id` IN (1, 2);
 INSERT INTO `bonk_item_set_bonus` (`set_id`, `pieces`, `power`, `defense`, `passive_effect`, `passive_value`, `description`) VALUES
 (1, 2, 0,  0,  4, 10, '+10% maximum health.'),
@@ -97,7 +77,6 @@ INSERT INTO `bonk_item_set_bonus` (`set_id`, `pieces`, `power`, `defense`, `pass
 (2, 2, 0,  0,  1,  8, 'Weapons fire 8% faster.'),
 (2, 4, 15, 0,  9,  3, '+15% Power, and heal for 3% of the damage your weapons deal.');
 
--- Durgan sells everything grouped by quality: green, blue, epic, then sets.
 DELETE FROM `npc_vendor` WHERE `entry` = 900004;
 INSERT INTO `npc_vendor` (`entry`, `slot`, `item`) VALUES
 (900004,  1, 900101), (900004,  2, 900104), (900004,  3, 900107), (900004,  4, 900110),
@@ -109,8 +88,6 @@ INSERT INTO `npc_vendor` (`entry`, `slot`, `item`) VALUES
 (900004, 25, 900125), (900004, 26, 900126), (900004, 27, 900127), (900004, 28, 900128),
 (900004, 29, 900129), (900004, 30, 900130), (900004, 31, 900131), (900004, 32, 900132);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

@@ -1,4 +1,6 @@
 #include "BonkCodex.h"
+#include "BonkLocale.h"
+#include "BonkMastery.h"
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
 #include "BonkQuests.h"
@@ -34,34 +36,50 @@ namespace
         return text;
     }
 
-    std::string DescribeStat(BonkPassiveEffect stat, float value)
+    std::string ChanceNumber(float value)
+    {
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%.1f", value);
+        std::string text = buffer;
+        if (text.size() > 2 && text.compare(text.size() - 2, 2, ".0") == 0)
+            text.resize(text.size() - 2);
+        return text;
+    }
+
+    BonkString GetStatGainText(BonkPassiveEffect stat)
     {
         switch (stat)
         {
-            case BONK_PASSIVE_POWER:        return "+" + Number(value) + "% Power";
-            case BONK_PASSIVE_HASTE:        return "+" + Number(value) + "% Haste";
-            case BONK_PASSIVE_MOVE_SPEED:   return "+" + Number(value) + "% movement speed";
-            case BONK_PASSIVE_MAX_HEALTH:   return "+" + Number(value) + "% maximum health";
-            case BONK_PASSIVE_RECOVERY:     return Number(value) + "% health a second";
-            case BONK_PASSIVE_GROWTH:       return "+" + Number(value) + "% experience";
-            case BONK_PASSIVE_AREA:         return "+" + Number(value) + "% Area";
-            case BONK_PASSIVE_ARMOR:        return "+" + Number(value) + " Armor";
-            case BONK_PASSIVE_DODGE:        return "+" + Number(value) + "% Dodge";
-            case BONK_PASSIVE_CRIT:         return "+" + Number(value) + "% crit";
-            case BONK_PASSIVE_CRIT_DAMAGE:  return "+" + Number(value) + "% crit damage";
-            case BONK_PASSIVE_SHIELD:       return Number(value) + "% Shield";
-            case BONK_PASSIVE_AMOUNT:       return "+" + Number(value) + " Count";
-            case BONK_PASSIVE_PICKUP:       return "+" + Number(value) + "% pickup range";
-            case BONK_PASSIVE_LUCK:         return "+" + Number(value) + " Luck";
-            default:                        return "+" + Number(value);
+            case BONK_PASSIVE_POWER:        return BONK_STRING_STAT_GAIN_POWER;
+            case BONK_PASSIVE_HASTE:        return BONK_STRING_STAT_GAIN_HASTE;
+            case BONK_PASSIVE_MOVE_SPEED:   return BONK_STRING_STAT_GAIN_MOVE_SPEED;
+            case BONK_PASSIVE_MAX_HEALTH:   return BONK_STRING_STAT_GAIN_MAX_HEALTH;
+            case BONK_PASSIVE_RECOVERY:     return BONK_STRING_STAT_GAIN_RECOVERY;
+            case BONK_PASSIVE_GROWTH:       return BONK_STRING_STAT_GAIN_GROWTH;
+            case BONK_PASSIVE_AREA:         return BONK_STRING_STAT_GAIN_AREA;
+            case BONK_PASSIVE_ARMOR:        return BONK_STRING_STAT_GAIN_ARMOR;
+            case BONK_PASSIVE_DODGE:        return BONK_STRING_STAT_GAIN_DODGE;
+            case BONK_PASSIVE_CRIT:         return BONK_STRING_STAT_GAIN_CRIT;
+            case BONK_PASSIVE_CRIT_DAMAGE:  return BONK_STRING_STAT_GAIN_CRIT_DAMAGE;
+            case BONK_PASSIVE_SHIELD:       return BONK_STRING_STAT_GAIN_SHIELD;
+            case BONK_PASSIVE_AMOUNT:       return BONK_STRING_STAT_GAIN_COUNT;
+            case BONK_PASSIVE_PICKUP:       return BONK_STRING_STAT_GAIN_PICKUP;
+            case BONK_PASSIVE_LUCK:         return BONK_STRING_STAT_GAIN_LUCK;
+            default:                        return BONK_STRING_STAT_GAIN;
         }
     }
 
-    std::string DescribeCardStack(BonkCard const& card, uint32 copies)
+    std::string DescribeStat(BonkPassiveEffect stat, float value, LocaleConstant locale)
+    {
+        return sBonkLocale.GetString(GetStatGainText(stat), locale, { Number(value) });
+    }
+
+    std::string DescribeCardStack(BonkCard const& card, uint32 copies, LocaleConstant locale)
     {
         float const sum = BonkRun::GetCopySum(copies);
-        auto chance = [&card, copies]() { return Number(BonkRun::GetStackedChance(card.values[0], copies)) + "% chance"; };
-        auto cooldown = [&card, copies]() { return Number(card.cooldownMs * BonkRun::GetCopyWeight(copies) / 1000.0f) + " sec cooldown"; };
+        auto text = [locale](BonkString id, float value) { return sBonkLocale.GetString(id, locale, { Number(value) }); };
+        auto chance = [&]() { return sBonkLocale.GetString(BONK_STRING_CARD_CHANCE, locale, { ChanceNumber(BonkRun::GetStackedChance(card.values[0], copies)) }); };
+        auto cooldown = [&]() { return text(BONK_STRING_CARD_COOLDOWN, card.cooldownMs * BonkRun::GetCopyWeight(copies) / 1000.0f); };
         switch (card.effect)
         {
             case BONK_CARD_HEALTHSTONE:
@@ -71,15 +89,15 @@ namespace
                 return cooldown();
             case BONK_CARD_BANDAGE:
             case BONK_CARD_CAMPFIRE:
-                return Number(card.values[0] * sum) + "% health a second";
+                return text(BONK_STRING_STAT_GAIN_RECOVERY, card.values[0] * sum);
             case BONK_CARD_JERKY:
-                return "+" + Number(card.values[0] * sum) + "% turkey legs, healing " + Number(card.values[1] * sum) + "% more";
+                return sBonkLocale.GetString(BONK_STRING_CARD_TURKEY_LEGS, locale, { Number(card.values[0] * sum), Number(card.values[1] * sum) });
             case BONK_CARD_CRIT_HEAL:
-                return chance() + ", up to " + Number(card.values[2] * sum) + "% health a second";
+                return sBonkLocale.GetString(BONK_STRING_CARD_UP_TO_HEALTH_A_SECOND, locale, { chance(), Number(card.values[2] * sum) });
             case BONK_CARD_OVERHEAL:
-                return "Shield up to " + Number(card.values[0] * sum) + "%";
+                return text(BONK_STRING_CARD_SHIELD_UP_TO, card.values[0] * sum);
             case BONK_CARD_THORNS:
-                return Number(card.values[0] * sum) + "% of a normal enemy's health on Normal";
+                return text(BONK_STRING_CARD_THORNS, card.values[0] * sum);
             case BONK_CARD_FIRE_BURST:
             case BONK_CARD_CHAIN:
             case BONK_CARD_DEATH_RAY:
@@ -88,25 +106,25 @@ namespace
             case BONK_CARD_SHADOW_BURST:
                 return chance();
             case BONK_CARD_HASTE_BURST:
-                return chance() + ", +" + Number(card.values[1] * sum) + "% Haste";
+                return sBonkLocale.GetString(BONK_STRING_CARD_CHANCE_AND_HASTE, locale, { chance(), Number(card.values[1] * sum) });
             case BONK_CARD_KILL_POWER:
             case BONK_CARD_UNHIT_POWER:
-                return "up to +" + Number(card.values[1] * sum) + "% Power";
+                return text(BONK_STRING_CARD_UP_TO_POWER, card.values[1] * sum);
             case BONK_CARD_POWER_SURGE:
-                return "+" + Number(card.values[0] * sum) + "% Power";
+                return text(BONK_STRING_STAT_GAIN_POWER, card.values[0] * sum);
             case BONK_CARD_BIG_GAME:
                 if (card.values[1] > 0.0f)
-                    return "+" + Number(card.values[0] * sum) + "% damage, " +
-                        Number(std::min(BonkRun::GetChampionMaxReduction(), card.values[1] * sum)) + "% less damage taken";
-                return "+" + Number(card.values[0] * sum) + "% damage";
+                    return sBonkLocale.GetString(BONK_STRING_CARD_DAMAGE_LESS_DAMAGE_TAKEN, locale,
+                        { Number(card.values[0] * sum), Number(std::min(BonkRun::GetChampionMaxReduction(), card.values[1] * sum)) });
+                return text(BONK_STRING_CARD_DAMAGE, card.values[0] * sum);
             case BONK_CARD_VALOR:
-                return "+" + Number(card.values[0] * sum) + "% Valor";
+                return text(BONK_STRING_CARD_VALOR, card.values[0] * sum);
             case BONK_CARD_DOT_DAMAGE:
-                return "+" + Number(card.values[0] * sum) + "% damage over time";
+                return text(BONK_STRING_CARD_DOT_DAMAGE, card.values[0] * sum);
             default:
                 break;
         }
-        std::string text;
+        std::string stats;
         for (uint8 i = 0; i < 2; ++i)
             if (card.stats[i] < MAX_BONK_PASSIVE_EFFECT)
             {
@@ -114,9 +132,10 @@ namespace
                 float const cap = BonkRun::GetPassiveCap(card.stats[i]);
                 if (cap > 0.0f)
                     value = std::min(value, cap);
-                text += (text.empty() ? "" : ", ") + DescribeStat(card.stats[i], value);
+                std::string const stat = DescribeStat(card.stats[i], value, locale);
+                stats = stats.empty() ? stat : sBonkLocale.GetString(BONK_STRING_LIST_ITEM, locale, { stats, stat });
             }
-        return text;
+        return stats;
     }
 
     BonkKeywordInfo const& KeywordOrBlank(BonkKeyword id)
@@ -126,90 +145,99 @@ namespace
         return info ? *info : blank;
     }
 
-    std::string Seconds(uint32 ms)
+    std::string Seconds(LocaleConstant locale, uint32 ms)
     {
-        return Number(ms / 1000.0f) + " sec";
+        return sBonkLocale.GetString(BONK_STRING_SECONDS_SHORT, locale, { Number(ms / 1000.0f) });
     }
 
     class RulesPage
     {
     public:
-        RulesPage(BonkPlayer* bonk, char const* section) : m_bonk(bonk), m_section(section) {}
-        RulesPage& Line(std::string const& text)
+        RulesPage(BonkPlayer* bonk, BonkString section) : m_bonk(bonk), m_section(bonk->GetString(section)) {}
+        RulesPage& Line(BonkString text, std::vector<std::string> const& args = {})
         {
-            return Term("", text);
+            return Send(std::string(), m_bonk->GetString(text, args));
         }
-        RulesPage& Term(std::string const& term, std::string const& text)
+        RulesPage& Term(BonkString term, BonkString text, std::vector<std::string> const& args = {})
+        {
+            return Send(m_bonk->GetString(term), m_bonk->GetString(text, args));
+        }
+
+    private:
+        RulesPage& Send(std::string const& term, std::string const& text)
         {
             m_bonk->SendAddon("cdxr~" + m_section + "~" + term + "~" + text);
             return *this;
         }
 
-    private:
         BonkPlayer* m_bonk;
         std::string m_section;
     };
 
     void SendStatRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Stats")
-            .Term("Power", "+1% damage per point, for you and your summons. Power on gear gives +0.5% per point and multiplies with your other Power.")
-            .Term("Max Health", "+1% maximum health per point.")
-            .Term("Critical strike chance", "" + Number(BONK_BASE_CRIT) + "% base. Spells crit for 150% damage, attacks for 200%. Above 100%, a hit can crit twice.")
-            .Term("Critical strike damage", "+1% critical strike damage per point.")
-            .Term("Haste", "shorter cooldowns and faster damage over time. Diminishing returns, up to " + Number(BONK_MAX_HASTE) + "%. Gear gives at most " + Number(BONK_MAX_GEAR_HASTE) + "%. Short Haste boosts go past the cap.")
-            .Term("Area", "bigger AoE spells. Diminishing returns, up to " + Number(BONK_MAX_AREA) + "%. Doesn't affect other spells or summons.")
-            .Term("Count", "+1 bolt, shot, swing, pet or totem per point, up to " + Number(BONK_MAX_COUNT) + ". Other AoE spells ignore it.")
-            .Term("Dodge", "chance to dodge enemy melee attacks, up to " + Number(BONK_MAX_DODGE) + "%. Evasion and Deterrence go past the cap.")
-            .Term("Armor", "20 Armor reduces damage taken by 16%, 100 Armor by 43%, and 300 Armor by 60%, the most it can. Each point above 300 gives +0.5% maximum health.")
-            .Term("Shield", "absorbs damage up to a share of maximum health. Refills after " + Seconds(BONK_SHIELD_REGEN_DELAY_MS) + " without taking damage. All shields together hold at most 50% of maximum health, 100% with Juggernaut.")
-            .Term("Leech", "your hits have a 1% chance per point to heal 1% of maximum health, up to 0.03% of maximum health per second per point. Summon hits don't count.")
-            .Term("Health regeneration", "heals 1% of maximum health per second per point. Healing cuts reduce it.")
-            .Term("Luck", "rarer level-up, card, glyph and Ley Line choices. +0.1% elite chest chance and +0.1% evolution chance per point.")
-            .Term("Pickup Range", "6 yards base, +1% per point, up to 30 yards. Darkmoon Tickets and glyphs always need 3 yards.")
-            .Term("Movement Speed", "+1% per point, up to " + Number(BONK_MAX_MOVE_SPEED) + "%. Short speed boosts go past it.")
-            .Term("Gold", "more gold. Doesn't affect Valor or Darkmoon Tickets.")
-            .Term("Experience", "more experience.")
-            .Term("Determination", "each run that ends in death before your first Normal clear gives +" + Number(BONK_DETERMINATION_PER_STACK) + " Power and " + Number(BONK_DETERMINATION_PER_STACK) + "% less damage taken, up to " + std::to_string(uint32(BONK_DETERMINATION_MAX_STACKS)) + " stacks.");
+        RulesPage(bonk, BONK_STRING_RULES_STATS)
+            .Term(BONK_STRING_STAT_POWER, BONK_STRING_RULE_POWER)
+            .Term(BONK_STRING_STAT_MAX_HEALTH, BONK_STRING_RULE_MAX_HEALTH)
+            .Term(BONK_STRING_STAT_CRIT_CHANCE, BONK_STRING_RULE_CRIT_CHANCE, { Number(BONK_BASE_CRIT) })
+            .Term(BONK_STRING_STAT_CRIT_DAMAGE, BONK_STRING_RULE_CRIT_DAMAGE)
+            .Term(BONK_STRING_STAT_HASTE, BONK_STRING_RULE_HASTE, { Number(BONK_MAX_HASTE), Number(BONK_MAX_GEAR_HASTE) })
+            .Term(BONK_STRING_STAT_AREA, BONK_STRING_RULE_AREA, { Number(BONK_MAX_AREA) })
+            .Term(BONK_STRING_STAT_COUNT, BONK_STRING_RULE_COUNT, { Number(BONK_MAX_COUNT) })
+            .Term(BONK_STRING_STAT_DODGE, BONK_STRING_RULE_DODGE, { Number(BONK_MAX_DODGE) })
+            .Term(BONK_STRING_STAT_ARMOR, BONK_STRING_RULE_ARMOR)
+            .Term(BONK_STRING_STAT_SHIELD, BONK_STRING_RULE_SHIELD, { Seconds(bonk->GetLocale(), BONK_SHIELD_REGEN_DELAY_MS) })
+            .Term(BONK_STRING_STAT_LEECH, BONK_STRING_RULE_LEECH)
+            .Term(BONK_STRING_STAT_HEALTH_REGENERATION, BONK_STRING_RULE_HEALTH_REGENERATION)
+            .Term(BONK_STRING_STAT_LUCK, BONK_STRING_RULE_LUCK)
+            .Term(BONK_STRING_STAT_PICKUP_RANGE, BONK_STRING_RULE_PICKUP_RANGE)
+            .Term(BONK_STRING_STAT_MOVEMENT_SPEED, BONK_STRING_RULE_MOVEMENT_SPEED, { Number(BONK_MAX_MOVE_SPEED) })
+            .Term(BONK_STRING_STAT_GOLD, BONK_STRING_RULE_GOLD)
+            .Term(BONK_STRING_STAT_EXPERIENCE, BONK_STRING_RULE_EXPERIENCE)
+            .Term(BONK_STRING_STAT_DETERMINATION, BONK_STRING_RULE_DETERMINATION,
+                { Number(BONK_DETERMINATION_PER_STACK), std::to_string(uint32(BONK_DETERMINATION_MAX_STACKS)) });
     }
 
     void SendStackingRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Stacking")
-            .Line("Stats from gear, cards, glyphs, passives, talents, Training and Ley Lines add together. Caps apply to the total.")
-            .Line("Critical strike chance has no cap.")
-            .Line("Talent damage bonuses add to Power. Spell ranks, Hunter's Mark, Judged, keyword payoffs and capstones multiply with it.")
-            .Line("Vulnerabilities and Sunder Armor multiply with everything else.")
-            .Line("Each passive rank and each extra card copy is worth 85% of the one before, never below 10%. Count doesn't shrink, and Rested has no floor.")
-            .Line("Two trinkets with the same effect don't stack it.");
+        RulesPage(bonk, BONK_STRING_RULES_STACKING)
+            .Line(BONK_STRING_RULE_STACKING_TOTAL)
+            .Line(BONK_STRING_RULE_STACKING_CAPS)
+            .Line(BONK_STRING_RULE_STACKING_POWER)
+            .Line(BONK_STRING_RULE_STACKING_TARGET)
+            .Line(BONK_STRING_RULE_STACKING_COPIES)
+            .Line(BONK_STRING_RULE_STACKING_TRINKETS);
     }
 
     void SendSpellRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Spells")
-            .Term("Cooldown", "shortened by Haste, including the spell's own Haste upgrades. Never below 0.2 sec. A spell with no target in range waits instead of starting its cooldown.")
-            .Term("Ranks", "Common +" + Number(BONK_RANK_DAMAGE[0]) + "% damage, Uncommon +" + Number(BONK_RANK_DAMAGE[1]) + "%, Rare +" + Number(BONK_RANK_DAMAGE[2]) + "% and 1 upgrade, Epic +" + Number(BONK_RANK_DAMAGE[3]) + "% and 2 upgrades. Spells without damage get upgrades instead. Past rank 20 the damage per rank shrinks: rank 40 adds half, rank 80 a quarter.")
-            .Line("Hit Twice, Echo and Targets come only from Epic ranks.")
-            .Line("Evolutions can appear from rank 10, earlier with Premonition, and keep your rank, damage and upgrades.")
-            .Line("Spell hits vary by 7% either way, pet attacks by 10%. Damage over time doesn't vary.")
-            .Line("You start with 3 spell slots and 3 passive slots. Sayge sells more, up to 5 spells and 6 passives.");
+        RulesPage(bonk, BONK_STRING_RULES_SPELLS)
+            .Term(BONK_STRING_TERM_COOLDOWN, BONK_STRING_RULE_COOLDOWN)
+            .Term(BONK_STRING_TERM_RANKS, BONK_STRING_RULE_RANKS,
+                { Number(BONK_RANK_DAMAGE[0]), Number(BONK_RANK_DAMAGE[1]), Number(BONK_RANK_DAMAGE[2]), Number(BONK_RANK_DAMAGE[3]) })
+            .Line(BONK_STRING_RULE_EPIC_UPGRADES)
+            .Line(BONK_STRING_RULE_EVOLUTIONS)
+            .Line(BONK_STRING_RULE_HIT_SPREAD)
+            .Line(BONK_STRING_RULE_SLOTS);
     }
 
     void SendDotRules(BonkPlayer* bonk)
     {
         BonkKeywordInfo const& burning = KeywordOrBlank(BONK_KEYWORD_BURNING);
         BonkKeywordInfo const& agony = KeywordOrBlank(BONK_KEYWORD_AGONY);
-        RulesPage(bonk, "Damage over time")
-            .Term("Base health", "the health of a normal enemy of the zone's level on Normal. It doesn't grow with difficulty, floors, elites or bosses.")
-            .Line("Burning, Bleed, Poison, Decay and Moonfire: each stack deals " + Number(burning.valuePerStack * 100.0f) + "% of base health every tick for " + Seconds(burning.durationMs) + ", up to " + std::to_string(uint32(burning.maxStacks)) + " stacks.")
-            .Term("Agony", "each stack deals " + Number(agony.valuePerStack * 100.0f) + "% of base health every tick for " + Seconds(agony.durationMs) + ", growing to 3 times as strong over 8 ticks. It doesn't spread on death.")
-            .Line("A tick is 1 sec, faster with Haste.")
-            .Line("Damage over time can critically strike only with a talent, for half the usual critical strike bonus.")
-            .Line("Each new stack refreshes all stacks on that enemy.")
-            .Line("Power counts when stacks are added or expire. Vulnerabilities count on every tick.")
-            .Line("When an enemy with 2 or more stacks dies, half its stacks spread to the 2 nearest enemies within 8 yards.")
-            .Line("Bosses take the same damage per stack; it's a smaller share of their health.")
-            .Line("Ticks can trigger Leech. They don't trigger cards or trinkets.");
+        RulesPage(bonk, BONK_STRING_RULES_DAMAGE_OVER_TIME)
+            .Term(BONK_STRING_TERM_BASE_HEALTH, BONK_STRING_RULE_BASE_HEALTH)
+            .Line(BONK_STRING_RULE_DOT_STACKS,
+                { Number(burning.valuePerStack * 100.0f), Seconds(bonk->GetLocale(), burning.durationMs), std::to_string(uint32(burning.maxStacks)) })
+            .Term(BONK_STRING_TERM_AGONY, BONK_STRING_RULE_AGONY,
+                { Number(agony.valuePerStack * 100.0f), Seconds(bonk->GetLocale(), agony.durationMs) })
+            .Line(BONK_STRING_RULE_DOT_TICK)
+            .Line(BONK_STRING_RULE_DOT_CRIT)
+            .Line(BONK_STRING_RULE_DOT_REFRESH)
+            .Line(BONK_STRING_RULE_DOT_POWER)
+            .Line(BONK_STRING_RULE_DOT_SPREAD)
+            .Line(BONK_STRING_RULE_DOT_BOSSES)
+            .Line(BONK_STRING_RULE_DOT_LEECH);
     }
 
     void SendKeywordRules(BonkPlayer* bonk)
@@ -219,61 +247,64 @@ namespace
         BonkKeywordInfo const& staticCharge = KeywordOrBlank(BONK_KEYWORD_STATIC);
         BonkKeywordInfo const& mark = KeywordOrBlank(BONK_KEYWORD_HUNTERS_MARK);
         BonkKeywordInfo const& dazed = KeywordOrBlank(BONK_KEYWORD_DAZED);
-        RulesPage(bonk, "Keywords")
-            .Term("Chill", "" + Number(chill.valuePerStack) + "% slow per stack, up to " + std::to_string(uint32(chill.maxStacks)) + ". At " + std::to_string(uint32(chill.maxStacks)) + " stacks the enemy is Frozen.")
-            .Term("Frozen", "normal enemies are rooted for " + Seconds(frozen.durationMs) + "; elites and bosses keep moving but count as Frozen. Your Frost spells always crit Frozen enemies, and your critical strikes on them deal +50% critical strike damage.")
-            .Term("Static", "at " + std::to_string(uint32(staticCharge.maxStacks)) + " stacks, lightning strikes the enemy and up to 3 enemies within 6 yards for " + Number(staticCharge.valuePerStack * 100.0f) + "% of base health, raised by Power. It can crit.")
-            .Term("Hunter's Mark", "marked enemies take " + Number(mark.valuePerStack) + "% more damage from you and your summons, raised by the marking spell's ranks and Mark upgrades up to 30%. Talents add on top. On death it passes to the 2 nearest unmarked enemies within 10 yards.")
-            .Term("Judged", "enemies hit by Judgement of the Crusader take 20% more damage from you for 6 sec.")
-            .Term("Dazed", "" + Number(dazed.valuePerStack) + "% slow for " + Seconds(dazed.durationMs) + ". Only the strongest slow counts.")
-            .Term("Vulnerabilities", "Fire +" + Number(KeywordOrBlank(BONK_KEYWORD_FIRE_VULNERABILITY).valuePerStack) + "%, Shadow +" + Number(KeywordOrBlank(BONK_KEYWORD_SHADOW_VULNERABILITY).valuePerStack) + "%, Nature +" + Number(KeywordOrBlank(BONK_KEYWORD_NATURE_VULNERABILITY).valuePerStack) + "% and Sunder Armor (Physical) +" + Number(KeywordOrBlank(BONK_KEYWORD_SUNDER_ARMOR).valuePerStack) + "% damage taken per stack, up to 5 stacks.");
+        RulesPage(bonk, BONK_STRING_RULES_KEYWORDS)
+            .Term(BONK_STRING_TERM_CHILL, BONK_STRING_RULE_CHILL, { Number(chill.valuePerStack), std::to_string(uint32(chill.maxStacks)) })
+            .Term(BONK_STRING_TERM_FROZEN, BONK_STRING_RULE_FROZEN, { Seconds(bonk->GetLocale(), frozen.durationMs) })
+            .Term(BONK_STRING_TERM_STATIC, BONK_STRING_RULE_STATIC,
+                { std::to_string(uint32(staticCharge.maxStacks)), Number(staticCharge.valuePerStack * 100.0f) })
+            .Term(BONK_STRING_TERM_HUNTERS_MARK, BONK_STRING_RULE_HUNTERS_MARK, { Number(mark.valuePerStack) })
+            .Term(BONK_STRING_TERM_JUDGED, BONK_STRING_RULE_JUDGED)
+            .Term(BONK_STRING_TERM_DAZED, BONK_STRING_RULE_DAZED, { Number(dazed.valuePerStack), Seconds(bonk->GetLocale(), dazed.durationMs) })
+            .Term(BONK_STRING_TERM_VULNERABILITIES, BONK_STRING_RULE_VULNERABILITIES, {
+                Number(KeywordOrBlank(BONK_KEYWORD_FIRE_VULNERABILITY).valuePerStack), Number(KeywordOrBlank(BONK_KEYWORD_SHADOW_VULNERABILITY).valuePerStack),
+                Number(KeywordOrBlank(BONK_KEYWORD_NATURE_VULNERABILITY).valuePerStack), Number(KeywordOrBlank(BONK_KEYWORD_SUNDER_ARMOR).valuePerStack) });
     }
 
     void SendControlRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Crowd control")
-            .Line("Stuns last at most 2 sec, then the enemy can't be stunned for 6 sec. Bosses and mini-bosses can't be stunned.")
-            .Line("Roots work on normal enemies only and last at most 2 sec, then 6 sec immune. Frozen shares this timer.")
-            .Line("Knockbacks work on normal enemies only, then 6 sec immune. Pulls work on normal enemies only, then 3 sec immune.")
-            .Line("Fear and charm don't work on elites or bosses.");
+        RulesPage(bonk, BONK_STRING_RULES_CROWD_CONTROL)
+            .Line(BONK_STRING_RULE_STUNS)
+            .Line(BONK_STRING_RULE_ROOTS)
+            .Line(BONK_STRING_RULE_KNOCKBACKS)
+            .Line(BONK_STRING_RULE_FEAR);
     }
 
     void SendSummonRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Summons and pets")
-            .Line("Summons get your Power, critical strike chance and damage, Haste and Movement Speed. They never die and enemies ignore them.")
-            .Line("Summons don't get your Area. Their hits don't trigger Leech, trinkets or on-hit cards, but their kills count.")
-            .Line("Every summon hit applies its spell's keyword.")
-            .Line("Count adds pets, elementals, treants, totems and wolves.")
-            .Line("Summons that leave on their own, like snakes, beasts, Stampede, Spirit Pack wolves and warlock demons, last longer with Duration.");
+        RulesPage(bonk, BONK_STRING_RULES_SUMMONS)
+            .Line(BONK_STRING_RULE_SUMMON_STATS)
+            .Line(BONK_STRING_RULE_SUMMON_LIMITS)
+            .Line(BONK_STRING_RULE_SUMMON_KEYWORD)
+            .Line(BONK_STRING_RULE_SUMMON_COUNT)
+            .Line(BONK_STRING_RULE_SUMMON_DURATION);
     }
 
     void SendProcRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Procs")
-            .Term("Trinkets", "5% chance when a spell is cast, at most once per cooldown. Damage trinkets deal a share of that spell's next hit, more with Count, and can crit. Area doesn't affect them.")
-            .Line("Fire Burst, Shadow Burst, Chain Lightning and Death Ray roll when a spell is cast and fire on that spell's next hit.")
-            .Line("Procs never trigger other trinkets or cards. Their hits can trigger Leech.")
-            .Line("Glyph damage (Storm, Meteor, Shadowmourne) grows with base health, the run's time and Power, not difficulty. Storm always crits.");
+        RulesPage(bonk, BONK_STRING_RULES_PROCS)
+            .Term(BONK_STRING_TERM_TRINKETS, BONK_STRING_RULE_TRINKETS)
+            .Line(BONK_STRING_RULE_PROC_NEXT_HIT)
+            .Line(BONK_STRING_RULE_PROC_CHAINS)
+            .Line(BONK_STRING_RULE_GLYPH_DAMAGE);
     }
 
     void SendGearRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Gear and tiers")
-            .Line("Gear gives its listed stats plus set bonuses.")
-            .Term("Mythic tiers", "Power, Max Health and Armor grow by a quarter of their Tier 1 value each tier: Tier 5 is twice Tier 1, Tier 9 three times. Other stats stay the same. Epic pieces have about 45% more than blue pieces of the same tier.")
-            .Line("Trinket effects don't grow with tier; their stats do.")
-            .Term("Scrap", "each item you don't extract from a Mythic run gives Scrap, more for higher tiers and bonus stats. Mythic elites drop a little too. The Mythic Quartermaster spends it to raise gear you found by 1 tier, up to Tier 10 or your best Mythic floor if higher. For gold, it rerolls one bonus stat per item.");
+        RulesPage(bonk, BONK_STRING_RULES_GEAR)
+            .Line(BONK_STRING_RULE_GEAR_STATS)
+            .Term(BONK_STRING_TERM_MYTHIC_TIERS, BONK_STRING_RULE_MYTHIC_TIERS)
+            .Line(BONK_STRING_RULE_TRINKET_TIERS)
+            .Term(BONK_STRING_TERM_SCRAP, BONK_STRING_RULE_SCRAP);
     }
 
     void SendSurvivalRules(BonkPlayer* bonk)
     {
-        RulesPage(bonk, "Survival")
-            .Line("Damage you take is reduced by Dodge, damage-taken cuts, Armor and then Shield, in that order.")
-            .Line("Dash makes you immune for 0.25 sec.")
-            .Line("Healing orbs heal 20% of maximum health. Each level gained heals 5%.")
-            .Line("Necrotic, boss wounds and Cursed Ground reduce healing taken, up to 100%.")
-            .Term("Revives", "when you die, Glyph of Divine Shield saves you first, then Second Chance, then a Soulstone. A revive restores your health, shields you and destroys normal enemies within 15 yards.");
+        RulesPage(bonk, BONK_STRING_RULES_SURVIVAL)
+            .Line(BONK_STRING_RULE_DAMAGE_ORDER)
+            .Line(BONK_STRING_RULE_DASH_IMMUNE)
+            .Line(BONK_STRING_RULE_HEALING_ORBS)
+            .Line(BONK_STRING_RULE_HEALING_CUTS)
+            .Term(BONK_STRING_TERM_REVIVES, BONK_STRING_RULE_REVIVES);
     }
 
     void SendRules(BonkPlayer* bonk)
@@ -293,14 +324,15 @@ namespace
     void SendLock(BonkPlayer* bonk, char const* kind, uint32 id, BonkQuestReward type)
     {
         if (BonkQuest const* quest = sBonkQuests.GetUnlockingQuest(type, id))
-            bonk->SendAddon(std::string("cdxq~") + kind + "~" + std::to_string(id) + "~" + quest->name + "~" + quest->description + "~" +
+            bonk->SendAddon(std::string("cdxq~") + kind + "~" + std::to_string(id) + "~" + bonk->Localize(BONK_FIELD_QUEST_NAME, quest->id, quest->name) + "~" +
+                bonk->Localize(BONK_FIELD_QUEST_DESCRIPTION, quest->id, quest->description) + "~" +
                 std::to_string(sBonkQuests.GetProgress(bonk->GetProgressAccount(), *quest)) + "~" + std::to_string(quest->amount));
     }
 }
 
-std::string BonkCodex::DescribeCardTotal(BonkCard const& card, uint32_t copies)
+std::string BonkCodex::DescribeCardTotal(BonkCard const& card, uint32_t copies, LocaleConstant locale)
 {
-    return DescribeCardStack(card, copies);
+    return DescribeCardStack(card, copies, locale);
 }
 
 void BonkCodex::Send(Player* player, std::string const& npc, bool deck)
@@ -324,9 +356,11 @@ void BonkCodex::Send(Player* player, std::string const& npc, bool deck)
         std::string const id = std::to_string(weapon.id);
         uint32 price;
         std::string const locked = lockState(BONK_REWARD_WEAPON, weapon.id, price);
-        bonk->SendAddon("cdxw~" + id + "~" + weapon.name + "~" + weapon.icon + "~" + std::to_string(weapon.classMask) + "~" +
+        bonk->SendAddon("cdxw~" + id + "~" + bonk->Localize(BONK_FIELD_WEAPON_NAME, weapon.id, weapon.name) + "~" + weapon.icon + "~" + std::to_string(weapon.classMask) + "~" +
             std::to_string(weapon.starterClassMask | weapon.starterOptionMask) + "~" + std::to_string(weapon.evolvesFrom) + "~" + locked + "~" + std::to_string(price));
-        bonk->SendAddon("cdxwd~" + id + "~" + weapon.description + "~" + DescribeBonkWeaponTags(weapon, GetBonkMagicSchoolName(weapon.spellId)));
+        bonk->SendAddon("cdxwd~" + id + "~" + bonk->Localize(BONK_FIELD_WEAPON_DESCRIPTION, weapon.id, weapon.description) + "~" +
+            DescribeBonkWeaponTags(weapon, GetBonkMagicSchoolName(weapon.spellId, bonk->GetLocale()), bonk->GetLocale()) + "~" +
+            std::to_string(BonkMastery::GetSpec(weapon.id)));
         if (locked == "1")
             SendLock(bonk, "w", weapon.id, BONK_REWARD_WEAPON);
     }
@@ -336,8 +370,8 @@ void BonkCodex::Send(Player* player, std::string const& npc, bool deck)
         BonkPassive const& passive = itr.second;
         uint32 price;
         std::string const locked = lockState(BONK_REWARD_PASSIVE, passive.id, price);
-        bonk->SendAddon("cdxp~" + std::to_string(passive.id) + "~" + passive.name + "~" + passive.icon + "~" +
-            std::to_string(passive.maxRank) + "~" + locked + "~" + sBonkMgr.DescribePassive(passive) + "~" + std::to_string(price));
+        bonk->SendAddon("cdxp~" + std::to_string(passive.id) + "~" + bonk->Localize(BONK_FIELD_PASSIVE_NAME, passive.id, passive.name) + "~" + passive.icon + "~" +
+            std::to_string(passive.maxRank) + "~" + locked + "~" + sBonkMgr.DescribePassive(passive, 1, bonk->GetLocale()) + "~" + std::to_string(price));
         if (locked == "1")
             SendLock(bonk, "p", passive.id, BONK_REWARD_PASSIVE);
     }
@@ -350,12 +384,12 @@ void BonkCodex::Send(Player* player, std::string const& npc, bool deck)
         uint32 price;
         std::string const locked = lockState(BONK_REWARD_CARD, card.id, price);
         std::string const id = std::to_string(card.id);
-        bonk->SendAddon("cdxc~" + id + "~" + card.name + "~" + card.icon + "~" + std::to_string(uint32(card.rarity)) + "~" +
+        bonk->SendAddon("cdxc~" + id + "~" + bonk->Localize(BONK_FIELD_CARD_NAME, card.id, card.name) + "~" + card.icon + "~" + std::to_string(uint32(card.rarity)) + "~" +
             std::to_string(uint32(card.maxCopies)) + "~" + locked + "~" + std::to_string(price));
-        bonk->SendAddon("cdxcd~" + id + "~" + card.description);
-        std::string const one = DescribeCardStack(card, 1);
+        bonk->SendAddon("cdxcd~" + id + "~" + bonk->Localize(BONK_FIELD_CARD_DESCRIPTION, card.id, card.description));
+        std::string const one = DescribeCardStack(card, 1, bonk->GetLocale());
         if (card.maxCopies != 1 && !one.empty())
-            bonk->SendAddon("cdxcs~" + id + "~" + one + "~" + DescribeCardStack(card, 5));
+            bonk->SendAddon("cdxcs~" + id + "~" + one + "~" + DescribeCardStack(card, 5, bonk->GetLocale()));
         if (locked == "1")
             SendLock(bonk, "c", card.id, BONK_REWARD_CARD);
     }
@@ -390,8 +424,9 @@ void BonkCodex::Send(Player* player, std::string const& npc, bool deck)
     {
         BonkKeywordInfo const& keyword = itr.second;
         if (!keyword.description.empty())
-            bonk->SendAddon("cdxk~" + std::to_string(uint32(keyword.id)) + "~" + keyword.name + "~" + keyword.icon + "~" +
-                std::to_string(uint32(keyword.maxStacks)) + "~" + std::to_string(keyword.durationMs) + "~" + keyword.description);
+            bonk->SendAddon("cdxk~" + std::to_string(uint32(keyword.id)) + "~" + bonk->Localize(BONK_FIELD_KEYWORD_NAME, uint32(keyword.id), keyword.name) + "~" +
+                keyword.icon + "~" + std::to_string(uint32(keyword.maxStacks)) + "~" + std::to_string(keyword.durationMs) + "~" +
+                bonk->Localize(BONK_FIELD_KEYWORD_DESCRIPTION, uint32(keyword.id), keyword.description));
     }
 
     SendRules(bonk);
@@ -409,7 +444,7 @@ void BonkCodex::SendTermGlossary(BonkPlayer* bonk)
         std::string description = fields[3].GetCppString();
         if (uint32 const keywordId = fields[2].GetUInt32())
             if (BonkKeywordInfo const* keyword = sBonkMgr.GetKeyword(BonkKeyword(keywordId)))
-                description = keyword->description;
+                description = bonk->Localize(BONK_FIELD_KEYWORD_DESCRIPTION, keywordId, keyword->description);
         if (!description.empty())
             bonk->SendAddon("gls~" + fields[0].GetCppString() + "~" + fields[1].GetCppString() + "~" + description);
     } while (result->NextRow());
@@ -421,9 +456,10 @@ void BonkCodex::SendKeywordGlossary(BonkPlayer* bonk)
     {
         BonkKeywordInfo const& keyword = itr.second;
         std::string const id = std::to_string(uint32(keyword.id));
+        std::string const name = bonk->Localize(BONK_FIELD_KEYWORD_NAME, uint32(keyword.id), keyword.name);
         if (!keyword.description.empty())
-            bonk->SendAddon("kwd~" + id + "~" + keyword.name + "~" + keyword.icon + "~" + keyword.description);
-        bonk->SendAddon("kwdaura~" + id + "~" + keyword.name + "~" + keyword.icon + "~" + std::to_string(keyword.spellId) + "~" +
+            bonk->SendAddon("kwd~" + id + "~" + name + "~" + keyword.icon + "~" + bonk->Localize(BONK_FIELD_KEYWORD_DESCRIPTION, uint32(keyword.id), keyword.description));
+        bonk->SendAddon("kwdaura~" + id + "~" + name + "~" + keyword.icon + "~" + std::to_string(keyword.spellId) + "~" +
             std::to_string(uint32(keyword.maxStacks)));
     }
     SendTermGlossary(bonk);
@@ -513,7 +549,9 @@ CreatureAI* GetAI_npc_bonk_codex(Creature* creature)
 bool GossipHello_npc_bonk_codex(Player* player, Creature* creature)
 {
     player->GetBonkPlayer()->VisitSpellbook(creature);
-    BonkCodex::Send(player, player->GetBonkPlayer()->IsAddonReady() ? creature->GetName() : "");
+    if (player->GetBonkPlayer()->IsAddonReady())
+        player->GetBonkPlayer()->SendNpcName(creature);
+    BonkCodex::Send(player, player->GetBonkPlayer()->IsAddonReady() ? player->GetBonkPlayer()->GetLocalName(creature) : "");
     player->SEND_GOSSIP_MENU(BONK_TEXT_SPELLBOOK, creature->GetObjectGuid());
     return true;
 }

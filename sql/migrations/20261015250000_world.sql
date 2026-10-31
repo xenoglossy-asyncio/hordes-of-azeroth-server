@@ -6,18 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015250000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015250000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: Core loop v2, phase A
---
--- Sustain passives at Megabonk tome strength (about twice a rank), and
--- Sayge's Passive Slot and Spell Slot: a run starts with 3 spell and 3
--- passive slots (BonkRun.cpp), these open up to 5 and 6. Each is held
--- by a "Complete N quests" milestone (quest type 17) whose reward is the
--- talent, so the quest lock keeps it closed until then.
--- =============================================================
 
 UPDATE `bonk_passive` SET `value_per_rank` = 25, `description` = '+25% maximum health.' WHERE `id` = 5;
 UPDATE `bonk_passive` SET `value_per_rank` = 0.4, `description` = 'Regain 0.4% of your health every second.' WHERE `id` = 6;
@@ -26,7 +14,6 @@ UPDATE `bonk_passive` SET `value_per_rank` = 5, `description` = '+5% chance to d
 UPDATE `bonk_passive` SET `value_per_rank` = 10, `description` = '+10% of your maximum health as a Shield.' WHERE `id` = 17;
 UPDATE `bonk_passive` SET `value_per_rank` = 10, `description` = 'Each hit has a 10% chance to heal 1% of your maximum health (at most 3% a second).' WHERE `id` = 20;
 
--- Talent effects 9 (spell slot) and 10 (passive slot), BonkMgr.h.
 DELETE FROM `bonk_talent` WHERE `id` IN (10, 11);
 INSERT INTO `bonk_talent` (`id`, `name`, `description`, `effect`, `value_per_rank`, `gold_bonus`, `max_rank`, `cost`, `cost_growth`, `icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank`) VALUES
 (10, 'Passive Slot', '+1 passive slot in runs (3 at the start).', 10, 1, 0, 3, 5, 1, 'INV_Misc_Rune_01', 4, 2, 1, 0, 0),
@@ -37,8 +24,6 @@ INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`,
 (256, 'Apprentice',          'Complete 5 quests.',  'INV_Misc_Rune_01', 17, 0, 0, 5,  4, 10, 0, 5),
 (257, 'Seasoned Adventurer', 'Complete 20 quests.', 'INV_Misc_Book_09', 17, 0, 0, 20, 4, 11, 0, 5);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

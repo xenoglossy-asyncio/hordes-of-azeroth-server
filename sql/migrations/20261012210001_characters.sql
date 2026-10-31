@@ -6,13 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012210001');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012210001');
--- Add your query below.
 
-
--- Vanilla Bonk: the upgrades tree was repriced and three nodes left
--- (20261012210000_world.sql). Every upgrade bought so far is refunded at
--- the price paid (cost * (1 + cost_growth * ranks owned) per rank) and
--- the ranks are cleared, so each account starts the new tree with its gold.
 DROP TEMPORARY TABLE IF EXISTS `bonk_old_upgrade_price`;
 CREATE TEMPORARY TABLE `bonk_old_upgrade_price` (
     `upgrade` INT UNSIGNED NOT NULL PRIMARY KEY,
@@ -35,8 +29,6 @@ SET `a`.`gold` = `a`.`gold` + `r`.`refund`;
 DELETE FROM `bonk_account_upgrade`;
 DROP TEMPORARY TABLE `bonk_old_upgrade_price`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

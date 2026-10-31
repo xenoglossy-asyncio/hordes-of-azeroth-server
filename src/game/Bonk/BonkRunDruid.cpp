@@ -620,7 +620,7 @@ std::string BonkRun::DescribeDruidSlots() const
 
 void BonkRun::CastMoonfire(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
-    std::vector<Creature*> const mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> const mobs = GetMobsInRange(GetStrikeRange(owned));
     if (mobs.empty())
     {
         owned.timer = BONK_DRUID_POLL_MS;
@@ -641,7 +641,7 @@ void BonkRun::CastMoonfire(OwnedWeapon& owned, SpellEntry const* spellInfo)
 void BonkRun::CallHurricane(OwnedWeapon& owned)
 {
     float x, y, z;
-    if (!FindLargestGroup(owned.weapon.range, x, y, z))
+    if (!FindLargestGroup(GetStrikeRange(owned), x, y, z))
     {
         owned.timer = BONK_DRUID_POLL_MS;
         return;
@@ -801,7 +801,7 @@ void BonkRun::BloomRejuvenation(OwnedWeapon& owned, SpellEntry const* spellInfo)
 
 void BonkRun::EntangleEnemies(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
-    std::vector<Creature*> mobs = GetDruidTargets(owned.weapon.range);
+    std::vector<Creature*> mobs = GetDruidTargets(GetStrikeRange(owned));
     if (mobs.empty())
     {
         owned.timer = BONK_DRUID_POLL_MS;

@@ -6,17 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012210000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012210000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: the upgrades tree (feature plan, Phase 1, Upgrades tree
--- table). Twelve nodes; each rank costs 1.4 times the one before
--- (cost_growth is now a factor), so the whole tree costs about 127g.
--- Recovery, Growth and Duplicator leave: regen and experience are run
--- picks (Spirit, Rested), and extra targets come from Epic spell ranks.
--- 20261012210001_characters.sql refunds what was bought before.
--- =============================================================
 
 DELETE FROM `bonk_upgrade` WHERE `id` IN (4, 7, 8);
 UPDATE `bonk_upgrade` SET `cost_growth` = 1.4, `required_id` = 0, `required_rank` = 0;
@@ -28,11 +17,8 @@ UPDATE `bonk_upgrade` SET `value_per_rank` = 3, `max_rank` = 5, `cost` = 6500,
 UPDATE `bonk_upgrade` SET `value_per_rank` = 2, `max_rank` = 5, `cost` = 4500, `description` = '+2% movement speed.' WHERE `id` = 5;
 UPDATE `bonk_upgrade` SET `value_per_rank` = 5, `max_rank` = 5, `cost` = 6500, `description` = '+5% gold.' WHERE `id` = 6;
 
--- Fortune: Greed and Luck on top, Pickup Range below.
 UPDATE `bonk_upgrade` SET `tree_row` = 1, `tree_column` = 3 WHERE `id` = 15;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

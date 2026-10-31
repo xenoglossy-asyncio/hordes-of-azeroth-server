@@ -6,19 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016130000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016130000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: legendaries (Core loop v2, phase D2)
---
--- Bosses on Hard, from stage 2, drop a legendary now and then
--- (BonkRunGear.cpp): a named item with one unique effect. The effect is a
--- Darkmoon Card that never comes from chests (in_chests 0): the wearer
--- holds it while the item is worn (bonk_item_card, BonkRun::SyncGearCards),
--- so a legendary kept by extraction brings it into every later run too.
--- Run copies 900420-900427, permanent copies 901420-901427, cards 101-108.
--- =============================================================
 
 ALTER TABLE `bonk_card` ADD COLUMN `in_chests` TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER `max_copies`;
 
@@ -28,7 +15,6 @@ CREATE TABLE IF NOT EXISTS `bonk_item_card` (
     PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk: worn items that give a card (legendary effects)';
 
--- The effects. Rarity 4: Legendary.
 DELETE FROM `bonk_card` WHERE `id` BETWEEN 101 AND 108;
 INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`, `stat1_value`, `stat2`, `stat2_value`, `effect`, `value1`, `value2`, `value3`, `cooldown_ms`, `max_copies`, `in_chests`) VALUES
 (101, 'Thunderfury, Blessed Blade of the Windseeker', 'INV_Sword_39',
@@ -56,8 +42,6 @@ INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`,
       '+25% damage to elites, mini-bosses and bosses.',
       4, 255, 0, 255, 0, 18, 25, 0, 0, 0, 0, 0);
 
--- The items, with vanilla looks. Class masks: 1 Warrior, 2 Paladin,
--- 4 Hunter, 8 Rogue, 16 Priest, 64 Shaman, 128 Mage, 256 Warlock, 1024 Druid.
 DROP TEMPORARY TABLE IF EXISTS `bonk_legend_src`;
 CREATE TEMPORARY TABLE `bonk_legend_src` (
     `entry` INT UNSIGNED, `source` INT UNSIGNED, `name` VARCHAR(100), `classes` INT,
@@ -98,7 +82,6 @@ UPDATE `bonk_legend_items` SET
 
 DELETE FROM `item_template` WHERE `entry` BETWEEN 900420 AND 900427 OR `entry` BETWEEN 901420 AND 901427;
 INSERT INTO `item_template` SELECT * FROM `bonk_legend_items`;
--- The permanent copies: the effect alone in the description.
 UPDATE `bonk_legend_items` `i` JOIN `bonk_legend_src` `s` ON `s`.`entry` = `i`.`entry` JOIN `bonk_card` `c` ON `c`.`id` = `s`.`card`
     SET `i`.`entry` = `i`.`entry` + 1000, `i`.`description` = `c`.`description`;
 INSERT INTO `item_template` SELECT * FROM `bonk_legend_items`;
@@ -119,8 +102,6 @@ INSERT INTO `bonk_item_card` (`entry`, `card_id`) SELECT `entry` + 1000, `card` 
 DROP TEMPORARY TABLE IF EXISTS `bonk_legend_src`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_legend_items`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

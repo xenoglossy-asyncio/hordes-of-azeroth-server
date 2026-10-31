@@ -420,7 +420,7 @@ void BonkRun::StartBladeFlurry(OwnedWeapon& owned)
 void BonkRun::StabNearest(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
     uint32 const wanted = GetWeaponTargets(owned);
-    std::vector<Creature*> mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> mobs = GetMobsInRange(GetStrikeRange(owned));
     if (owned.weapon.target == BONK_TARGET_STRONGEST)
         SortStrongestFirst(mobs);
     std::vector<Creature*> targets;
@@ -477,7 +477,7 @@ void BonkRun::SlashOnward(OwnedWeapon& owned, SpellEntry const* spellInfo, Creat
     for (uint32 chain = 0; chain < BONK_SABER_SLASH_CHAIN && victim && !victim->IsAlive(); ++chain)
     {
         Creature* next = nullptr;
-        for (Creature* mob : GetMobsInRange(owned.weapon.range))
+        for (Creature* mob : GetMobsInRange(GetStrikeRange(owned)))
             if (mob != victim && mob->IsAlive() && m_player->IsWithinLOSInMap(mob))
             {
                 next = mob;
@@ -729,7 +729,7 @@ void BonkRun::SortMostPoisonFirst(std::vector<Creature*>& mobs) const
 void BonkRun::CastEnvenom(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
     std::vector<Creature*> mobs;
-    for (Creature* mob : GetMobsInRange(owned.weapon.range))
+    for (Creature* mob : GetMobsInRange(GetStrikeRange(owned)))
         if (m_player->IsWithinLOSInMap(mob))
             mobs.push_back(mob);
     if (mobs.empty())
@@ -784,7 +784,7 @@ void BonkRun::Exsanguinate(OwnedWeapon& owned, SpellEntry const* spellInfo, Crea
 void BonkRun::TossShurikens(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
     std::vector<Creature*> mobs;
-    for (Creature* mob : GetMobsInRange(owned.weapon.range))
+    for (Creature* mob : GetMobsInRange(GetStrikeRange(owned)))
         if (m_player->IsWithinLOSInMap(mob))
             mobs.push_back(mob);
     if (mobs.empty())

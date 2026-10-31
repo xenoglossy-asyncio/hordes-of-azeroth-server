@@ -6,50 +6,26 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012200000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012200000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: the warrior's and the hunter's ten spells and their
--- Legendary evolutions (feature plan, Phase 1, Spells tab).
---
--- New targets (bonk_weapon.target): 4 strongest, 5 farthest, 6 cone
--- towards the nearest enemy, 7 the hero (buffs, traps, beasts).
--- New behaviors: 12 spin, 13 bleed heals, 14 mark, 15 demoralize, 16 buff,
--- 17 revenge, 18 burst, 19 trap, 20 beasts.
--- base_jumps: pierces, bounces or cleaved enemies before ranks.
--- kill_below_pct: normal enemies below this % health die to a hit.
--- flags: 1 reset on a kill, 2 always crits, 4 renews damage over time,
--- 8 knockback, 16 marked enemies explode, 32 kills use the alt spell.
--- =============================================================
 
 ALTER TABLE `bonk_weapon`
     ADD COLUMN `base_jumps` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'pierces, bounces or cleaved enemies before ranks' AFTER `alt_damage`,
     ADD COLUMN `kill_below_pct` FLOAT NOT NULL DEFAULT 0 COMMENT 'normal enemies below this % health die to a hit' AFTER `base_jumps`,
     ADD COLUMN `flags` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'BonkWeaponFlags' AFTER `kill_below_pct`;
 
--- Test spells the warrior and the hunter no longer get.
-UPDATE `bonk_weapon` SET `class_mask` = 2 WHERE `id` = 2;     -- Throwing Axe: paladin only
-UPDATE `bonk_weapon` SET `class_mask` = 8 WHERE `id` = 8;     -- Axe Flurry: rogue only
-UPDATE `bonk_weapon` SET `class_mask` = 8 WHERE `id` = 26;    -- Poison Cloud: rogue only
+UPDATE `bonk_weapon` SET `class_mask` = 2 WHERE `id` = 2;
+UPDATE `bonk_weapon` SET `class_mask` = 8 WHERE `id` = 8;
+UPDATE `bonk_weapon` SET `class_mask` = 8 WHERE `id` = 26;
 
--- ---------------------------------------------------------------
--- Warrior
--- ---------------------------------------------------------------
-
--- Thunder Clap stays; its evolution claps, then sends a stunning wave.
 UPDATE `bonk_weapon` SET `description` = 'Thunder Clap, and a moment later a shockwave that stuns the enemies around you.',
     `spell_id` = 8078, `target` = 1, `cooldown_ms` = 2500, `range` = 10, `damage_fraction` = 0.55,
     `behavior` = 6, `behavior_value` = 300, `alt_spell_id` = 25425, `alt_every` = 0, `alt_damage` = 0.5
 WHERE `id` = 106;
 
--- Cleave stays; Execute cleaves and finishes off the weak.
 UPDATE `bonk_weapon` SET `name` = 'Execute', `icon` = 'Ability_Warrior_DecisiveStrike',
     `description` = 'Cleaves; normal enemies it hits below 20% health die at once.',
     `damage_fraction` = 0.6, `behavior_value` = 0.8, `kill_below_pct` = 20, `flags` = 32, `alt_spell_id` = 20647
 WHERE `id` = 130;
 
--- Whirlwind spins for a moment; Bladestorm never stops.
 UPDATE `bonk_weapon` SET `description` = 'You spin for a moment, striking every enemy around you again and again.',
     `cooldown_ms` = 4000, `damage_fraction` = 0.25, `behavior` = 12, `behavior_value` = 500, `duration_ms` = 1500
 WHERE `id` = 31;
@@ -57,7 +33,6 @@ UPDATE `bonk_weapon` SET `description` = 'A spin that never stops and goes where
     `cooldown_ms` = 2000, `damage_fraction` = 0.22, `behavior` = 12, `behavior_value` = 500, `duration_ms` = 1500
 WHERE `id` = 131;
 
--- Rend bleeds 3 enemies; Bloodthirst's bleeds heal.
 UPDATE `bonk_weapon` SET `description` = 'Makes 3 nearby enemies bleed.', `base_targets` = 3, `behavior` = 0, `behavior_value` = 0
 WHERE `id` = 32;
 UPDATE `bonk_weapon` SET `name` = 'Bloodthirst', `icon` = 'Spell_Nature_BloodLust',
@@ -66,7 +41,6 @@ UPDATE `bonk_weapon` SET `name` = 'Bloodthirst', `icon` = 'Spell_Nature_BloodLus
     `base_targets` = 3, `behavior` = 13, `behavior_value` = 10
 WHERE `id` = 132;
 
--- Bloodthirst becomes Mortal Strike; Rampage becomes Colossus Smash.
 UPDATE `bonk_weapon` SET `name` = 'Mortal Strike', `icon` = 'Ability_Warrior_SavageBlow',
     `description` = 'A heavy strike at the strongest enemy in reach, elites first.',
     `spell_id` = 17547, `target` = 4, `cooldown_ms` = 3000, `range` = 8, `damage_fraction` = 1.3, `heal_pct` = 0
@@ -90,7 +64,6 @@ INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `tar
     13446, 1,  1000,  8, 0.8,  1, 0,   0, 0,    0, 0, 17,  5,    0, 1,     0, 0, 1,   0,  0,  0),
 (184, 'Hamstring',          'Ability_ShockWave',             'Strikes the legs of the nearest enemy in reach, slowing it.',
     26141, 0,  1500,  6, 0.35, 1, 0,   0, 0,    0, 0,  0,  0,    0, 1,     0, 0, 1,   0,  0,  0),
--- Legendary evolutions.
 (190, 'Thunderous Throw',   'INV_ThrowingAxe_02',            'Throws an axe at the farthest enemy in range; it bounces on to 4 enemies near it.',
     16075, 5,  2200, 30, 0.9,  0, 0, 180, 0,    0, 0,  0,  0,    0, 1,     0, 0, 1,   4,  0,  0),
 (191, 'Rallying Cry',       'Spell_Holy_BlessingOfStrength', 'A shout at the enemies around you: they deal 25% less damage, and you heal 3% of your health.',
@@ -102,11 +75,6 @@ INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `tar
 (194, 'Piercing Howl',      'Spell_Shadow_DeathScream',      'Leg strikes, and every third one a howl that slows every enemy around you.',
     26141, 0,  1200,  6, 0.4,  0, 0, 184, 0,    0, 0,  0,  0,    0, 1, 12323, 3, 1,   0,  0,  0);
 
--- ---------------------------------------------------------------
--- Hunter
--- ---------------------------------------------------------------
-
--- Arcane Shot pierces one enemy; Chimera Shot always crits and renews stings.
 UPDATE `bonk_weapon` SET `description` = 'A quick arcane arrow at the nearest enemy that hits 1 more enemy behind it.', `base_jumps` = 1
 WHERE `id` = 7;
 UPDATE `bonk_weapon` SET `name` = 'Chimera Shot', `icon` = 'Ability_Hunter_SwiftStrike',
@@ -114,13 +82,11 @@ UPDATE `bonk_weapon` SET `name` = 'Chimera Shot', `icon` = 'Ability_Hunter_Swift
     `spell_id` = 3044, `target` = 0, `cooldown_ms` = 1500, `range` = 35, `damage_fraction` = 0.55, `base_jumps` = 1, `flags` = 6
 WHERE `id` = 108;
 
--- Multi-Shot stays; Volley rains arrows on the biggest pack.
 UPDATE `bonk_weapon` SET `name` = 'Volley', `icon` = 'Ability_Marksmanship',
     `description` = 'Arrows rain down on the biggest pack of enemies.',
     `spell_id` = 22908, `target` = 3, `cooldown_ms` = 5000, `range` = 35, `damage_fraction` = 0.3, `duration_ms` = 6000, `chains` = 0
 WHERE `id` = 137;
 
--- Serpent Sting poisons 3 enemies; Serpent Spread jumps on when one dies.
 UPDATE `bonk_weapon` SET `description` = 'Poisons 3 nearby enemies.', `base_targets` = 3, `behavior` = 0, `behavior_value` = 0
 WHERE `id` = 38;
 UPDATE `bonk_weapon` SET `name` = 'Serpent Spread',
@@ -146,7 +112,6 @@ INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `tar
     14325, 4,  4000, 40, 0.5,  4, 0,   0, 0, 8000, 0, 14,     20,    0, 1,     0, 0, 1,   0,  0,  0),
 (206, 'Scatter Shot',       'Ability_GolemStormBolt',        'A spray of shots at the enemies in front of you that knocks them back.',
     19503, 6,  4000, 20, 0.5,  4, 0,   0, 0, 1000, 0,  0,      0,    0, 1,     0, 0, 1,   0,  0,  8),
--- Legendary evolutions.
 (210, 'Rapid Fire',         'Ability_Hunter_RunningShot',    'Bursts of three quick arrows at the nearest enemy.',
     6660,  0,   900, 35, 0.3,  0, 0, 200, 0,    0, 0, 18,      2,    0, 1,     0, 0, 1,   0,  0,  0),
 (211, 'Bestial Wrath',      'Ability_Druid_FerociousBite',   'Your beasts grow and frenzy: bigger, quicker and harder-biting.',
@@ -162,10 +127,6 @@ INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `tar
 (216, 'Concussive Barrage', 'Spell_Frost_Stun',              'Shots at the enemies in front of you that knock them back; they are slowed and take 20% more damage for 4 seconds.',
     19503, 6,  3500, 20, 0.6,  0, 0, 206, 0, 4000, 0, 14,     20,    0, 1,  5116, 0, 1,   0,  0,  8);
 
--- ---------------------------------------------------------------
--- Class Mastery nodes that pointed at spells the classes lost or that
--- changed.
--- ---------------------------------------------------------------
 UPDATE `bonk_mastery` SET `name` = 'Improved Mortal Strike', `description` = '+5% Mortal Strike damage.' WHERE `id` = 10201;
 UPDATE `bonk_mastery` SET `name` = 'Blood Craze', `description` = 'Mortal Strike recharges 6% faster.' WHERE `id` = 10204;
 UPDATE `bonk_mastery` SET `description` = 'Start every run with Mortal Strike.' WHERE `id` = 10206;
@@ -177,10 +138,6 @@ UPDATE `bonk_mastery` SET `target` = 201, `description` = 'Call Pet calls one mo
 UPDATE `bonk_mastery` SET `target` = 202, `description` = 'Explosive Trap recharges 6% faster.' WHERE `id` = 30304;
 UPDATE `bonk_mastery` SET `target` = 202, `description` = '+8% Explosive Trap damage.' WHERE `id` = 30305;
 
--- ---------------------------------------------------------------
--- Traps the run places (plain objects with the hunter traps' looks) and
--- the beast Call Pet summons (a Timber Wolf's copy).
--- ---------------------------------------------------------------
 DELETE FROM `gameobject_template` WHERE `entry` IN (900009, 900010, 900011);
 DROP TEMPORARY TABLE IF EXISTS `bonk_trap_template`;
 CREATE TEMPORARY TABLE `bonk_trap_template` AS SELECT * FROM `gameobject_template` WHERE `entry` = 900007;
@@ -202,8 +159,6 @@ DELETE FROM `creature_template` WHERE `entry` = 900112;
 INSERT INTO `creature_template` SELECT * FROM `bonk_pet_template`;
 DROP TEMPORARY TABLE `bonk_pet_template`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

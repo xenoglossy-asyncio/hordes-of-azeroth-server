@@ -6,18 +6,13 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016460000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016460000');
--- Add your query below.
 
-
--- Vanilla Bonk: names that clashed with other things (user, 2026-10-16).
--- Class talents named after other spells.
 UPDATE `bonk_mastery` SET `name` = 'Executioner' WHERE `id` = 10109;
 UPDATE `bonk_mastery` SET `name` = 'Axe Toss' WHERE `id` = 20206;
 UPDATE `bonk_mastery` SET `name` = 'Lock and Load' WHERE `id` = 30206;
 UPDATE `bonk_mastery` SET `name` = 'Riposte' WHERE `id` = 40206;
 UPDATE `bonk_mastery` SET `name` = 'Spirit Tap' WHERE `id` = 50309;
 UPDATE `bonk_mastery` SET `name` = 'Divine Initiate' WHERE `id` = 50206;
--- Quests sharing a name (the first keeps it).
 UPDATE `bonk_quest` SET `name` = 'Zealot' WHERE `id` = 133;
 UPDATE `bonk_quest` SET `name` = 'Lightbringer' WHERE `id` = 213;
 UPDATE `bonk_quest` SET `name` = 'Thunderhead' WHERE `id` = 172;
@@ -26,13 +21,10 @@ UPDATE `bonk_quest` SET `name` = 'Earthshaker' WHERE `id` = 122;
 UPDATE `bonk_quest` SET `name` = 'Shadowblade' WHERE `id` = 215;
 UPDATE `bonk_quest` SET `name` = 'Hail of Bolts' WHERE `id` = 254;
 UPDATE `bonk_quest` SET `name` = 'Deadliest Foes' WHERE `id` = 9;
--- Shared with a Glyph or a Darkmoon Card.
 UPDATE `bonk_talent` SET `name` = 'Second Chance' WHERE `id` = 7;
 UPDATE `bonk_upgrade` SET `name` = 'Clarity' WHERE `id` = 22;
 UPDATE `bonk_upgrade` SET `name` = 'Fleet Foot' WHERE `id` = 5;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

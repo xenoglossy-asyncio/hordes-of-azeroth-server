@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
 #include "BonkQuests.h"
@@ -69,14 +70,14 @@ namespace
 
     char const* const RARITY_NAMES[MAX_BONK_RARITY] = { "Common", "Uncommon", "Rare", "Epic", "Legendary" };
 
-    std::string FormatTimes(float times)
+    std::string FormatTimes(float times, LocaleConstant locale)
     {
         uint32 const whole = uint32(times + 0.5f);
         if (whole == 2)
-            return "double";
+            return sBonkLocale.GetString(BONK_STRING_TIMES_DOUBLE, locale);
         if (whole == 3)
-            return "triple";
-        return std::to_string(whole) + " times your normal";
+            return sBonkLocale.GetString(BONK_STRING_TIMES_TRIPLE, locale);
+        return sBonkLocale.GetString(BONK_STRING_TIMES_NORMAL, locale, { std::to_string(whole) });
     }
 }
 
@@ -183,12 +184,12 @@ bool BonkRun::ChooseGlyph(uint32 choice, std::string& error)
 {
     if (m_glyphOffer.empty())
     {
-        error = "There is no Glyph to choose right now.";
+        error = GetString(BONK_STRING_THERE_IS_NO_GLYPH_TO);
         return false;
     }
     if (!choice || choice > m_glyphOffer.size())
     {
-        error = "Choose a Glyph from 1 to " + std::to_string(m_glyphOffer.size()) + ".";
+        error = GetString(BONK_STRING_CHOOSE_GLYPH_FROM_1_TO, { std::to_string(m_glyphOffer.size()) });
         return false;
     }
 
@@ -199,7 +200,7 @@ bool BonkRun::ChooseGlyph(uint32 choice, std::string& error)
     if (glyph)
     {
         TakeGlyph(*glyph);
-        bonk->Notify("You chose " + glyph->name + ".");
+        bonk->Notify(BONK_STRING_YOU_CHOSE, { Localize(BONK_FIELD_GLYPH_NAME, glyph->id, glyph->name) });
     }
 
     ResumeUnlessChoiceOpen();
@@ -323,7 +324,7 @@ void BonkRun::EchoRankPick(OwnedWeapon& owned, Offer const& offer)
     if (!echoes || offer.step != BONK_STEP_RANK || !roll_chance_f(echoes->values[0]))
         return;
     RankUpWeapon(owned, 1);
-    m_player->GetBonkPlayer()->Notify("Your Glyph of Echoes gives " + owned.weapon.name + " another rank.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOUR_GLYPH_OF_ECHOES_GIVES, { Localize(BONK_FIELD_WEAPON_NAME, owned.weapon.id, owned.weapon.name) });
 }
 
 bool BonkRun::IsGlyphBossFloor() const
@@ -347,10 +348,10 @@ std::string BonkRun::DescribeDivineShieldRecharge(BonkGlyph const& shield) const
 {
     uint32 const floors = uint32(shield.values[1]);
     if (!floors)
-        return "It won't be ready again this run.";
+        return GetString(BONK_STRING_DIVINE_SHIELD_NEVER);
     if (floors == 1)
-        return "It will be ready again next floor.";
-    return "It will be ready again in " + std::to_string(floors) + " floors.";
+        return GetString(BONK_STRING_DIVINE_SHIELD_NEXT_FLOOR);
+    return GetString(BONK_STRING_DIVINE_SHIELD_FLOORS, { std::to_string(floors) });
 }
 
 bool BonkRun::IsProdigySpell(SpellEntry const* spell) const
@@ -650,7 +651,7 @@ void BonkRun::UpdateGlyphChest()
     if (!SpawnChestNearby())
         return;
     m_glyphNextChestMs = m_elapsedMs + uint32(treasure->values[0]);
-    m_player->GetBonkPlayer()->Notify("Your Glyph of the Treasure Hunter reveals a chest nearby.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOUR_GLYPH_OF_TREASURE_HUNTER);
 }
 
 void BonkRun::OnGlyphKill(Creature const* mob, BonkSpawnKind kind)
@@ -662,7 +663,7 @@ void BonkRun::OnGlyphKill(Creature const* mob, BonkSpawnKind kind)
     if (BonkGlyph const* wind = GetGlyph(BONK_GLYPH_SECOND_WIND))
         if (kind != BONK_SPAWN_NORMAL && m_player->IsWithinDistInMap(mob, wind->values[1]))
         {
-            SupportScope scope(*this, { wind->icon, wind->name });
+            SupportScope scope(*this, { wind->icon, Localize(BONK_FIELD_GLYPH_NAME, wind->id, wind->name) });
             HealHero(ReduceHealing(uint32(std::max(1.0f, m_player->GetMaxHealth() * wind->values[0] / 100.0f))));
         }
 
@@ -681,10 +682,7 @@ void BonkRun::OnGlyphKill(Creature const* mob, BonkSpawnKind kind)
         if (lust->values[0] >= 1.0f && m_glyphKills % uint32(lust->values[0]) == 0)
         {
             m_glyphHasteUntilMs = m_totalMs + uint32(lust->values[2]);
-            char text[160];
-            snprintf(text, sizeof(text), "Your Glyph of Bloodlust awakens. You attack and damage over time ticks %g%% more often for %g seconds.",
-                lust->values[1], lust->values[2] / 1000.0f);
-            bonk->Notify(text);
+            bonk->Notify(BONK_STRING_GLYPH_OF_BLOODLUST_AWAKENS, { FormatBonkNumber(lust->values[1]), FormatBonkNumber(lust->values[2] / 1000.0f) });
         }
 
     if (BonkGlyph const* harvest = GetGlyph(BONK_GLYPH_SOUL_HARVEST))
@@ -692,8 +690,7 @@ void BonkRun::OnGlyphKill(Creature const* mob, BonkSpawnKind kind)
         {
             m_soulHarvestUntilMs = m_totalMs + uint32(harvest->values[2]);
             m_player->SendPlaySpellVisualKit(BONK_KIT_SOUL_HARVEST);
-            bonk->Notify("Your Glyph of Soul Harvest awakens. You deal " + FormatTimes(harvest->values[1]) + " damage for " +
-                std::to_string(uint32(harvest->values[2] / IN_MILLISECONDS + 0.5f)) + " seconds.");
+            bonk->Notify(BONK_STRING_YOUR_GLYPH_OF_SOUL_HARVEST, { FormatTimes(harvest->values[1], GetLocale()), std::to_string(uint32(harvest->values[2] / IN_MILLISECONDS + 0.5f)) });
         }
 }
 

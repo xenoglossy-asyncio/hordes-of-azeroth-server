@@ -6,17 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016250000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016250000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk, Phase F6: gear tiers by difficulty. The gear vendor's 32
--- pieces (900101-900132) are the Normal tier; Heroic copies (902000-902031,
--- stats x1.5, price x3) go on sale once Normal is cleared, Mythic copies
--- (902100-902131, stats x2.25, price x8) once Heroic is
--- (bonk_item_stat.unlock_tier; Player::IsVendorItemVisible asks
--- BonkPlayer::CanBuyGear). Their sets come along.
--- =============================================================
 ALTER TABLE `bonk_item_stat` ADD COLUMN IF NOT EXISTS `unlock_tier` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `set_id`;
 
 DELETE FROM `item_template` WHERE `entry` BETWEEN 902000 AND 902199;
@@ -25,7 +15,6 @@ DELETE FROM `npc_vendor` WHERE `entry` = 900004 AND `item` BETWEEN 902000 AND 90
 DELETE FROM `bonk_item_set` WHERE `id` BETWEEN 3 AND 6;
 DELETE FROM `bonk_item_set_bonus` WHERE `set_id` BETWEEN 3 AND 6;
 
--- The items.
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_copy`;
 CREATE TEMPORARY TABLE `bonk_gear_copy` SELECT * FROM `item_template` WHERE `entry` BETWEEN 900101 AND 900132;
 UPDATE `bonk_gear_copy` SET `entry` = `entry` + 1899, `name` = CONCAT('Heroic ', `name`), `buy_price` = `buy_price` * 3, `sell_price` = `sell_price` * 3;
@@ -36,7 +25,6 @@ UPDATE `bonk_gear_copy` SET `entry` = `entry` + 1999, `name` = CONCAT('Mythic ',
 INSERT INTO `item_template` SELECT * FROM `bonk_gear_copy`;
 DROP TEMPORARY TABLE `bonk_gear_copy`;
 
--- Their stats.
 DROP TEMPORARY TABLE IF EXISTS `bonk_stat_copy`;
 CREATE TEMPORARY TABLE `bonk_stat_copy` SELECT * FROM `bonk_item_stat` WHERE `entry` BETWEEN 900101 AND 900132;
 INSERT INTO `bonk_item_stat` (`entry`, `set_id`, `unlock_tier`, `power`, `max_health`, `armor`, `dodge`, `hit`, `crit`, `crit_damage`, `shield`, `haste`, `area`, `pickup_range`, `luck`)
@@ -53,7 +41,6 @@ SELECT `entry` + 1999, CASE `set_id` WHEN 1 THEN 5 WHEN 2 THEN 6 ELSE 0 END, 3,
 FROM `bonk_stat_copy`;
 DROP TEMPORARY TABLE `bonk_stat_copy`;
 
--- Their sets, the bonuses grown the same way.
 INSERT INTO `bonk_item_set` (`id`, `name`) VALUES
 (3, 'Heroic Battlegear of the Unbroken'), (4, 'Heroic Regalia of Slaughter'),
 (5, 'Mythic Battlegear of the Unbroken'), (6, 'Mythic Regalia of Slaughter');
@@ -67,7 +54,6 @@ INSERT INTO `bonk_item_set_bonus` (`set_id`, `pieces`, `power`, `armor`, `passiv
 (6, 2, 0,     0,      1, 18,    '+18% Haste.'),
 (6, 4, 33.75, 0,      9, 6.75,  '+33.75% Power, and heal for 6.75% of the damage you deal.');
 
--- On the shelf after the Normal tier.
 DROP TEMPORARY TABLE IF EXISTS `bonk_vendor_copy`;
 CREATE TEMPORARY TABLE `bonk_vendor_copy` SELECT * FROM `npc_vendor` WHERE `entry` = 900004 AND `item` BETWEEN 900101 AND 900132;
 INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `itemflags`, `condition_id`)
@@ -78,8 +64,6 @@ INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `item
 SELECT 900004, `slot` + 64, `item` + 1999, 0, 0, 0, 0 FROM `bonk_vendor_copy`;
 DROP TEMPORARY TABLE `bonk_vendor_copy`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

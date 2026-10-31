@@ -6,12 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011235500');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011235500');
--- Add your query below.
 
-
--- Vanilla Bonk: Medium sits between Easy and Hard. It opens at stage 3 on
--- Easy and opens Hard at stage 3; the arena window lists tiers in that
--- order. Its arenas (bonk_map tier 3) come in 20261011236000_world.
 DELETE FROM `bonk_tier` WHERE `id` = 3;
 INSERT INTO `bonk_tier` (`id`, `key`, `name`, `health_multiplier`, `damage_multiplier`, `stage_health_growth`, `stage_damage_growth`,
     `stage_spawn_growth`, `chest_cost`, `chest_cost_growth`, `unlock_tier`, `unlock_stage`,
@@ -22,8 +17,6 @@ INSERT INTO `bonk_tier` (`id`, `key`, `name`, `health_multiplier`, `damage_multi
 
 UPDATE `bonk_tier` SET `unlock_tier` = 3, `unlock_stage` = 3 WHERE `id` = 2;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

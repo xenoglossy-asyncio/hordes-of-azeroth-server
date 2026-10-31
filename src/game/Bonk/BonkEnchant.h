@@ -2,6 +2,7 @@
 #define BONK_ENCHANT_H
 
 #include "Common.h"
+#include "BonkStrings.h"
 
 #include <string>
 
@@ -25,7 +26,7 @@ namespace BonkEnchanting
     bool IsEnchantSlot(uint8 slot);
     BonkEnchant Roll(float const* pieceStats);
     float GetValue(BonkEnchant const& enchant, float const* pieceStats);
-    char const* GetGradeName(uint8 grade);
+    BonkString GetGradeName(uint8 grade);
     std::string Describe(BonkEnchant const& enchant, float const* pieceStats);
 }
 

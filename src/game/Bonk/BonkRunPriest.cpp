@@ -599,13 +599,13 @@ Creature* BonkRun::PickPenanceTarget(OwnedWeapon const& owned, ObjectGuid const&
 
     Creature* fallback = nullptr;
     Creature* target = m_player->GetMap()->GetCreature(wanted);
-    if (target && target->IsAlive() && m_player->IsWithinDistInMap(target, owned.weapon.range))
+    if (target && target->IsAlive() && m_player->IsWithinDistInMap(target, GetStrikeRange(owned)))
     {
         if (survivesBoltsInFlight(target))
             return target;
         fallback = target;
     }
-    for (Creature* mob : GetMobsInRange(owned.weapon.range))
+    for (Creature* mob : GetMobsInRange(GetStrikeRange(owned)))
     {
         if (!m_player->IsWithinLOSInMap(mob))
             continue;
@@ -706,7 +706,7 @@ void BonkRun::ScreamPsychic(OwnedWeapon& owned, SpellEntry const* spellInfo)
 
 void BonkRun::BindShackle(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
-    std::vector<Creature*> mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> mobs = GetMobsInRange(GetStrikeRange(owned));
     SortStrongestFirst(mobs);
     uint32 const chains = (owned.weapon.id == BONK_WEAPON_MASS_SHACKLE ? BONK_MASS_SHACKLE_CHAINS : 1) + GetSpellCount(owned);
     uint32 bound = 0;
@@ -776,7 +776,7 @@ void BonkRun::SortMostDecayFirst(std::vector<Creature*>& mobs) const
 
 void BonkRun::BlastMind(OwnedWeapon& owned, SpellEntry const* spellInfo)
 {
-    std::vector<Creature*> mobs = GetMobsInRange(owned.weapon.range);
+    std::vector<Creature*> mobs = GetMobsInRange(GetStrikeRange(owned));
     SortMostDecayFirst(mobs);
     uint32 const blasts = 1 + GetSpellCount(owned);
     float const reach = GetWeaponRadius(owned);

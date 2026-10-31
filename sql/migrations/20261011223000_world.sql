@@ -6,149 +6,121 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011223000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011223000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: more maps
--- Easy: The Barrens and Duskwood join Westfall.
--- Hard: Zul'Gurub and the Ruins of Ahn'Qiraj join Molten Core.
--- Start points were picked from the terrain: a dry, flat spot where the
--- whole 40-50 yard spawn ring is walkable ground in the same zone.
--- =============================================================
 
 DELETE FROM `bonk_map` WHERE `id` BETWEEN 3 AND 6;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`,
     `spawn_interval_ms`, `spawn_batch`, `spawn_batch_growth_per_min`, `max_alive`, `spawn_min_distance`, `spawn_max_distance`,
     `elite_interval_sec`, `gold_per_kill`, `stage_gold`, `coins_per_kill`, `powerup_interval_sec`, `powerup_max`) VALUES
--- Open savanna in the northern Barrens.
 (3, 'barrens',  'The Barrens',         1,   1,  17,    776.0,  -2870.0,  92.7, 3.14, 600, 0, 1.0,  0.35, 0.15, 1900, 2, 0.85,  75, 40, 50, 90,  8,  2000, 1, 40, 3),
--- Raven Hill Cemetery.
 (4, 'duskwood', 'Duskwood',            1,   0,  10, -10586.0,    144.0,  33.0, 0.00, 600, 0, 1.05, 0.38, 0.16, 2000, 2, 0.80,  70, 36, 46, 85,  9,  2200, 1, 40, 3),
--- High Priestess Arlokk's grounds; the instance walls are the boundary.
 (5, 'zulgurub', 'Zul''Gurub',          2, 309,   0, -11521.2,  -1637.5,  49.5, 0.00, 600, 2, 1.6,  0.60, 0.25, 1600, 3, 1.20, 100, 34, 44, 60, 25, 10000, 1, 40, 3),
--- The sands by the entrance.
 (6, 'ruinsaq',  'Ruins of Ahn''Qiraj', 2, 509,   0,  -8600.6,   1483.5,  33.2, 0.00, 600, 2, 1.5,  0.60, 0.25, 1400, 4, 1.30, 110, 36, 46, 60, 25, 10000, 1, 40, 3);
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` BETWEEN 3 AND 6;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `min_sec`, `max_sec`, `weight`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- The Barrens: normal
-(3,  3266, 0,   0, 300, 10, 1.0, 1.0, 0.70, 1.0),  -- Razormane Defender
-(3,  4127, 0,   0, 300,  8, 0.8, 1.0, 0.85, 1.0),  -- Hecklefang Hyena
-(3,  3245, 0,   0, 240,  6, 0.6, 0.8, 0.85, 1.0),  -- Ornery Plainstrider
-(3,  3272, 0,   0,   0,  8, 1.0, 1.0, 0.70, 1.0),  -- Kolkar Wrangler
-(3,  3256, 0,  60,   0,  6, 0.9, 1.1, 0.85, 1.0),  -- Sunscale Scytheclaw
-(3,  3276, 0,  60,   0,  6, 0.9, 1.0, 0.75, 1.0),  -- Witchwing Harpy
-(3,  3269, 0,  90,   0,  5, 0.8, 1.0, 0.70, 1.0),  -- Razormane Geomancer (caster)
-(3,  3258, 0, 120,   0,  5, 0.8, 1.0, 0.70, 1.0),  -- Bristleback Hunter (shoots)
-(3,  3285, 0, 120,   0,  4, 0.5, 1.0, 0.95, 1.0),  -- Venture Co. Peon (blows up)
-(3,  3252, 0, 180,   0,  6, 0.6, 0.9, 0.90, 1.0),  -- Silithid Swarmer
-(3,  3273, 0, 180,   0,  4, 0.8, 1.0, 0.70, 1.0),  -- Kolkar Stormer (caster)
-(3,  3459, 0, 240,   0,  6, 1.3, 1.2, 0.75, 1.0),  -- Razormane Warfrenzy
-(3,  3239, 0, 300,   0,  4, 1.6, 1.2, 0.65, 1.0),  -- Thunderhead (caster)
-(3,  7873, 0, 360,   0,  5, 1.5, 1.3, 0.70, 1.0),  -- Razorfen Battleguard
-(3,  3238, 0, 420,   0,  4, 2.0, 1.4, 0.65, 1.0),  -- Stormhide
--- The Barrens: elites
-(3,  3474, 1,   0,   0,  3, 1.0, 1.0, 0.75, 1.0),  -- Lakota'mani
-(3,  3473, 1, 120,   0,  2, 1.0, 1.0, 0.75, 1.2),  -- Owatanka
-(3,  3475, 1, 200,   0,  2, 1.0, 1.0, 0.85, 1.3),  -- Echeyakee
-(3,  3270, 1, 300,   0,  2, 1.0, 1.0, 0.75, 1.3),  -- Elder Mystic Razorsnout
--- The Barrens: mini-bosses and the stage boss
-(3,  3394, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Barak Kodobane
-(3,  3395, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Verog the Dervish
-(3,  3396, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Hezrul Bloodmark
-(3,  4421, 2,   0,   0,  1, 1.0, 1.0, 0.85, 1.5),  -- Charlga Razorflank
+(3,  3266, 0,   0, 300, 10, 1.0, 1.0, 0.70, 1.0),
+(3,  4127, 0,   0, 300,  8, 0.8, 1.0, 0.85, 1.0),
+(3,  3245, 0,   0, 240,  6, 0.6, 0.8, 0.85, 1.0),
+(3,  3272, 0,   0,   0,  8, 1.0, 1.0, 0.70, 1.0),
+(3,  3256, 0,  60,   0,  6, 0.9, 1.1, 0.85, 1.0),
+(3,  3276, 0,  60,   0,  6, 0.9, 1.0, 0.75, 1.0),
+(3,  3269, 0,  90,   0,  5, 0.8, 1.0, 0.70, 1.0),
+(3,  3258, 0, 120,   0,  5, 0.8, 1.0, 0.70, 1.0),
+(3,  3285, 0, 120,   0,  4, 0.5, 1.0, 0.95, 1.0),
+(3,  3252, 0, 180,   0,  6, 0.6, 0.9, 0.90, 1.0),
+(3,  3273, 0, 180,   0,  4, 0.8, 1.0, 0.70, 1.0),
+(3,  3459, 0, 240,   0,  6, 1.3, 1.2, 0.75, 1.0),
+(3,  3239, 0, 300,   0,  4, 1.6, 1.2, 0.65, 1.0),
+(3,  7873, 0, 360,   0,  5, 1.5, 1.3, 0.70, 1.0),
+(3,  3238, 0, 420,   0,  4, 2.0, 1.4, 0.65, 1.0),
+(3,  3474, 1,   0,   0,  3, 1.0, 1.0, 0.75, 1.0),
+(3,  3473, 1, 120,   0,  2, 1.0, 1.0, 0.75, 1.2),
+(3,  3475, 1, 200,   0,  2, 1.0, 1.0, 0.85, 1.3),
+(3,  3270, 1, 300,   0,  2, 1.0, 1.0, 0.75, 1.3),
+(3,  3394, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(3,  3395, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(3,  3396, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(3,  4421, 2,   0,   0,  1, 1.0, 1.0, 0.85, 1.5),
 
--- Duskwood: normal
-(4,    48, 0,   0, 300, 10, 1.0, 1.0, 0.70, 1.0),  -- Skeletal Warrior
-(4,   213, 0,   0, 300,  8, 0.8, 1.0, 0.85, 1.0),  -- Starving Dire Wolf
-(4,   539, 0,   0, 240,  6, 0.6, 0.8, 0.85, 1.0),  -- Pygmy Venom Web Spider
-(4,     3, 0,  60,   0,  7, 1.0, 1.0, 0.70, 1.0),  -- Flesh Eater
-(4,   205, 0,  60,   0,  6, 0.9, 1.0, 0.85, 1.0),  -- Nightbane Dark Runner
-(4,   203, 0,  90,   0,  5, 0.8, 1.0, 0.70, 1.0),  -- Skeletal Mage (caster)
-(4,   217, 0, 120,   0,  6, 1.0, 1.0, 0.80, 1.0),  -- Venom Web Spider
-(4,  1270, 0, 120,   0,  4, 0.5, 1.0, 0.95, 1.0),  -- Fetid Corpse (bursts)
-(4,   570, 0, 180,   0,  6, 1.2, 1.1, 0.70, 1.0),  -- Brain Eater
-(4,   533, 0, 180,   0,  4, 0.8, 1.0, 0.70, 1.0),  -- Nightbane Shadow Weaver (caster)
-(4,   628, 0, 240,   0,  5, 1.2, 1.1, 0.85, 1.0),  -- Black Ravager
-(4,   206, 0, 300,   0,  5, 1.3, 1.2, 0.80, 1.0),  -- Nightbane Vile Fang
-(4,   202, 0, 360,   0,  5, 1.5, 1.2, 0.70, 1.0),  -- Skeletal Horror
-(4,   889, 0, 420,   0,  4, 2.0, 1.4, 0.65, 1.0),  -- Splinter Fist Ogre
--- Duskwood: elites
-(4,   521, 1,   0,   0,  3, 1.0, 1.0, 0.85, 1.3),  -- Lupos
-(4,   574, 1, 120,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Naraxis
-(4,   771, 1, 200,   0,  2, 1.0, 1.0, 0.75, 1.3),  -- Commander Felstrom
-(4,   503, 1, 300,   0,  2, 1.0, 1.0, 0.75, 1.2),  -- Lord Malathrom
--- Duskwood: mini-bosses and the stage boss
-(4,   522, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),  -- Mor'Ladim
-(4,   534, 3,   0,   0,  2, 1.0, 1.0, 0.85, 1.3),  -- Nefaru
-(4,   315, 3,   0,   0,  1, 1.0, 1.0, 0.80, 1.3),  -- Stalvan Mistmantle
-(4,   412, 2,   0,   0,  1, 1.0, 1.0, 0.80, 1.2),  -- Stitches
+(4,    48, 0,   0, 300, 10, 1.0, 1.0, 0.70, 1.0),
+(4,   213, 0,   0, 300,  8, 0.8, 1.0, 0.85, 1.0),
+(4,   539, 0,   0, 240,  6, 0.6, 0.8, 0.85, 1.0),
+(4,     3, 0,  60,   0,  7, 1.0, 1.0, 0.70, 1.0),
+(4,   205, 0,  60,   0,  6, 0.9, 1.0, 0.85, 1.0),
+(4,   203, 0,  90,   0,  5, 0.8, 1.0, 0.70, 1.0),
+(4,   217, 0, 120,   0,  6, 1.0, 1.0, 0.80, 1.0),
+(4,  1270, 0, 120,   0,  4, 0.5, 1.0, 0.95, 1.0),
+(4,   570, 0, 180,   0,  6, 1.2, 1.1, 0.70, 1.0),
+(4,   533, 0, 180,   0,  4, 0.8, 1.0, 0.70, 1.0),
+(4,   628, 0, 240,   0,  5, 1.2, 1.1, 0.85, 1.0),
+(4,   206, 0, 300,   0,  5, 1.3, 1.2, 0.80, 1.0),
+(4,   202, 0, 360,   0,  5, 1.5, 1.2, 0.70, 1.0),
+(4,   889, 0, 420,   0,  4, 2.0, 1.4, 0.65, 1.0),
+(4,   521, 1,   0,   0,  3, 1.0, 1.0, 0.85, 1.3),
+(4,   574, 1, 120,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(4,   771, 1, 200,   0,  2, 1.0, 1.0, 0.75, 1.3),
+(4,   503, 1, 300,   0,  2, 1.0, 1.0, 0.75, 1.2),
+(4,   522, 3,   0,   0,  2, 1.0, 1.0, 0.80, 1.3),
+(4,   534, 3,   0,   0,  2, 1.0, 1.0, 0.85, 1.3),
+(4,   315, 3,   0,   0,  1, 1.0, 1.0, 0.80, 1.3),
+(4,   412, 2,   0,   0,  1, 1.0, 1.0, 0.80, 1.2),
 
--- Zul'Gurub: normal
-(5, 11360, 0,   0, 300,  8, 0.6, 0.8, 0.90, 0.8),  -- Zulian Cub
-(5, 11372, 0,   0, 300,  8, 0.8, 1.0, 0.85, 0.8),  -- Razzashi Adder
-(5, 11368, 0,   0, 240,  6, 0.6, 0.8, 0.95, 0.7),  -- Bloodseeker Bat
-(5, 11353, 0,   0,   0,  8, 1.0, 1.0, 0.70, 0.8),  -- Gurubashi Blood Drinker
-(5, 11365, 0,  60,   0,  7, 1.0, 1.0, 0.85, 0.8),  -- Zulian Panther
-(5, 11350, 0,  90,   0,  5, 0.8, 1.0, 0.70, 0.8),  -- Gurubashi Axe Thrower (shoots)
-(5, 14821, 0, 120,   0,  6, 1.1, 1.1, 0.85, 0.8),  -- Razzashi Raptor
-(5, 15111, 0, 150,   0,  4, 0.8, 1.0, 0.70, 0.8),  -- Mad Servant (caster)
-(5, 11830, 0, 180,   0,  4, 0.8, 1.0, 0.70, 0.8),  -- Hakkari Priest (caster)
-(5, 14750, 0, 180,   0,  4, 0.5, 1.0, 0.95, 0.7),  -- Gurubashi Bat Rider (blows up)
-(5, 14532, 0, 240,   0,  5, 1.2, 1.1, 0.80, 0.7),  -- Razzashi Venombrood
-(5, 11351, 0, 240,   0,  5, 1.3, 1.2, 0.75, 0.8),  -- Gurubashi Headhunter
-(5, 11361, 0, 300,   0,  5, 1.2, 1.2, 0.85, 0.8),  -- Zulian Tiger
-(5, 11356, 0, 360,   0,  5, 1.6, 1.3, 0.70, 0.8),  -- Gurubashi Champion
-(5, 11352, 0, 420,   0,  3, 3.0, 1.6, 0.55, 0.6),  -- Gurubashi Berserker
--- Zul'Gurub: elites
-(5, 11339, 1,   0,   0,  3, 1.0, 1.0, 0.75, 0.9),  -- Hakkari Shadow Hunter
-(5, 11359, 1, 200,   0,  2, 1.0, 1.0, 0.75, 0.9),  -- Soulflayer
-(5, 11370, 1, 300,   0,  2, 1.0, 1.0, 0.80, 0.8),  -- Razzashi Broodwidow
-(5, 15067, 1, 400,   0,  2, 1.0, 1.0, 0.85, 0.8),  -- Zulian Stalker
-(5, 14882, 1, 400,   0,  2, 1.0, 1.0, 0.75, 0.9),  -- Atal'ai Mistress
--- Zul'Gurub: mini-bosses and the stage boss
-(5, 14507, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.7),  -- High Priest Venoxis
-(5, 14510, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.7),  -- High Priestess Mar'li
-(5, 11380, 3,   0,   0,  1, 1.0, 1.0, 0.80, 0.7),  -- Jin'do the Hexxer
-(5, 14834, 2,   0,   0,  1, 1.0, 1.0, 0.80, 0.5),  -- Hakkar
+(5, 11360, 0,   0, 300,  8, 0.6, 0.8, 0.90, 0.8),
+(5, 11372, 0,   0, 300,  8, 0.8, 1.0, 0.85, 0.8),
+(5, 11368, 0,   0, 240,  6, 0.6, 0.8, 0.95, 0.7),
+(5, 11353, 0,   0,   0,  8, 1.0, 1.0, 0.70, 0.8),
+(5, 11365, 0,  60,   0,  7, 1.0, 1.0, 0.85, 0.8),
+(5, 11350, 0,  90,   0,  5, 0.8, 1.0, 0.70, 0.8),
+(5, 14821, 0, 120,   0,  6, 1.1, 1.1, 0.85, 0.8),
+(5, 15111, 0, 150,   0,  4, 0.8, 1.0, 0.70, 0.8),
+(5, 11830, 0, 180,   0,  4, 0.8, 1.0, 0.70, 0.8),
+(5, 14750, 0, 180,   0,  4, 0.5, 1.0, 0.95, 0.7),
+(5, 14532, 0, 240,   0,  5, 1.2, 1.1, 0.80, 0.7),
+(5, 11351, 0, 240,   0,  5, 1.3, 1.2, 0.75, 0.8),
+(5, 11361, 0, 300,   0,  5, 1.2, 1.2, 0.85, 0.8),
+(5, 11356, 0, 360,   0,  5, 1.6, 1.3, 0.70, 0.8),
+(5, 11352, 0, 420,   0,  3, 3.0, 1.6, 0.55, 0.6),
+(5, 11339, 1,   0,   0,  3, 1.0, 1.0, 0.75, 0.9),
+(5, 11359, 1, 200,   0,  2, 1.0, 1.0, 0.75, 0.9),
+(5, 11370, 1, 300,   0,  2, 1.0, 1.0, 0.80, 0.8),
+(5, 15067, 1, 400,   0,  2, 1.0, 1.0, 0.85, 0.8),
+(5, 14882, 1, 400,   0,  2, 1.0, 1.0, 0.75, 0.9),
+(5, 14507, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.7),
+(5, 14510, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.7),
+(5, 11380, 3,   0,   0,  1, 1.0, 1.0, 0.80, 0.7),
+(5, 14834, 2,   0,   0,  1, 1.0, 1.0, 0.80, 0.5),
 
--- Ruins of Ahn'Qiraj: normal (a swarm of small bugs, then the big ones)
-(6, 15168, 0,   0, 300, 10, 0.5, 0.8, 0.95, 1.0),  -- Vile Scarab
-(6, 15325, 0,   0,   0,  8, 0.7, 0.9, 0.90, 0.6),  -- Hive'Zara Wasp
-(6, 15333, 0,  60,   0,  4, 0.5, 1.0, 0.95, 0.8),  -- Silicate Feeder (bursts)
-(6, 15318, 0,  60,   0,  7, 1.0, 1.0, 0.75, 0.6),  -- Hive'Zara Drone
-(6, 15462, 0,  90,   0,  5, 0.8, 1.0, 0.75, 0.6),  -- Spitting Scarab (spits)
-(6, 15461, 0, 120,   0,  5, 0.9, 1.0, 0.80, 0.6),  -- Shrieker Scarab
-(6, 15327, 0, 150,   0,  5, 1.0, 1.0, 0.80, 0.6),  -- Hive'Zara Stinger
-(6, 15387, 0, 180,   0,  6, 1.2, 1.1, 0.75, 0.6),  -- Qiraji Warrior
-(6, 15344, 0, 240,   0,  6, 1.0, 1.0, 0.85, 0.6),  -- Swarmguard Needler
-(6, 15320, 0, 240,   0,  5, 1.3, 1.2, 0.75, 0.6),  -- Hive'Zara Soldier
-(6, 15323, 0, 300,   0,  4, 1.3, 1.2, 0.80, 0.6),  -- Hive'Zara Sandstalker
-(6, 15338, 0, 360,   0,  3, 2.0, 1.3, 0.60, 0.5),  -- Obsidian Destroyer
-(6, 15324, 0, 420,   0,  4, 1.8, 1.4, 0.65, 0.5),  -- Qiraji Gladiator
-(6, 15355, 0, 480,   0,  3, 3.0, 1.6, 0.55, 0.4),  -- Anubisath Guardian
--- Ruins of Ahn'Qiraj: elites (General Rajaxx's officers)
-(6, 15391, 1,   0,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Captain Qeez
-(6, 15392, 1, 100,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Captain Tuubid
-(6, 15389, 1, 200,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Captain Drenn
-(6, 15390, 1, 250,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Captain Xurrem
-(6, 15386, 1, 300,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Major Yeggeth
-(6, 15388, 1, 350,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Major Pakkon
-(6, 15385, 1, 400,   0,  2, 1.0, 1.0, 0.75, 0.7),  -- Colonel Zerran
--- Ruins of Ahn'Qiraj: mini-bosses and the stage boss
-(6, 15348, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),  -- Kurinnaxx
-(6, 15341, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),  -- General Rajaxx
-(6, 15340, 3,   0,   0,  1, 1.2, 1.0, 0.70, 0.5),  -- Moam
-(6, 15369, 3,   0,   0,  1, 1.0, 1.0, 0.85, 0.5),  -- Ayamiss the Hunter
-(6, 15370, 3,   0,   0,  1, 1.2, 1.0, 0.70, 0.5),  -- Buru the Gorger
-(6, 15339, 2,   0,   0,  1, 1.0, 1.0, 0.85, 0.7);  -- Ossirian the Unscarred
+(6, 15168, 0,   0, 300, 10, 0.5, 0.8, 0.95, 1.0),
+(6, 15325, 0,   0,   0,  8, 0.7, 0.9, 0.90, 0.6),
+(6, 15333, 0,  60,   0,  4, 0.5, 1.0, 0.95, 0.8),
+(6, 15318, 0,  60,   0,  7, 1.0, 1.0, 0.75, 0.6),
+(6, 15462, 0,  90,   0,  5, 0.8, 1.0, 0.75, 0.6),
+(6, 15461, 0, 120,   0,  5, 0.9, 1.0, 0.80, 0.6),
+(6, 15327, 0, 150,   0,  5, 1.0, 1.0, 0.80, 0.6),
+(6, 15387, 0, 180,   0,  6, 1.2, 1.1, 0.75, 0.6),
+(6, 15344, 0, 240,   0,  6, 1.0, 1.0, 0.85, 0.6),
+(6, 15320, 0, 240,   0,  5, 1.3, 1.2, 0.75, 0.6),
+(6, 15323, 0, 300,   0,  4, 1.3, 1.2, 0.80, 0.6),
+(6, 15338, 0, 360,   0,  3, 2.0, 1.3, 0.60, 0.5),
+(6, 15324, 0, 420,   0,  4, 1.8, 1.4, 0.65, 0.5),
+(6, 15355, 0, 480,   0,  3, 3.0, 1.6, 0.55, 0.4),
+(6, 15391, 1,   0,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15392, 1, 100,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15389, 1, 200,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15390, 1, 250,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15386, 1, 300,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15388, 1, 350,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15385, 1, 400,   0,  2, 1.0, 1.0, 0.75, 0.7),
+(6, 15348, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),
+(6, 15341, 3,   0,   0,  2, 1.0, 1.0, 0.80, 0.6),
+(6, 15340, 3,   0,   0,  1, 1.2, 1.0, 0.70, 0.5),
+(6, 15369, 3,   0,   0,  1, 1.0, 1.0, 0.85, 0.5),
+(6, 15370, 3,   0,   0,  1, 1.2, 1.0, 0.70, 0.5),
+(6, 15339, 2,   0,   0,  1, 1.0, 1.0, 0.85, 0.7);
 
--- Mini-boss at 5:00, chests through the stage, swarms, rings and rushes.
 DELETE FROM `bonk_map_event` WHERE `bonk_map_id` BETWEEN 3 AND 6;
 INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
--- The Barrens: rushes across the open plain
 (3,   0, 3,  2),
 (3, 100, 5, 18),
 (3, 150, 3,  1),
@@ -161,7 +133,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (3, 450, 5, 26),
 (3, 510, 4, 24),
 (3, 540, 3,  1),
--- Duskwood: the dead close in from all sides
 (4,   0, 3,  2),
 (4, 120, 4, 16),
 (4, 150, 3,  1),
@@ -174,7 +145,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (4, 470, 2, 30),
 (4, 520, 4, 26),
 (4, 540, 3,  1),
--- Zul'Gurub
 (5,   0, 3,  2),
 (5,  90, 5, 20),
 (5, 150, 2, 25),
@@ -187,7 +157,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (5, 470, 2, 40),
 (5, 510, 4, 28),
 (5, 540, 3,  1),
--- Ruins of Ahn'Qiraj: wave after wave of the swarm
 (6,   0, 3,  2),
 (6,  60, 2, 25),
 (6, 120, 4, 20),
@@ -220,14 +189,11 @@ INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
 ( 15462, 1, 8,   'Spitting Scarab: spits from close by'),
 ( 15333, 2, 3.5, 'Silicate Feeder: bursts next to the player');
 
--- Only spells whose damage is a single effect the run can scale (or none
--- at all); no stuns, fears or roots.
 DELETE FROM `bonk_mob_ability` WHERE `entry` IN (3269, 3258, 3273, 3239, 3238, 3285, 7873, 3473, 3474, 3475, 3270, 3394, 3395, 3396, 4421,
     203, 533, 1270, 206, 628, 889, 521, 503, 771, 522, 534, 315, 412,
     11350, 15111, 11830, 14750, 11352, 11356, 11351, 11339, 11359, 15067, 14507, 14510, 11380, 14834,
     15462, 15461, 15333, 15387, 15344, 15324, 15355, 15386, 15385, 15392, 15389, 15348, 15341, 15340, 15369, 15370, 15339);
 INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `first_ms`, `min_range`, `max_range`, `damage`, `comment`) VALUES
--- The Barrens
 (  3269, 20793, 0,  5000,  1500, 0,  30, 1.0, 'Razormane Geomancer: Fireball'),
 (  3258,  6660, 0,  3000,  1000, 0,  30, 0.7, 'Bristleback Hunter: Shoot'),
 (  3273,  9532, 0,  5000,  1500, 0,  30, 1.0, 'Kolkar Stormer: Lightning Bolt'),
@@ -247,7 +213,6 @@ INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `f
 (  3396,  7342, 0,  8000,  3000, 0,   5, 0,   'Hezrul Bloodmark: Wide Slash'),
 (  4421,  8292, 0,  6000,  3000, 0,  30, 1.3, 'Charlga Razorflank: Chain Bolt'),
 (  4421, 20602, 1, 12000,  6000, 0,  10, 1.0, 'Charlga Razorflank: Fire Nova'),
--- Duskwood
 (   203, 20792, 0,  5000,  1500, 0,  30, 1.0, 'Skeletal Mage: Frostbolt'),
 (   533,  9613, 0,  5000,  1500, 0,  30, 1.0, 'Nightbane Shadow Weaver: Shadow Bolt'),
 (  1270, 28361, 1,  1000,     0, 0,  10, 2.0, 'Fetid Corpse: bursts (Disease Cloud)'),
@@ -264,7 +229,6 @@ INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `f
 (   315,  9613, 0,  5000,  2000, 0,  30, 1.3, 'Stalvan Mistmantle: Shadow Bolt'),
 (   412,  3106, 1,  3000,  3000, 0,   5, 0.6, 'Stitches: Aura of Rot'),
 (   412, 22911, 0, 12000,  5000, 8,  25, 0,   'Stitches: Charge'),
--- Zul'Gurub
 ( 11350,  6660, 0,  3000,  1000, 0,  30, 0.8, 'Gurubashi Axe Thrower: Shoot'),
 ( 15111, 20793, 0,  5000,  1500, 0,  30, 1.0, 'Mad Servant: Fireball'),
 ( 11830, 17194, 0,  6000,  2000, 0,  30, 1.0, 'Hakkari Priest: Mind Blast'),
@@ -283,7 +247,6 @@ INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `f
 ( 11380, 20741, 1, 10000,  4000, 0,  30, 1.0, 'Jin''do the Hexxer: Shadow Bolt Volley'),
 ( 14834, 20741, 1,  9000,  4000, 0,  30, 1.0, 'Hakkar: Shadow Bolt Volley'),
 ( 14834, 20603, 1, 14000,  6000, 0,  10, 1.5, 'Hakkar: Shadow Shock'),
--- Ruins of Ahn'Qiraj
 ( 15462, 24334, 0,  5000,  1500, 0,  10, 1.0, 'Spitting Scarab: Acid Spit'),
 ( 15461, 26379, 1, 15000,  3000, 0,  10, 0,   'Shrieker Scarab: Piercing Shriek (slows)'),
 ( 15333, 28361, 1,  1000,     0, 0,  10, 2.0, 'Silicate Feeder: bursts (Disease Cloud)'),
@@ -306,8 +269,6 @@ INSERT INTO `bonk_mob_ability` (`entry`, `spell_id`, `target`, `cooldown_ms`, `f
 ( 15339, 25188, 1, 10000,  4000, 0,  10, 1.5, 'Ossirian the Unscarred: War Stomp'),
 ( 15339, 22911, 0, 12000,  5000, 8,  25, 0,   'Ossirian the Unscarred: Charge');
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

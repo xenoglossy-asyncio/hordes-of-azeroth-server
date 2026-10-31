@@ -6,14 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016200000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016200000');
--- Add your query below.
 
-
--- Vanilla Bonk, Core loop v2 phase E.
---
--- Unlocks bought with gold: once its quest is done, a spell, passive or
--- Darkmoon Card is for sale at the Spellbook; a bought one is kept here
--- (type: bonk_quest reward type, 2 spell, 3 passive, 11 card).
 CREATE TABLE IF NOT EXISTS `bonk_account_unlock` (
     `account` INT UNSIGNED NOT NULL,
     `type`    TINYINT UNSIGNED NOT NULL,
@@ -21,17 +14,12 @@ CREATE TABLE IF NOT EXISTS `bonk_account_unlock` (
     PRIMARY KEY (`account`, `type`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='Vanilla Bonk unlocks bought at the Spellbook';
 
--- Spells and passives a finished quest already unlocked stay unlocked.
 INSERT IGNORE INTO `bonk_account_unlock` (`account`, `type`, `id`)
 SELECT `aq`.`account`, `q`.`reward_type`, `q`.`reward_value`
 FROM `bonk_account_quest` AS `aq`
 JOIN `mangos`.`bonk_quest` AS `q` ON `q`.`id` = `aq`.`quest`
 WHERE `aq`.`completed` = 1 AND `q`.`reward_type` IN (2, 3);
 
--- The Upgrades NPC sells utility only: Might, Haste, Vitality, Crit, Area,
--- Hit, Armor and Shield leave (20261016210000_world.sql). Every rank bought
--- is refunded at the price paid (each rank cost_growth times the one
--- before, to the nearest silver), and the ranks are cleared.
 DROP TEMPORARY TABLE IF EXISTS `bonk_old_upgrade_price`;
 CREATE TEMPORARY TABLE `bonk_old_upgrade_price` (
     `upgrade` INT UNSIGNED NOT NULL PRIMARY KEY,
@@ -59,8 +47,6 @@ DELETE FROM `bonk_account_upgrade` WHERE `upgrade` IN (1, 2, 3, 9, 10, 11, 12, 1
 DROP TEMPORARY TABLE `bonk_old_upgrade_price`;
 DROP TEMPORARY TABLE `bonk_rank_number`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

@@ -6,11 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012002000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012002000');
--- Add your query below.
 
-
--- Vanilla Bonk: upgrades, talents and Talent Shards belong to the account,
--- like gold, so every hero shares them (as in Vampire Survivors).
 CREATE TABLE IF NOT EXISTS `bonk_account_upgrade` (
     `account` INT UNSIGNED     NOT NULL,
     `upgrade` INT UNSIGNED     NOT NULL,
@@ -29,8 +25,6 @@ CREATE TABLE IF NOT EXISTS `bonk_account_talent` (
 ALTER TABLE `bonk_account`
     ADD COLUMN `shards` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Talent Shards';
 
--- What the heroes bought so far: the best rank any of them has, and all
--- their shards together. The per-character tables stay as they were.
 INSERT INTO `bonk_account_upgrade` (`account`, `upgrade`, `rank`)
 SELECT c.`account`, u.`upgrade`, MAX(u.`rank`)
 FROM `bonk_character_upgrade` u JOIN `characters` c ON c.`guid` = u.`guid`
@@ -49,8 +43,6 @@ FROM `bonk_character_shards` s JOIN `characters` c ON c.`guid` = s.`guid`
 GROUP BY c.`account`
 ON DUPLICATE KEY UPDATE `shards` = `bonk_account`.`shards` + VALUES(`shards`);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

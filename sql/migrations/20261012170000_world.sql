@@ -6,15 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012170000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012170000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: level-up passives under their WoW names (feature plan,
--- Phase 1, Spells tab). Thirteen remain, one stat each; Duplicator, Greed,
--- Leech and Persistence leave the pool (their stats still come from gear,
--- upgrades and Mastery).
--- =============================================================
 
 UPDATE `bonk_passive` SET `name` = 'Blessing of Might',     `icon` = 'Spell_Holy_FistOfJustice',   `description` = '+10% Power.' WHERE `id` = 1;
 UPDATE `bonk_passive` SET `name` = 'Berserking',            `icon` = 'Racial_Troll_Berserk',       `description` = '+8% Haste: spells fire and tick 8% more often.' WHERE `id` = 2;
@@ -27,11 +18,8 @@ UPDATE `bonk_passive` SET `description` = 'Regain 0.5% of your health every seco
 
 DELETE FROM `bonk_passive` WHERE `id` IN (3, 7, 10, 12);
 
--- Patience unlocked Persistence; it unlocks Lucky Rabbit's Foot now.
 UPDATE `bonk_quest` SET `reward_value` = 18 WHERE `id` = 50 AND `reward_type` = 3 AND `reward_value` = 12;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

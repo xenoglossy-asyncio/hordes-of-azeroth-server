@@ -6,20 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016260000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016260000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk, Phase F8 and F9 (user, 2026-10-16).
--- F8: a run brings home one find, put in the Extraction Vault (beside the
--- stage portal and in the Hearthstone's ring); Pack Mule makes it two.
--- Any quality can come home, so greens and blues get permanent copies too.
--- F9: the vendor and the runs share gear: the vendor's set pieces drop in
--- runs (run copies whose permanent copy is the vendor's piece) and the run
--- blues are on the vendor's shelf.
--- =============================================================
-
--- F8: permanent copies of the greens and blues (entry + 1000, as the epics').
 DROP TEMPORARY TABLE IF EXISTS `bonk_keep_copy`;
 CREATE TEMPORARY TABLE `bonk_keep_copy` SELECT `i`.* FROM `item_template` `i` JOIN `bonk_gear` `g` ON `g`.`entry` = `i`.`entry` WHERE `g`.`quality` IN (2, 3);
 UPDATE `bonk_keep_copy` SET `entry` = `entry` + 1000, `description` = '',
@@ -38,7 +25,6 @@ DROP TEMPORARY TABLE `bonk_stat_copy`;
 
 UPDATE `bonk_gear` SET `keep_entry` = `entry` + 1000 WHERE `quality` IN (2, 3);
 
--- F9: run copies of the vendor's 8 set pieces (900125-900132 as 900430-900437).
 DELETE FROM `item_template` WHERE `entry` BETWEEN 900430 AND 900437;
 DELETE FROM `bonk_item_stat` WHERE `entry` BETWEEN 900430 AND 900437;
 DELETE FROM `bonk_gear` WHERE `entry` BETWEEN 900430 AND 900437;
@@ -58,13 +44,9 @@ DROP TEMPORARY TABLE `bonk_stat_copy`;
 INSERT INTO `bonk_gear` (`entry`, `quality`, `keep_entry`)
 SELECT `entry` + 305, 4, `entry` FROM `item_template` WHERE `entry` BETWEEN 900125 AND 900132;
 
--- Every run piece says how it is kept.
 UPDATE `item_template` SET `description` = 'Run gear: put it in the Extraction Vault to keep it.'
 WHERE `entry` IN (SELECT `entry` FROM `bonk_gear`);
 
--- F9: the run blues on the gear vendor's shelf, after the Normal tier (the
--- Heroic and Mythic tiers move down). The core shows each class only what
--- it can wear (they bind on pickup and carry the class mask).
 UPDATE `npc_vendor` SET `slot` = `slot` + 38 WHERE `entry` = 900004 AND `item` BETWEEN 902000 AND 902199;
 DELETE FROM `npc_vendor` WHERE `entry` = 900004 AND `item` IN (SELECT `entry` + 1000 FROM `bonk_gear` WHERE `quality` = 3);
 DROP TEMPORARY TABLE IF EXISTS `bonk_vendor_copy`;
@@ -73,7 +55,6 @@ INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `item
 SELECT 900004, 32 + `n`, `item`, 0, 0, 0, 0 FROM `bonk_vendor_copy`;
 DROP TEMPORARY TABLE `bonk_vendor_copy`;
 
--- F8: the Extraction Vault (Gallywix's Lockbox look), a goober like the portal.
 DELETE FROM `gameobject_template` WHERE `entry` = 900041;
 DROP TEMPORARY TABLE IF EXISTS `bonk_go_copy`;
 CREATE TEMPORARY TABLE `bonk_go_copy` SELECT * FROM `gameobject_template` WHERE `entry` = 900003;
@@ -81,8 +62,6 @@ UPDATE `bonk_go_copy` SET `entry` = 900041, `displayId` = 1287, `name` = 'Extrac
 INSERT INTO `gameobject_template` SELECT * FROM `bonk_go_copy`;
 DROP TEMPORARY TABLE `bonk_go_copy`;
 
--- Gossip texts: the portal asking before going home with the vault empty,
--- and the vault without the addon.
 DELETE FROM `npc_text` WHERE `ID` IN (900010, 900011);
 DELETE FROM `broadcast_text` WHERE `entry` IN (900010, 900011);
 DROP TEMPORARY TABLE IF EXISTS `bonk_text_copy`;
@@ -104,8 +83,6 @@ UPDATE `bonk_npc_text_copy` SET `ID` = 900011, `BroadcastTextID0` = 900011;
 INSERT INTO `npc_text` SELECT * FROM `bonk_npc_text_copy`;
 DROP TEMPORARY TABLE `bonk_npc_text_copy`;
 
--- F8: Pack Mule, a second vault slot (utility 12), late: after Hearthstone
--- Lore 5, and locked behind clearing Heroic (quest 14's reward).
 DELETE FROM `bonk_upgrade` WHERE `id` = 28;
 INSERT INTO `bonk_upgrade` (`id`, `name`, `description`, `effect`, `value_per_rank`, `max_rank`, `cost`, `cost_growth`, `icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank`) VALUES
 (28, 'Pack Mule', 'A second slot in the Extraction Vault: bring one more piece of run gear home.', 112, 1, 1, 250000, 1, 'INV_Misc_Bag_08', 3, 3, 2, 25, 5);
@@ -113,8 +90,6 @@ DELETE FROM `bonk_quest` WHERE `id` = 14;
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `param`, `amount`, `reward_type`, `reward_value`, `class`, `category`) VALUES
 (14, 'Beast of Burden', 'Clear Heroic.', 'INV_Misc_Bag_08', 3, 3, 0, 3, 5, 28, 0, 1);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

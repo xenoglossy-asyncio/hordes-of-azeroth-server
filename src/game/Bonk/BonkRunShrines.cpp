@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
 #include "Chat.h"
@@ -61,39 +62,35 @@ namespace
     float const BONK_STONE_BOSS_DISTANCE   = 8.0f;
 
     char const* const SHRINE_NAMES[MAX_BONK_SHRINE] = { "leyline", "greed", "altar", "moonwell", "stone" };
-    char const* const SHRINE_LABELS[MAX_BONK_SHRINE] = { "Ley Line", "Greed Totem", "Challenge Altar", "Moonwell", "Summoning Stone" };
+    BonkString const SHRINE_LABELS[MAX_BONK_SHRINE] = { BONK_STRING_SHRINE_LEY_LINE, BONK_STRING_SHRINE_GREED_TOTEM, BONK_STRING_SHRINE_CHALLENGE_ALTAR,
+        BONK_STRING_SHRINE_MOONWELL, BONK_STRING_SHRINE_SUMMONING_STONE };
     char const* const SHRINE_ICONS[MAX_BONK_SHRINE] = {
         "Spell_Arcane_StarFire", "INV_Misc_Coin_02", "Ability_Warrior_Challange", "Spell_Arcane_TeleportMoonglade", "Spell_Shadow_Twilight" };
-    char const* const SHRINE_DESCRIPTIONS[MAX_BONK_SHRINE] = {
-        "Stand in its ring for 8 seconds to choose a blessing for the rest of the run.",
-        "Click it to earn 5% more gold and Darkmoon Tickets for the rest of the run, but more enemies will come. Each totem you use adds more.",
-        "Click it to face elite guards with two affixes. Beat them for a free chest.",
-        "Click it to heal 8% of your health every second for 10 seconds while you stand in it. Enemies that die inside it give double experience.",
-        "Click it to summon this floor's boss early. Defeat it to open the portal and skip the rest of the floor.",
-    };
+    BonkString const SHRINE_DESCRIPTIONS[MAX_BONK_SHRINE] = { BONK_STRING_SHRINE_LEY_LINE_TEXT, BONK_STRING_SHRINE_GREED_TOTEM_TEXT,
+        BONK_STRING_SHRINE_CHALLENGE_ALTAR_TEXT, BONK_STRING_SHRINE_MOONWELL_TEXT, BONK_STRING_SHRINE_SUMMONING_STONE_TEXT };
 
     struct LeyStat
     {
         BonkPassiveEffect effect;
         float value;
-        char const* name;
-        char const* phrase;
+        BonkString name;
+        BonkString phrase;
         char const* icon;
         bool points;
     };
     LeyStat const LEY_STATS[] = {
-        { BONK_PASSIVE_POWER,       15.0f, "Power",                  "Power",                                   "Spell_Nature_Strength",       false },
-        { BONK_PASSIVE_MAX_HEALTH,  15.0f, "Maximum Health",         "maximum health",                          "Spell_Holy_WordFortitude",    false },
-        { BONK_PASSIVE_ARMOR,       10.0f, "Armor",                  "Armor",                                   "Spell_Holy_DevotionAura",     true },
-        { BONK_PASSIVE_DODGE,        6.0f, "Dodge Chance",           "chance to dodge enemy swings",            "Spell_Shadow_ShadowWard",     false },
-        { BONK_PASSIVE_CRIT,         8.0f, "Critical Strike Chance", "critical strike chance",                  "Ability_CriticalStrike",      false },
-        { BONK_PASSIVE_CRIT_DAMAGE, 25.0f, "Critical Strike Damage", "critical strike damage",                  "Spell_Holy_PowerInfusion",    false },
-        { BONK_PASSIVE_SHIELD,      15.0f, "Shield",                 "of your maximum health as a Shield",      "Spell_Holy_InnerFire",        false },
-        { BONK_PASSIVE_HASTE,       10.0f, "Haste",                  "Haste",                                   "Racial_Troll_Berserk",        false },
-        { BONK_PASSIVE_AREA,        20.0f, "Area",                   "Area: bigger AoE spells", "Spell_Holy_ArcaneIntellect", false },
-        { BONK_PASSIVE_MOVE_SPEED,  10.0f, "Movement Speed",         "movement speed",                          "Ability_Mount_JungleTiger",   false },
-        { BONK_PASSIVE_PICKUP,      40.0f, "Pickup Range",           "pickup range",                            "INV_Gizmo_02",                false },
-        { BONK_PASSIVE_LUCK,        10.0f, "Luck",                   "Luck",                                    "INV_Misc_Foot_Kodo",          true },
+        { BONK_PASSIVE_POWER,       15.0f, BONK_STRING_STAT_POWER,          BONK_STRING_STAT_POWER,           "Spell_Nature_Strength",      false },
+        { BONK_PASSIVE_MAX_HEALTH,  15.0f, BONK_STRING_LEY_MAX_HEALTH,      BONK_STRING_LEY_MAX_HEALTH_TEXT,  "Spell_Holy_WordFortitude",   false },
+        { BONK_PASSIVE_ARMOR,       10.0f, BONK_STRING_STAT_ARMOR,          BONK_STRING_STAT_ARMOR,           "Spell_Holy_DevotionAura",    true },
+        { BONK_PASSIVE_DODGE,        6.0f, BONK_STRING_LEY_DODGE,           BONK_STRING_LEY_DODGE_TEXT,       "Spell_Shadow_ShadowWard",    false },
+        { BONK_PASSIVE_CRIT,         8.0f, BONK_STRING_LEY_CRIT,            BONK_STRING_LEY_CRIT_TEXT,        "Ability_CriticalStrike",     false },
+        { BONK_PASSIVE_CRIT_DAMAGE, 25.0f, BONK_STRING_LEY_CRIT_DAMAGE,     BONK_STRING_LEY_CRIT_DAMAGE_TEXT, "Spell_Holy_PowerInfusion",   false },
+        { BONK_PASSIVE_SHIELD,      15.0f, BONK_STRING_STAT_SHIELD,         BONK_STRING_LEY_SHIELD_TEXT,      "Spell_Holy_InnerFire",       false },
+        { BONK_PASSIVE_HASTE,       10.0f, BONK_STRING_STAT_HASTE,          BONK_STRING_STAT_HASTE,           "Racial_Troll_Berserk",       false },
+        { BONK_PASSIVE_AREA,        20.0f, BONK_STRING_STAT_AREA,           BONK_STRING_LEY_AREA_TEXT,        "Spell_Holy_ArcaneIntellect", false },
+        { BONK_PASSIVE_MOVE_SPEED,  10.0f, BONK_STRING_STAT_MOVEMENT_SPEED, BONK_STRING_LEY_MOVE_SPEED_TEXT,  "Ability_Mount_JungleTiger",  false },
+        { BONK_PASSIVE_PICKUP,      40.0f, BONK_STRING_STAT_PICKUP_RANGE,   BONK_STRING_LEY_PICKUP_TEXT,      "INV_Gizmo_02",               false },
+        { BONK_PASSIVE_LUCK,        10.0f, BONK_STRING_STAT_LUCK,           BONK_STRING_STAT_LUCK,            "INV_Misc_Foot_Kodo",         true },
     };
     float const LEY_RARITY_SCALE[] = { 1.0f, 1.3f, 1.6f, 2.0f };
 
@@ -105,11 +102,12 @@ namespace
         return nullptr;
     }
 
-    std::string FormatLeyValue(LeyStat const& stat, float value)
+    std::string FormatLeyValue(LeyStat const& stat, float value, LocaleConstant locale)
     {
-        char text[96];
-        std::snprintf(text, sizeof(text), stat.points ? "+%.0f %s" : "+%.0f%% %s", value, stat.phrase);
-        return text;
+        char number[32];
+        std::snprintf(number, sizeof(number), "%.0f", value);
+        return sBonkLocale.GetString(stat.points ? BONK_STRING_LEY_VALUE_POINTS : BONK_STRING_LEY_VALUE_PERCENT, locale,
+            { number, sBonkLocale.GetString(stat.phrase, locale) });
     }
 
     std::string LeyStatIcon(LeyStat const& stat)
@@ -222,8 +220,8 @@ bool BonkRun::PlaceShrine(BonkShrineType type)
     else if (GameObject* model = m_player->SummonGameObject(BONK_GO_SHRINE + type, spot.x, spot.y, spot.z, frand(0.0f, 2.0f * M_PI_F),
         0.0f, 0.0f, 0.0f, 0.0f, BONK_SHRINE_MODEL_SEC, false))
         shrine.model = model->GetObjectGuid();
-    shrine.objectiveId = m_objectives.Add(m_player, BONK_OBJECTIVE_SHRINE, spot.x, spot.y, spot.z, SHRINE_LABELS[type], 0, SHRINE_ICONS[type],
-        SHRINE_DESCRIPTIONS[type]);
+    shrine.objectiveId = m_objectives.Add(m_player, BONK_OBJECTIVE_SHRINE, spot.x, spot.y, spot.z, GetString(SHRINE_LABELS[type]), 0, SHRINE_ICONS[type],
+        GetString(SHRINE_DESCRIPTIONS[type]));
     if (type == BONK_SHRINE_MOONWELL)
         m_moonwellPlaced = true;
     if (type == BONK_SHRINE_STONE)
@@ -256,7 +254,7 @@ void BonkRun::UpdateLeyLine(size_t index, uint32 diff)
     {
         if (m_captureShown && shrine.progressMs)
         {
-            bonk->SendAddon(std::string("capture~") + SHRINE_LABELS[BONK_SHRINE_LEY_LINE] + "~-1");
+            bonk->SendAddon("capture~" + GetString(SHRINE_LABELS[BONK_SHRINE_LEY_LINE]) + "~-1");
             m_captureShown = false;
         }
         return;
@@ -267,10 +265,10 @@ void BonkRun::UpdateLeyLine(size_t index, uint32 diff)
     m_captureSendMs += diff;
     if (shrine.progressMs >= captureMs)
     {
-        bonk->SendAddon(std::string("capture~") + SHRINE_LABELS[BONK_SHRINE_LEY_LINE] + "~100");
-        bonk->SendAddon(std::string("capture~") + SHRINE_LABELS[BONK_SHRINE_LEY_LINE] + "~-1");
+        bonk->SendAddon("capture~" + GetString(SHRINE_LABELS[BONK_SHRINE_LEY_LINE]) + "~100");
+        bonk->SendAddon("capture~" + GetString(SHRINE_LABELS[BONK_SHRINE_LEY_LINE]) + "~-1");
         m_captureShown = false;
-        bonk->Notify("You captured the Ley Line!");
+        bonk->Notify(BONK_STRING_YOU_CAPTURED_LEY_LINE);
         RemoveShrine(index);
         ++m_pendingLeyOffers;
         return;
@@ -279,7 +277,7 @@ void BonkRun::UpdateLeyLine(size_t index, uint32 diff)
     {
         m_captureSendMs = 0;
         m_captureShown = true;
-        bonk->SendAddon(std::string("capture~") + SHRINE_LABELS[BONK_SHRINE_LEY_LINE] + "~" +
+        bonk->SendAddon("capture~" + GetString(SHRINE_LABELS[BONK_SHRINE_LEY_LINE]) + "~" +
             std::to_string(shrine.progressMs * 100 / captureMs));
     }
 }
@@ -313,7 +311,7 @@ void BonkRun::OfferLeyBuffs()
         LeyBuff buff;
         buff.effect = stat->effect;
         buff.rarity = roll < epic ? BONK_RARITY_EPIC : roll < rare ? BONK_RARITY_RARE : roll < uncommon ? BONK_RARITY_UNCOMMON : BONK_RARITY_COMMON;
-        buff.value = stat->value * LEY_RARITY_SCALE[buff.rarity];
+        buff.value = stat->value * LEY_RARITY_SCALE[buff.rarity] * GetCopyWeight(m_shrinePicks[stat->effect] + 1);
         m_leyOffer.push_back(buff);
     }
     if (m_leyOffer.empty())
@@ -348,15 +346,16 @@ void BonkRun::SendLeyOffer() const
             if (buff.cardId)
             {
                 if (BonkCard const* card = sBonkMgr.GetCard(buff.cardId))
-                    bonk->SendAddon("leyopt~" + std::to_string(i + 1) + "~" + card->name + "~" + card->icon + "~" + card->description + "~" +
+                    bonk->SendAddon("leyopt~" + std::to_string(i + 1) + "~" + Localize(BONK_FIELD_CARD_NAME, card->id, card->name) + "~" + card->icon + "~" +
+                        Localize(BONK_FIELD_CARD_DESCRIPTION, card->id, card->description) + "~" +
                         std::to_string(buff.rarity) + "~c~" + std::to_string(GetCardCopies(card->id) + 1) + "~" + std::to_string(uint32(card->maxCopies)));
                 continue;
             }
             LeyStat const* stat = GetLeyStat(buff.effect);
             if (!stat)
                 continue;
-            bonk->SendAddon("leyopt~" + std::to_string(i + 1) + "~" + stat->name + "~" + LeyStatIcon(*stat) + "~" +
-                FormatLeyValue(*stat, buff.value) + " for the rest of the run." + "~" + std::to_string(buff.rarity));
+            bonk->SendAddon("leyopt~" + std::to_string(i + 1) + "~" + GetString(stat->name) + "~" + LeyStatIcon(*stat) + "~" +
+                GetString(BONK_STRING_LEY_FOR_THE_RUN, { FormatLeyValue(*stat, buff.value, GetLocale()) }) + "~" + std::to_string(buff.rarity));
         }
         bonk->SendAddon("leyofferend");
         return;
@@ -372,7 +371,7 @@ void BonkRun::SendLeyOffer() const
                 handler.PSendSysMessage("%u. %s: %s", uint32(i + 1), card->name.c_str(), card->description.c_str());
         }
         else if (LeyStat const* stat = GetLeyStat(m_leyOffer[i].effect))
-            handler.PSendSysMessage("%u. %s", uint32(i + 1), FormatLeyValue(*stat, m_leyOffer[i].value).c_str());
+            handler.PSendSysMessage("%u. %s", uint32(i + 1), FormatLeyValue(*stat, m_leyOffer[i].value, LOCALE_enUS).c_str());
     }
 }
 
@@ -384,7 +383,7 @@ void BonkRun::SendLeyBlessings() const
     {
         LeyStat const* stat = GetLeyStat(BonkPassiveEffect(effect));
         if (stat && m_shrineBonuses[effect] > 0.0f)
-            bonk->SendAddon("leybless~" + std::string(stat->name) + "~" + LeyStatIcon(*stat) + "~" + FormatLeyValue(*stat, m_shrineBonuses[effect]));
+            bonk->SendAddon("leybless~" + GetString(stat->name) + "~" + LeyStatIcon(*stat) + "~" + FormatLeyValue(*stat, m_shrineBonuses[effect], GetLocale()));
     }
     bonk->SendAddon("leyblessend");
 }
@@ -393,12 +392,12 @@ bool BonkRun::PickLeyBuff(uint32 index, std::string& error)
 {
     if (m_leyOffer.empty())
     {
-        error = "There is no Ley Line blessing to choose right now.";
+        error = GetString(BONK_STRING_THERE_IS_NO_LEY_LINE);
         return false;
     }
     if (!index || index > m_leyOffer.size())
     {
-        error = "Choose a number from 1 to " + std::to_string(m_leyOffer.size()) + ".";
+        error = GetString(BONK_STRING_CHOOSE_NUMBER_FROM_1_TO, { std::to_string(m_leyOffer.size()) });
         return false;
     }
 
@@ -411,15 +410,16 @@ bool BonkRun::PickLeyBuff(uint32 index, std::string& error)
         if (BonkCard const* card = sBonkMgr.GetCard(buff.cardId))
         {
             AddCard(*card);
-            bonk->Notify("The Ley Line grants you " + card->name + "!");
+            bonk->Notify(BONK_STRING_LEY_LINE_GRANTS_YOU, { Localize(BONK_FIELD_CARD_NAME, card->id, card->name) });
         }
     }
     else
     {
         m_shrineBonuses[buff.effect] += buff.value;
+        ++m_shrinePicks[buff.effect];
         ApplyPassives();
         if (LeyStat const* stat = GetLeyStat(buff.effect))
-            bonk->Notify("The Ley Line grants you " + FormatLeyValue(*stat, buff.value) + "!");
+            bonk->Notify(BONK_STRING_LEY_LINE_GRANTS_YOU, { FormatLeyValue(*stat, buff.value, GetLocale()) });
         SendLeyBlessings();
     }
     ResumeUnlessChoiceOpen();
@@ -461,8 +461,7 @@ void BonkRun::UseShrine(GameObject* go)
             {
                 ++m_greedStacks;
                 SendGreed();
-                bonk->Notify("You now earn " + std::to_string(GetGreedRewardPercent()) + "% more gold and Darkmoon Tickets, but face " +
-                    std::to_string(uint32(GetGreedCrowdPercent() + 0.5f)) + "% more enemies.");
+                bonk->Notify(BONK_STRING_YOU_NOW_EARN_MORE_GOLD, { std::to_string(GetGreedRewardPercent()), std::to_string(uint32(GetGreedCrowdPercent() + 0.5f)) });
                 RemoveShrine(i);
                 break;
             }
@@ -486,7 +485,7 @@ void BonkRun::UseShrine(GameObject* go)
                         y = shrine.spot.y;
                         z = shrine.spot.z;
                     }
-                    QueueSummon(creature, x, y, z, BONK_ALTAR_AFFIXES, shrine.model, false, n ? "" : "The altar's guardians arrive");
+                    QueueSummon(creature, x, y, z, BONK_ALTAR_AFFIXES, shrine.model, false, n == 0);
                 }
                 break;
             }
@@ -497,14 +496,14 @@ void BonkRun::UseShrine(GameObject* go)
                 shrine.active = true;
                 shrine.leftMs = GetMoonwellSeconds() * IN_MILLISECONDS;
                 shrine.tickMs = IN_MILLISECONDS;
-                bonk->Notify("The Moonwell's waters stir! Stand in them to heal.");
+                bonk->Notify(BONK_STRING_MOONWELLS_WATERS_STIR_STAND_IN);
                 break;
             }
             case BONK_SHRINE_STONE:
             {
                 if (m_bossSpawned)
                 {
-                    bonk->Notify("The boss is already here.");
+                    bonk->Notify(BONK_STRING_BOSS_IS_ALREADY_HERE);
                     break;
                 }
                 BonkMapCreature const* creature = PickCreature(BONK_SPAWN_BOSS);
@@ -520,7 +519,7 @@ void BonkRun::UseShrine(GameObject* go)
                     y = shrine.spot.y;
                     z = shrine.spot.z;
                 }
-                QueueSummon(creature, x, y, z, 0, ObjectGuid(), true, "Something answers the summons. It arrives");
+                QueueSummon(creature, x, y, z, 0, ObjectGuid(), true, true);
                 RemoveShrine(i);
                 break;
             }
@@ -532,7 +531,7 @@ void BonkRun::UseShrine(GameObject* go)
 }
 
 void BonkRun::QueueSummon(BonkMapCreature const* creature, float x, float y, float z, uint32 affixes, ObjectGuid const& altar, bool boss,
-    std::string const& countdown)
+    bool countdown)
 {
     PendingSummon summon;
     summon.creature = creature;
@@ -564,8 +563,9 @@ void BonkRun::UpdatePendingSummons(uint32 diff)
             itr->glowMs = BONK_SUMMON_GLOW_MS;
             PlayKitAt(ObjectGuid(), itr->x, itr->y, itr->z, BONK_KIT_SUMMON_CIRCLE, true);
             int32 const seconds = (itr->leftMs + IN_MILLISECONDS - 1) / IN_MILLISECONDS;
-            if (!itr->countdown.empty())
-                bonk->Notify(itr->countdown + " in " + std::to_string(seconds) + (seconds == 1 ? " second." : " seconds."));
+            if (itr->countdown)
+                bonk->Notify(itr->boss ? BONK_STRING_SUMMONS_ANSWERED_ARRIVES_IN : BONK_STRING_ALTAR_GUARDIANS_ARRIVE_IN,
+                    { GetString(seconds == 1 ? BONK_STRING_DURATION_SECOND : BONK_STRING_DURATION_SECONDS, { std::to_string(seconds) }) });
         }
         itr->leftMs -= int32(diff);
         if (itr->leftMs > 0)
@@ -594,7 +594,7 @@ void BonkRun::UpdatePendingSummons(uint32 diff)
         }
         mob->CastSpell(mob, BONK_SPELL_SUMMON_SMOKE, true);
         if (summon.boss)
-            bonk->Notify(std::string(mob->GetName()) + " answers the summons!");
+            bonk->Notify(BONK_STRING_SUMMONED_ANSWERS, { bonk->GetLocalName(mob) });
         if (summon.altar.IsEmpty())
             continue;
         for (Shrine& shrine : m_shrines)
@@ -602,7 +602,7 @@ void BonkRun::UpdatePendingSummons(uint32 diff)
             {
                 shrine.pack.push_back(mob->GetObjectGuid());
                 if (!IsAltarWaking(summon.altar) && shrine.pack.size() == 1)
-                    bonk->Notify("The altar's guardians awaken!");
+                    bonk->Notify(BONK_STRING_ALTARS_GUARDIANS_AWAKEN);
             }
     }
 }
@@ -620,7 +620,7 @@ void BonkRun::UpdateAltar(size_t index)
                 return;
 
     SpawnChest(true, shrine.spot.x, shrine.spot.y, shrine.spot.z, BONK_ALTAR_CHEST_CHOICES);
-    m_player->GetBonkPlayer()->Notify("The Challenge Altar yields its treasure!");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_CHALLENGE_ALTAR_YIELDS_ITS_TREASURE);
     RemoveShrine(index);
 }
 
@@ -636,7 +636,7 @@ void BonkRun::UpdateMoonwell(size_t index, uint32 diff)
     if (shrine.leftMs <= diff)
     {
         bonk->SendAddon("moonwell~0~0~" + std::to_string(GetMoonwellSeconds()));
-        bonk->Notify("The Moonwell runs dry.");
+        bonk->Notify(BONK_STRING_MOONWELL_RUNS_DRY);
         RemoveShrine(index);
         return;
     }
@@ -713,7 +713,7 @@ void BonkRun::DespawnShrines()
     m_shrinesToPlace = 0;
     if (m_captureShown)
     {
-        m_player->GetBonkPlayer()->SendAddon(std::string("capture~") + SHRINE_LABELS[BONK_SHRINE_LEY_LINE] + "~-1");
+        m_player->GetBonkPlayer()->SendAddon("capture~" + GetString(SHRINE_LABELS[BONK_SHRINE_LEY_LINE]) + "~-1");
         m_captureShown = false;
     }
 }
@@ -722,22 +722,22 @@ bool BonkRun::PlaceShrineNow(BonkShrineType type, std::string& error)
 {
     if (m_state != STATE_RUNNING)
     {
-        error = "Only a running floor can have a shrine.";
+        error = GetString(BONK_STRING_ONLY_RUNNING_FLOOR_SHRINE);
         return false;
     }
     if ((type == BONK_SHRINE_MOONWELL && m_moonwellPlaced) || (type == BONK_SHRINE_STONE && m_stonePlaced))
     {
-        error = std::string("This floor has already had its ") + SHRINE_LABELS[type] + ".";
+        error = GetString(BONK_STRING_FLOOR_ALREADY_HAD_SHRINE, { GetString(SHRINE_LABELS[type]) });
         return false;
     }
     if (type == BONK_SHRINE_LEY_LINE && m_leyLinesPlaced >= BONK_MAX_LEY_LINES)
     {
-        error = "This floor has already had " + std::to_string(BONK_MAX_LEY_LINES) + " Ley Lines.";
+        error = GetString(BONK_STRING_FLOOR_ALREADY_HAD_LEY_LINES, { std::to_string(BONK_MAX_LEY_LINES) });
         return false;
     }
     if (!PlaceShrine(type))
     {
-        error = "No spawn point 60-400 yards away yet; try again in a few seconds.";
+        error = GetString(BONK_STRING_NO_SHRINE_SPAWN_POINT);
         return false;
     }
     return true;

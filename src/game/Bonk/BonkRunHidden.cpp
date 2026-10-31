@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
 #include "BonkQuests.h"
@@ -83,7 +84,7 @@ void BonkRun::TriggerHidden()
         m_hidden.boss = mob->GetObjectGuid();
         m_objectives.RemoveFollowing(m_player, mob->GetObjectGuid());
         if (!hidden->yell.empty())
-            mob->MonsterYell(hidden->yell.c_str());
+            mob->MonsterYell(Localize(BONK_FIELD_HIDDEN_YELL, hidden->id, hidden->yell).c_str());
     }
 
     BonkMapCreature add;
@@ -101,7 +102,10 @@ void BonkRun::TriggerHidden()
             SpawnMobAt(add, x, y, z);
     }
 
-    m_player->GetBonkPlayer()->Notify(hidden->foundText.empty() ? "You found " + hidden->name + "!" : hidden->foundText);
+    if (hidden->foundText.empty())
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_FOUND, { Localize(BONK_FIELD_HIDDEN_NAME, hidden->id, hidden->name) });
+    else
+        m_player->GetBonkPlayer()->Notify(Localize(BONK_FIELD_HIDDEN_FOUND_TEXT, hidden->id, hidden->foundText));
 }
 
 void BonkRun::OnHiddenKilled(Creature const* mob)
@@ -112,7 +116,7 @@ void BonkRun::OnHiddenKilled(Creature const* mob)
     m_hidden.boss.Clear();
     sBonkQuests.OnProgress(m_player, BONK_QUEST_DISCOVER, hidden->id, 1);
     SpawnChest(true, mob->GetPositionX(), mob->GetPositionY(), mob->GetPositionZ(), hidden->chestChoices);
-    m_player->GetBonkPlayer()->Notify("You defeated " + hidden->name + ", and a chest appears!");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_DEFEATED_AND_CHEST_APPEARS, { Localize(BONK_FIELD_HIDDEN_NAME, hidden->id, hidden->name) });
 }
 
 void BonkRun::ClearHidden()

@@ -6,17 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016210000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016210000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk: Core loop v2 phase E (docs/Feature Plan.md)
--- =============================================================
-
--- E1: the Upgrades NPC sells utility only, in four trees (user, 2026-10-16).
--- Might, Haste, Vitality, Crit, Area, Hit, Armor and Shield leave (refunded
--- in 20261016200000_characters.sql); worn camp gear takes their role.
--- Effects from 100 are BonkUpgradeUtility values (BonkMgr.h).
 UPDATE `bonk_shop_tree` SET `name` = 'Mobility',   `background` = 'RogueCombat'      WHERE `id` = 1;
 UPDATE `bonk_shop_tree` SET `name` = 'Fortune',    `background` = 'PaladinHoly'      WHERE `id` = 2;
 UPDATE `bonk_shop_tree` SET `name` = 'Expedition', `background` = 'HunterSurvival'   WHERE `id` = 3;
@@ -24,74 +14,59 @@ DELETE FROM `bonk_shop_tree` WHERE `id` = 6;
 INSERT INTO `bonk_shop_tree` (`id`, `shop`, `name`, `background`) VALUES (6, 1, 'Provisions', 'DruidRestoration');
 
 DELETE FROM `bonk_upgrade` WHERE `id` IN (1, 2, 3, 9, 10, 11, 12, 13) OR `id` BETWEEN 16 AND 27;
--- Kept: Swiftness to Mobility; Greed, Luck and Pickup Range to Fortune.
 UPDATE `bonk_upgrade` SET `tree` = 1, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 5;
 UPDATE `bonk_upgrade` SET `tree` = 2, `tree_row` = 1, `tree_column` = 1 WHERE `id` = 6;
 UPDATE `bonk_upgrade` SET `tree` = 2, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 15;
 UPDATE `bonk_upgrade` SET `tree` = 2, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 14;
 
 INSERT INTO `bonk_upgrade` (`id`, `name`, `description`, `effect`, `value_per_rank`, `max_rank`, `cost`, `cost_growth`, `icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank`) VALUES
--- Mobility
 (16, 'Dash Range',       '+0.8 yards to your dash.',                                                       100, 0.8, 5, 4000,  1.4, 'Ability_Druid_Dash',               1, 1, 3, 0, 0),
 (17, 'Dash Cooldown',    '-0.6 sec on your dash''s cooldown.',                                             101, 0.6, 5, 5000,  1.4, 'INV_Misc_PocketWatch_01',          1, 2, 3, 0, 0),
 (18, 'Second Dash',      'Your dash holds a second charge.',                                                102, 1,   1, 40000, 1,   'Ability_Rogue_Sprint',             1, 3, 3, 17, 3),
--- Fortune
 (19, 'Haggle',           '-4% on Valor chests and the wandering vendor''s wares.',                          103, 4,   5, 5000,  1.4, 'INV_Misc_Coin_03',                 2, 2, 1, 0, 0),
 (22, 'Insight',          'Level-ups offer one more card to choose from.',                                   106, 1,   1, 50000, 1,   'Spell_Holy_MindVision',            2, 2, 2, 15, 3),
 (20, 'Scrapper',         '+10% Valor from salvaged gear.',                                                  104, 10,  5, 3500,  1.4, 'INV_Misc_Gear_01',                 2, 2, 3, 0, 0),
 (21, 'Card Shark',       'Chests offer one more Darkmoon Card to choose from.',                             105, 1,   1, 30000, 1,   'INV_Misc_Ticket_Tarot_Heroism_01', 2, 3, 3, 0, 0),
--- Expedition
 (23, 'Bounty Hunter',    '+2 sec to catch a treasure goblin or kill a bounty, and a longer head start.',    107, 2,   5, 3500,  1.4, 'INV_Misc_Bone_HumanSkull_01',      3, 1, 2, 0, 0),
 (24, 'Attunement',       '+8% capture speed at Ley Lines and +8% Moonwell time.',                           108, 8,   5, 4000,  1.4, 'Spell_Holy_PowerInfusion',         3, 1, 3, 0, 0),
 (25, 'Hearthstone Lore', '+20% chance to find a Hearthstone; each rank also takes a second off its ring.',  109, 20,  5, 5000,  1.4, 'INV_Misc_Rune_01',                 3, 2, 2, 0, 0),
--- Provisions
 (26, 'Head Start',       '+1 to the level runs start at, with the picks it brings.',                        110, 1,   2, 15000, 2,   'INV_Scroll_03',                    6, 1, 2, 0, 0),
 (27, 'Lucky Draw',       'Runs start with a random Darkmoon Card: a common one, an uncommon one at rank 2.', 111, 1,  2, 20000, 2,   'INV_Misc_Ticket_Tarot_BlueDragon_01', 6, 1, 3, 0, 0);
 
--- E2: camp gear can carry Max Health (Vitality's role).
 ALTER TABLE `bonk_item_stat` ADD COLUMN IF NOT EXISTS `max_health` FLOAT NOT NULL DEFAULT 0 AFTER `power`;
-UPDATE `bonk_item_stat` SET `max_health` = 3 WHERE `entry` BETWEEN 900113 AND 900116;     -- Recruit's (green)
-UPDATE `bonk_item_stat` SET `max_health` = 5 WHERE `entry` BETWEEN 900117 AND 900120;     -- Warden's (blue)
-UPDATE `bonk_item_stat` SET `max_health` = 8 WHERE `entry` BETWEEN 900121 AND 900124;     -- Juggernaut (epic)
-UPDATE `bonk_item_stat` SET `max_health` = 6 WHERE `entry` BETWEEN 900125 AND 900128;     -- of the Unbroken (set)
+UPDATE `bonk_item_stat` SET `max_health` = 3 WHERE `entry` BETWEEN 900113 AND 900116;
+UPDATE `bonk_item_stat` SET `max_health` = 5 WHERE `entry` BETWEEN 900117 AND 900120;
+UPDATE `bonk_item_stat` SET `max_health` = 8 WHERE `entry` BETWEEN 900121 AND 900124;
+UPDATE `bonk_item_stat` SET `max_health` = 6 WHERE `entry` BETWEEN 900125 AND 900128;
 
--- E5: Sayge's slot fortunes rank by rank on quests done (BonkPlayer::BuyTalent):
--- passive slots 4, 5 and 6 at 15, 35 and 55 quests; spell slots 4 and 5 at
--- 25 and 45 (Megabonk gates at 25/45 and 35/55).
 ALTER TABLE `bonk_talent` ADD COLUMN IF NOT EXISTS `rank_quests` VARCHAR(64) NOT NULL DEFAULT '' AFTER `required_rank`;
-UPDATE `bonk_talent` SET `rank_quests` = '15,35,55' WHERE `id` = 10;      -- Passive Slot
-UPDATE `bonk_talent` SET `rank_quests` = '25,45'    WHERE `id` = 11;      -- Spell Slot
--- The quest milestones unlock the run charges first, the slots after.
-UPDATE `bonk_quest` SET `reward_value` = 5  WHERE `id` = 256;     -- Apprentice (5): Second Thoughts
-UPDATE `bonk_quest` SET `reward_value` = 9  WHERE `id` = 208;     -- Errand Runner (10): Moving On
-UPDATE `bonk_quest` SET `reward_value` = 10 WHERE `id` = 209;     -- Trusted Adventurer (15): Passive Slot
-UPDATE `bonk_quest` SET `reward_value` = 6  WHERE `id` = 257;     -- Seasoned Adventurer (20): Banishment
-UPDATE `bonk_quest` SET `reward_value` = 11 WHERE `id` = 210;     -- Renowned (25): Spell Slot
+UPDATE `bonk_talent` SET `rank_quests` = '15,35,55' WHERE `id` = 10;
+UPDATE `bonk_talent` SET `rank_quests` = '25,45'    WHERE `id` = 11;
+UPDATE `bonk_quest` SET `reward_value` = 5  WHERE `id` = 256;
+UPDATE `bonk_quest` SET `reward_value` = 9  WHERE `id` = 208;
+UPDATE `bonk_quest` SET `reward_value` = 10 WHERE `id` = 209;
+UPDATE `bonk_quest` SET `reward_value` = 6  WHERE `id` = 257;
+UPDATE `bonk_quest` SET `reward_value` = 11 WHERE `id` = 210;
 
--- E6: pacing. 44 quests were done after 8 runs: quests sized for the v1
--- pace (level 18 at 10:00) fall to a v2 run in passing. Amounts go up and
--- the numbers in the descriptions with them.
 DROP TEMPORARY TABLE IF EXISTS `bonk_quest_amount`;
 CREATE TEMPORARY TABLE `bonk_quest_amount` (`id` INT UNSIGNED NOT NULL PRIMARY KEY, `amount` INT UNSIGNED NOT NULL);
 INSERT INTO `bonk_quest_amount` VALUES
-    (1, 500), (2, 7500), (3, 30000),                                            -- kills
-    (212, 40000), (213, 40000), (214, 40000), (215, 40000), (216, 40000), (217, 40000), (218, 40000), (219, 40000), (220, 40000),   -- kills as a class
-    (34, 10), (4, 30), (49, 60), (5, 15),                                       -- elites, mini-bosses
-    (20, 2000), (21, 2000), (22, 2000), (23, 2000), (24, 2000), (25, 2000), (26, 2000), (27, 2000), (28, 2000),   -- kills with a spell
-    (30, 500), (31, 500), (33, 500),                                            -- the same, unlocking a spell
+    (1, 500), (2, 7500), (3, 30000),
+    (212, 40000), (213, 40000), (214, 40000), (215, 40000), (216, 40000), (217, 40000), (218, 40000), (219, 40000), (220, 40000),
+    (34, 10), (4, 30), (49, 60), (5, 15),
+    (20, 2000), (21, 2000), (22, 2000), (23, 2000), (24, 2000), (25, 2000), (26, 2000), (27, 2000), (28, 2000),
+    (30, 500), (31, 500), (33, 500),
     (40, 1500), (41, 1500), (42, 1500), (43, 1500), (44, 1500), (45, 1500), (46, 1500), (47, 1500), (48, 1500),
-    (32, 20), (11, 30), (50, 40), (12, 50),                                     -- levels in one run
+    (32, 20), (11, 30), (50, 40), (12, 50),
     (13, 25), (200, 2000), (201, 30000), (202, 5000),
-    (221, 10000), (222, 10000), (223, 10000), (224, 10000), (225, 10000), (226, 10000), (227, 10000),   -- kills by school
+    (221, 10000), (222, 10000), (223, 10000), (224, 10000), (225, 10000), (226, 10000), (227, 10000),
     (228, 1500), (230, 15), (231, 30), (232, 2000),
     (241, 15000), (242, 1500), (243, 15000), (244, 60), (245, 20), (254, 20000);
 UPDATE `bonk_quest` AS `q` JOIN `bonk_quest_amount` AS `n` ON `n`.`id` = `q`.`id`
 SET `q`.`description` = REPLACE(`q`.`description`, FORMAT(`q`.`amount`, 0), FORMAT(`n`.`amount`, 0)), `q`.`amount` = `n`.`amount`;
 DROP TEMPORARY TABLE `bonk_quest_amount`;
-UPDATE `bonk_quest` SET `amount` = 180, `description` = 'Go 3 minutes without being hit in a run.' WHERE `id` = 237;    -- Ghost Walk
+UPDATE `bonk_quest` SET `amount` = 180, `description` = 'Go 3 minutes without being hit in a run.' WHERE `id` = 237;
 
--- Class Mastery quests the same way: elites 10/25 -> 25/60, kills with a
--- spell 750/1000 -> 2500/3000, level 30 -> 50 in one run.
 UPDATE `bonk_quest` SET
     `description` = REPLACE(`description`, FORMAT(`amount`, 0), FORMAT(CASE `amount` WHEN 10 THEN 25 ELSE 60 END, 0)),
     `amount` = CASE `amount` WHEN 10 THEN 25 ELSE 60 END
@@ -103,14 +78,9 @@ WHERE `category` = 2 AND `type` = 2 AND `amount` IN (750, 1000);
 UPDATE `bonk_quest` SET `description` = REPLACE(`description`, '30', '50'), `amount` = 50
 WHERE `category` = 2 AND `type` = 4 AND `amount` = 30;
 
--- E7: extracted gear sells for gold at any vendor (the gear NPC at camp):
--- an epic a cleared stage's worth of gold or half of it, a legendary more.
 UPDATE `item_template` SET `sell_price` = 10000 WHERE `entry` BETWEEN 901300 AND 901499 AND `quality` = 4;
 UPDATE `item_template` SET `sell_price` = 50000 WHERE `entry` BETWEEN 901300 AND 901499 AND `quality` = 5;
 
--- E4: Darkmoon Cards. A fresh account has the 12 starter cards (no quest);
--- these quests unlock the other 18, each then bought at the Spellbook.
--- Reward type 11: bonk_card.id.
 DELETE FROM `bonk_quest` WHERE `id` BETWEEN 300 AND 317;
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `param`, `amount`, `reward_type`, `reward_value`, `class`, `category`) VALUES
 (300, 'Field Medic',          'Heal 25,000 health, across all your runs.',                  'INV_Stone_04',                         7,  0, 0,  25000, 11, 1,  0, 5),
@@ -132,8 +102,6 @@ INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`,
 (316, 'Magnetic Personality', 'Find 100 Darkmoon Tickets.',                                 'INV_Gizmo_02',                         5,  0, 0,  100,   11, 28, 0, 5),
 (317, 'Lockpicker',           'Buy 100 chests.',                                            'INV_Misc_Key_14',                      31, 0, 0,  100,   11, 29, 0, 5);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

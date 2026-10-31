@@ -6,14 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016390000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016390000');
--- Add your query below.
 
-
--- Vanilla Bonk, playtest fixes (user, 2026-10-16).
-
--- Glyphs were weaker than single Darkmoon Card copies (Hunter's Mark +10%
--- against the Mark of the Champion card's +15% a copy; Second Wind 2%). A
--- run gets two, so each is worth several cards of its rarity now.
 UPDATE `bonk_glyph` SET `description` = '+40% experience.' WHERE `id` = 1;
 UPDATE `bonk_card` SET `stat1_value` = 40, `description` = '+40% experience.' WHERE `id` = 150;
 UPDATE `bonk_glyph` SET `value1` = 100, `description` = '+50% pickup range, and power-ups stay on the ground twice as long.' WHERE `id` = 2;
@@ -30,16 +23,11 @@ UPDATE `bonk_card` SET `value1` = 60, `description` = '+60% Valor.' WHERE `id` =
 UPDATE `bonk_glyph` SET `description` = '+50% Power.' WHERE `id` = 10;
 UPDATE `bonk_card` SET `stat1_value` = 50, `description` = '+50% Power.' WHERE `id` = 155;
 UPDATE `bonk_glyph` SET `value1` = 100, `description` = 'Once each stage, when you would die, you come back at full health instead.' WHERE `id` = 11;
--- Soul Harvest: a few seconds of triple damage, not one stray hit.
 UPDATE `bonk_glyph` SET `value1` = 50, `value2` = 3, `value3` = 3000, `description` = 'Every 50 kills, you deal triple damage for 3 seconds.' WHERE `id` = 12;
 UPDATE `bonk_glyph` SET `value1` = 1, `description` = '+1% Power for every 1% of health you are missing.' WHERE `id` = 13;
 UPDATE `bonk_glyph` SET `value1` = 3000, `value2` = 8, `description` = 'Every 3 seconds, lightning strikes up to 8 enemies near you. These strikes always crit.' WHERE `id` = 16;
 UPDATE `bonk_glyph` SET `value1` = 6000, `value2` = 6, `value3` = 10, `description` = 'Every 6 seconds, a meteor crashes into the thickest crowd of enemies near you.' WHERE `id` = 17;
 
--- Lit Fuse: a sapper runs in with it (BonkMobAI), an aura on itself that
--- never ends; the client patch gives it the look of a lit stick of dynamite
--- in the hand (tools/telegraphs/ExploderVisuals.cs). A copy of Explosive
--- Sheep Passive without its passive flags and its proc.
 DELETE FROM `spell_template` WHERE `entry` = 33400;
 DROP TEMPORARY TABLE IF EXISTS `bonk_lit_fuse`;
 CREATE TEMPORARY TABLE `bonk_lit_fuse` SELECT * FROM `spell_template` WHERE `entry` = 4051 AND `build` = 5302;
@@ -49,12 +37,8 @@ UPDATE `bonk_lit_fuse` SET `entry` = 33400, `attributes` = 0, `attributesEx` = 0
 INSERT INTO `spell_template` SELECT * FROM `bonk_lit_fuse`;
 DROP TEMPORARY TABLE `bonk_lit_fuse`;
 
--- No world events: holidays, fishing contests, the Gurubashi Arena chest,
--- hourly bells, the Dragons of Nightmare and the rest only spammed the log.
 UPDATE `game_event` SET `disabled` = 1;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

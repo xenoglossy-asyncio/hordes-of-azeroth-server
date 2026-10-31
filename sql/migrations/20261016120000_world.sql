@@ -6,59 +6,32 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016120000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016120000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk: weapons by class (user, 2026-10-16)
---
--- A class keeps to melee or ranged, but has several kinds of weapon:
---   Warrior   one- and two-handed swords (dual wield), shields
---   Paladin   one-handed maces or swords with a shield, two-handed maces or swords
---   Shaman    one-handed maces with a shield, two-handed maces
---   Rogue     daggers and one-handed swords, dual wield
---   Hunter    bows, guns and crossbows
---   Druid     staves, two-handed maces
---   Mage, Warlock   staves, or a one-handed sword or dagger with an off-hand item
---   Priest    staves, or a one-handed mace with an off-hand item
--- A two-hander deals what two one-handers do; a shield brings Armor and
--- Shield instead of damage. BonkPlayer::OnLogin teaches each class the
--- weapon skills for these.
---
--- Class masks: 1 Warrior, 2 Paladin, 4 Hunter, 8 Rogue, 16 Priest,
--- 64 Shaman, 128 Mage, 256 Warlock, 1024 Druid.
--- =============================================================
-
--- The run gear weapons from 20261016110000 (green, blue, epic in a row;
--- epics' permanent copies 1000 higher).
 DROP TEMPORARY TABLE IF EXISTS `bonk_weapon_mask`;
 CREATE TEMPORARY TABLE `bonk_weapon_mask` (`first` INT UNSIGNED, `classes` INT, `one_hand` TINYINT);
 INSERT INTO `bonk_weapon_mask` VALUES
-(900381, 395,  1),    -- one-handed sword: Warrior, Paladin, Rogue, Mage, Warlock
-(900384, 67,   0),    -- shield: Warrior, Paladin, Shaman
-(900387, 82,   1),    -- one-handed mace: Paladin, Priest, Shaman
-(900390, 1090, 0),    -- two-handed mace: Paladin, Shaman, Druid
-(900393, 392,  1),    -- dagger: Rogue, Mage, Warlock
-(900396, 4,    0),    -- bow: Hunter
-(900399, 1424, 0),    -- staff: Mage, Warlock, Priest, Druid
-(900402, 400,  0);    -- held in off-hand: Mage, Warlock, Priest
+(900381, 395,  1),
+(900384, 67,   0),
+(900387, 82,   1),
+(900390, 1090, 0),
+(900393, 392,  1),
+(900396, 4,    0),
+(900399, 1424, 0),
+(900402, 400,  0);
 UPDATE `item_template` `i` JOIN `bonk_weapon_mask` `w`
     ON `i`.`entry` BETWEEN `w`.`first` AND `w`.`first` + 2 OR `i`.`entry` = `w`.`first` + 1002
     SET `i`.`allowable_class` = `w`.`classes`;
--- One-handers: as much as half a two-hander (Power 2, 3.5, 5 by quality).
 UPDATE `bonk_item_stat` `s` JOIN `bonk_weapon_mask` `w`
     ON `w`.`one_hand` = 1 AND (`s`.`entry` BETWEEN `w`.`first` AND `w`.`first` + 2 OR `s`.`entry` = `w`.`first` + 1002)
     SET `s`.`power` = CASE WHEN `s`.`entry` = `w`.`first` THEN 2 WHEN `s`.`entry` = `w`.`first` + 1 THEN 3.5 ELSE 5 END;
 DROP TEMPORARY TABLE IF EXISTS `bonk_weapon_mask`;
 
--- New run gear: two-handed swords (Warrior, Paladin), guns and crossbows
--- (Hunter), green, blue and epic, 900405-900413.
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_spec`;
 CREATE TEMPORARY TABLE `bonk_gear_spec` (`spec` INT, `class` INT, `subclass` INT, `inv` VARCHAR(16), `classes` INT, `dmg_min` FLOAT, `dmg_max` FLOAT);
 INSERT INTO `bonk_gear_spec` VALUES
-(1, 2, 8,  '17',    3, 4, 8),     -- two-handed sword
-(2, 2, 3,  '15,26', 4, 2, 5),     -- gun
-(3, 2, 18, '15,26', 4, 2, 5);     -- crossbow
+(1, 2, 8,  '17',    3, 4, 8),
+(2, 2, 3,  '15,26', 4, 2, 5),
+(3, 2, 18, '15,26', 4, 2, 5);
 
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_pick`;
 CREATE TEMPORARY TABLE `bonk_gear_pick` SELECT `s`.`spec`, `q`.`quality`, `s`.`classes`, `s`.`dmg_min`, `s`.`dmg_max`,
@@ -99,7 +72,6 @@ INSERT INTO `item_template` SELECT * FROM `bonk_gear_items`;
 UPDATE `bonk_gear_items` SET `entry` = `entry` + 1000, `description` = '' WHERE `quality` >= 4;
 INSERT INTO `item_template` SELECT * FROM `bonk_gear_items` WHERE `entry` >= 901405;
 
--- Two-handers: Power 4, 7, 10 by quality.
 DELETE FROM `bonk_item_stat` WHERE `entry` BETWEEN 900405 AND 900413 OR `entry` BETWEEN 901405 AND 901413;
 INSERT INTO `bonk_item_stat` (`entry`, `power`, `armor`, `dodge`, `hit`, `crit`, `crit_damage`, `shield`, `haste`, `area`, `pickup_range`, `luck`, `set_id`)
     SELECT `entry`, CASE `quality` WHEN 2 THEN 4 WHEN 3 THEN 7 ELSE 10 END, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 FROM `bonk_gear_pick`;
@@ -114,8 +86,6 @@ DROP TEMPORARY TABLE IF EXISTS `bonk_gear_spec`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_pick`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_gear_items`;
 
--- Bullets for guns, like the starter Darkmoon Arrows (shots need ammo; the
--- run hands out the right kind for the ranged weapon worn).
 DELETE FROM `item_template` WHERE `entry` = 900227;
 DROP TEMPORARY TABLE IF EXISTS `bonk_shot`;
 CREATE TEMPORARY TABLE `bonk_shot` SELECT * FROM `item_template` WHERE `entry` = 2516
@@ -125,8 +95,6 @@ UPDATE `bonk_shot` SET `entry` = 900227, `patch` = 0, `name` = 'Darkmoon Shot', 
 INSERT INTO `item_template` SELECT * FROM `bonk_shot`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_shot`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

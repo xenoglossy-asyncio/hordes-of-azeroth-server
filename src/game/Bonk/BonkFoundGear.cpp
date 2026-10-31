@@ -1,4 +1,6 @@
 #include "BonkFoundGear.h"
+#include "BonkLocale.h"
+#include "BonkStrings.h"
 #include "Database/DatabaseEnv.h"
 #include "Item.h"
 #include "Log.h"
@@ -290,9 +292,9 @@ std::string BonkFound::DescribeRanges(uint32 tier)
     return text;
 }
 
-std::string BonkFound::DescribeTier(uint32 tier)
+std::string BonkFound::DescribeTier(uint32 tier, LocaleConstant locale)
 {
-    return "Tier " + std::to_string(tier);
+    return sBonkLocale.GetString(BONK_STRING_FOUND_TIER, locale, { std::to_string(tier) });
 }
 
 void BonkFound::AddWornStats(Item const* item, float* passives)
@@ -327,8 +329,13 @@ std::string BonkFound::DescribeLines(BonkFoundGear const& found, uint32 tier)
 
 std::string BonkFound::DescribeExtra(Item const* item, uint32 tier)
 {
-    uint32 const entryTier = item ? BonkMgr::GetGearTier(item->GetEntry()) : 0;
-    BonkItemStat const* stat = item ? sBonkMgr.GetItemStat(item->GetEntry()) : nullptr;
+    return item ? DescribeExtra(item->GetEntry(), tier) : std::string();
+}
+
+std::string BonkFound::DescribeExtra(uint32 entry, uint32 tier)
+{
+    uint32 const entryTier = BonkMgr::GetGearTier(entry);
+    BonkItemStat const* stat = sBonkMgr.GetItemStat(entry);
     if (!stat || !entryTier || tier <= entryTier)
         return std::string();
     float const extra = BonkGearTierScale(tier) / BonkGearTierScale(entryTier) - 1.0f;

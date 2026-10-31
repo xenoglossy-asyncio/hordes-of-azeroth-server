@@ -6,33 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015280000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015280000');
--- Add your query below.
 
-
--- =============================================================
--- Vanilla Bonk: Core loop v2, phase B (fresh characters and the town)
---
--- New characters start with a class starter outfit (chest, legs, boots,
--- gloves) and a starter weapon of their class's one weapon type, plus
--- four 24-slot Darkmoon Satchels (Hunters also a stack of green Darkmoon
--- Arrows, which their shots need); no gray or white items (shirt, food,
--- water, Hearthstone, worn weapons). Looks are low-level greens; the
--- stats are Bonk stats (bonk_item_stat), about a third of the gear
--- NPC's first set, with no WoW stats, armor or durability. Characters
--- made before this get the satchels at login (BonkPlayer::GiveStarterBags).
---
--- Cloth (Ritual) for Mage, Priest and Warlock; leather (Scouting) for
--- Rogue, Druid, Hunter and Shaman; mail (Raider's) for Warrior and
--- Paladin. Weapons: Warrior sword and shield, Rogue two daggers, Hunter a
--- bow, Mage and Warlock a staff, Priest a mace and a held orb, Paladin a
--- two-handed mace, Shaman a mace and shield, Druid a staff.
---
--- Also: the weapon skills those need at level 1, a Banker at camp, and
--- the camp mailbox shown again.
--- =============================================================
-
--- Class masks: 1 Warrior, 2 Paladin, 4 Hunter, 8 Rogue, 16 Priest,
--- 64 Shaman, 128 Mage, 256 Warlock, 1024 Druid.
 DROP TEMPORARY TABLE IF EXISTS `bonk_starter_src`;
 CREATE TEMPORARY TABLE `bonk_starter_src` (
     `entry` INT UNSIGNED NOT NULL,
@@ -42,39 +16,32 @@ CREATE TEMPORARY TABLE `bonk_starter_src` (
     `dmg_max` FLOAT NOT NULL
 );
 INSERT INTO `bonk_starter_src` VALUES
--- Cloth: Ritual.
-(900201, 14133, 400,  0, 0),    -- Ritual Tunic
-(900202, 14125, 400,  0, 0),    -- Ritual Kilt
-(900203, 14129, 400,  0, 0),    -- Ritual Sandals
-(900204, 14124, 400,  0, 0),    -- Ritual Gloves
--- Leather: Scouting.
-(900205, 6584,  1100, 0, 0),    -- Scouting Tunic
-(900206, 6587,  1100, 0, 0),    -- Scouting Trousers
-(900207, 6582,  1100, 0, 0),    -- Scouting Boots
-(900208, 6586,  1100, 0, 0),    -- Scouting Gloves
--- Mail: Raider's.
-(900209, 9783,  3,    0, 0),    -- Raider's Chestpiece
-(900210, 9789,  3,    0, 0),    -- Raider's Legguards
-(900211, 9784,  3,    0, 0),    -- Raider's Boots
-(900212, 9787,  3,    0, 0),    -- Raider's Gauntlets
--- Weapons, shields and off-hands.
-(900213, 15210, 1,    2, 5),    -- Raider Shortsword (Warrior)
-(900214, 9790,  1,    0, 0),    -- Raider's Shield (Warrior)
-(900215, 4777,  2,    4, 8),    -- Ironwood Maul (Paladin)
-(900216, 2079,  64,   2, 5),    -- Sergeant's Warhammer (Shaman)
-(900217, 14729, 64,   0, 0),    -- War Paint Shield (Shaman)
-(900218, 3222,  8,    2, 4),    -- Wicked Dagger (Rogue, two)
-(900219, 11304, 4,    2, 5),    -- Fine Longbow (Hunter)
-(900220, 1933,  128,  4, 8),    -- Staff of Conjuring (Mage)
-(900221, 3227,  256,  4, 8),    -- Nightbane Staff (Warlock)
-(900222, 1539,  1024, 4, 8),    -- Gnarled Hermit's Staff (Druid)
-(900223, 789,   16,   2, 5),    -- Stout Battlehammer (Priest)
-(900224, 15926, 16,   0, 0),    -- Spellbinder Orb (Priest)
--- The bag.
-(900225, 4500,  -1,   0, 0),    -- Traveler's Backpack, as the Darkmoon Satchel
--- Hunter shots need a bow and arrows equipped (Spell::CheckItems runs for
--- triggered casts too); weapon casts never use an arrow up.
-(900226, 2512,  4,    0, 0);    -- Rough Arrow, as Darkmoon Arrows
+(900201, 14133, 400,  0, 0),
+(900202, 14125, 400,  0, 0),
+(900203, 14129, 400,  0, 0),
+(900204, 14124, 400,  0, 0),
+(900205, 6584,  1100, 0, 0),
+(900206, 6587,  1100, 0, 0),
+(900207, 6582,  1100, 0, 0),
+(900208, 6586,  1100, 0, 0),
+(900209, 9783,  3,    0, 0),
+(900210, 9789,  3,    0, 0),
+(900211, 9784,  3,    0, 0),
+(900212, 9787,  3,    0, 0),
+(900213, 15210, 1,    2, 5),
+(900214, 9790,  1,    0, 0),
+(900215, 4777,  2,    4, 8),
+(900216, 2079,  64,   2, 5),
+(900217, 14729, 64,   0, 0),
+(900218, 3222,  8,    2, 4),
+(900219, 11304, 4,    2, 5),
+(900220, 1933,  128,  4, 8),
+(900221, 3227,  256,  4, 8),
+(900222, 1539,  1024, 4, 8),
+(900223, 789,   16,   2, 5),
+(900224, 15926, 16,   0, 0),
+(900225, 4500,  -1,   0, 0),
+(900226, 2512,  4,    0, 0);
 
 DROP TEMPORARY TABLE IF EXISTS `bonk_starter_items`;
 CREATE TEMPORARY TABLE `bonk_starter_items` SELECT `t`.* FROM `item_template` `t`
@@ -108,9 +75,6 @@ UPDATE `bonk_starter_items` SET `name` = 'Darkmoon Arrow' WHERE `entry` = 900226
 DELETE FROM `item_template` WHERE `entry` BETWEEN 900201 AND 900226;
 INSERT INTO `item_template` SELECT * FROM `bonk_starter_items`;
 
--- Bonk stats: a chest and legs give Power and Armor, boots Armor, gloves
--- Power and Crit; a one-hander or off-hand 2 Power, a two-hander, staff
--- or bow 4; a shield 1.5 Armor.
 DELETE FROM `bonk_item_stat` WHERE `entry` BETWEEN 900201 AND 900225;
 INSERT INTO `bonk_item_stat` (`entry`, `power`, `armor`, `dodge`, `hit`, `crit`, `crit_damage`, `shield`, `haste`, `area`, `pickup_range`, `luck`, `set_id`) VALUES
 (900201, 1,   1,    0, 0, 0,   0, 0, 0, 0, 0, 0, 0),
@@ -138,7 +102,6 @@ INSERT INTO `bonk_item_stat` (`entry`, `power`, `armor`, `dodge`, `hit`, `crit`,
 (900223, 2,   0,    0, 0, 0,   0, 0, 0, 0, 0, 0, 0),
 (900224, 2,   0,    0, 0, 0,   0, 0, 0, 0, 0, 0, 0);
 
--- The starter kit per class, for every race that can be it.
 DROP TEMPORARY TABLE IF EXISTS `bonk_starter_kit`;
 CREATE TEMPORARY TABLE `bonk_starter_kit` (`class` TINYINT UNSIGNED, `item` INT UNSIGNED, `amount` TINYINT UNSIGNED);
 INSERT INTO `bonk_starter_kit` VALUES
@@ -151,7 +114,6 @@ INSERT INTO `bonk_starter_kit` VALUES
 (8, 900201, 1), (8, 900202, 1), (8, 900203, 1), (8, 900204, 1), (8, 900220, 1),
 (9, 900201, 1), (9, 900202, 1), (9, 900203, 1), (9, 900204, 1), (9, 900221, 1),
 (11, 900205, 1), (11, 900206, 1), (11, 900207, 1), (11, 900208, 1), (11, 900222, 1),
--- Four satchels each.
 (1, 900225, 4), (2, 900225, 4), (3, 900225, 4), (4, 900225, 4), (5, 900225, 4),
 (7, 900225, 4), (8, 900225, 4), (9, 900225, 4), (11, 900225, 4);
 
@@ -159,7 +121,6 @@ DELETE FROM `playercreateinfo_item`;
 INSERT INTO `playercreateinfo_item` (`race`, `class`, `itemid`, `amount`)
     SELECT `p`.`race`, `p`.`class`, `k`.`item`, `k`.`amount` FROM `playercreateinfo` `p` JOIN `bonk_starter_kit` `k` ON `k`.`class` = `p`.`class`;
 
--- Weapon skills the starter weapons need at level 1.
 INSERT IGNORE INTO `playercreateinfo_spell` (`race`, `class`, `spell`, `build_min`, `build_max`, `note`) VALUES
 (3, 1, 201, 0, 5875, 'One-Handed Swords (Vanilla Bonk starter sword)'),
 (6, 1, 201, 0, 5875, 'One-Handed Swords (Vanilla Bonk starter sword)'),
@@ -178,7 +139,6 @@ INSERT IGNORE INTO `playercreateinfo_spell` (`race`, `class`, `spell`, `build_mi
 (5, 9, 227, 0, 5875, 'Staves (Vanilla Bonk starter staff)'),
 (7, 9, 227, 0, 5875, 'Staves (Vanilla Bonk starter staff)');
 
--- Banker at camp, by the mailbox: a goblin, built like the other camp NPCs.
 DELETE FROM `creature_template` WHERE `entry` = 900009;
 DROP TEMPORARY TABLE IF EXISTS `bonk_banker`;
 CREATE TEMPORARY TABLE `bonk_banker` SELECT * FROM `creature_template` WHERE `entry` = 900004;
@@ -191,7 +151,6 @@ CREATE TEMPORARY TABLE `bonk_banker_spawn` SELECT * FROM `creature` WHERE `guid`
 UPDATE `bonk_banker_spawn` SET `guid` = 900009, `id` = 900009, `position_x` = 16223.0, `position_y` = 16271.8, `position_z` = 13.0, `orientation` = 4.8;
 INSERT INTO `creature` SELECT * FROM `bonk_banker_spawn`;
 
--- The camp mailbox, hidden with the rest of GM Island's clutter, is back.
 DELETE FROM `bonk_hidden_gameobject` WHERE `guid` = 230922;
 
 DROP TEMPORARY TABLE IF EXISTS `bonk_starter_src`;
@@ -200,8 +159,6 @@ DROP TEMPORARY TABLE IF EXISTS `bonk_starter_kit`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_banker`;
 DROP TEMPORARY TABLE IF EXISTS `bonk_banker_spawn`;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

@@ -6,18 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012110000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012110000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: Poison Cloud like Vampire Survivors' Santa Water
---
--- It was dropped at the hero's feet every 4.5 seconds and ticked every
--- 2 seconds, so a trail of clouds always lay around and the enemies
--- chasing the hero crossed them between ticks. Now it is thrown onto the
--- biggest pack, lasts 10 seconds, the next comes 10 seconds later, and it
--- ticks twice a second for its damage per second.
--- =============================================================
 
 ALTER TABLE `bonk_weapon`
     ADD COLUMN `tick_ms` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'damage over time ticks this often, and damage_fraction is then per second; 0 = the spell''s own rate';
@@ -26,8 +14,6 @@ UPDATE `bonk_weapon` SET `target` = 3, `range` = 25, `cooldown_ms` = 10000, `dur
     `description` = 'Throws a cloud of poison onto the biggest pack of enemies. It lasts 10 seconds and poisons everything inside twice a second.'
     WHERE `id` = 26;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

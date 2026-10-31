@@ -6,12 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012020000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012020000');
--- Add your query below.
 
-
--- Vanilla Bonk: quests. Account-wide goals that count across runs and pay
--- out gold, Talent Shards or an unlock. Whatever a quest unlocks (a weapon,
--- passive, talent or upgrade) stays out of the game until it is done.
 CREATE TABLE IF NOT EXISTS `bonk_quest` (
     `id`           INT UNSIGNED     NOT NULL,
     `name`         VARCHAR(64)      NOT NULL,
@@ -27,22 +22,19 @@ CREATE TABLE IF NOT EXISTS `bonk_quest` (
 
 DELETE FROM `bonk_quest`;
 INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`, `amount`, `reward_type`, `reward_value`) VALUES
--- Kills
 ( 1, 'Pest Control',      'Kill 250 enemies.',                  'INV_Misc_Bone_HumanSkull_01',   0, 0,   250, 0, 10000),
-( 2, 'Exterminator',      'Kill 2,500 enemies.',                'INV_Misc_Bone_ElfSkull_01',     0, 0,  2500, 3,     9),  -- Magnet
+( 2, 'Exterminator',      'Kill 2,500 enemies.',                'INV_Misc_Bone_ElfSkull_01',     0, 0,  2500, 3,     9),
 ( 3, 'Bonk Legend',       'Kill 10,000 enemies.',               'Ability_Warrior_BattleShout',   0, 0, 10000, 1,    10),
-( 4, 'Elite Hunter',      'Kill 15 elites.',                    'Ability_Warrior_Challange',     1, 1,    15, 2,     4),  -- Hammer of Wrath
+( 4, 'Elite Hunter',      'Kill 15 elites.',                    'Ability_Warrior_Challange',     1, 1,    15, 2,     4),
 ( 5, 'Big Game',          'Kill 10 mini-bosses.',               'INV_Misc_Head_Dragon_01',       1, 3,    10, 1,     3),
-( 6, 'Boss Bonker',       'Defeat 5 stage bosses.',             'INV_Hammer_Unique_Sulfuras',    1, 2,     5, 4,     7),  -- Second Wind
--- Getting further
-( 7, 'Into the Wild',     'Reach stage 2 on Easy.',             'INV_Misc_Map_01',               3, 1,     2, 2,    16),  -- Frost Nova
+( 6, 'Boss Bonker',       'Defeat 5 stage bosses.',             'INV_Hammer_Unique_Sulfuras',    1, 2,     5, 4,     7),
+( 7, 'Into the Wild',     'Reach stage 2 on Easy.',             'INV_Misc_Map_01',               3, 1,     2, 2,    16),
 ( 8, 'Seasoned',          'Reach stage 3 on Easy.',             'INV_Misc_Map_01',               3, 1,     3, 1,     2),
-( 9, 'Rough Lands',       'Reach stage 3 on Medium.',           'INV_Misc_Map_01',               3, 3,     3, 5,     8),  -- Duplicator upgrade
-(10, 'Into the Fire',     'Reach stage 2 on Hard.',             'Spell_Fire_LavaSpawn',          3, 2,     2, 2,    19),  -- Hellfire
-(11, 'Growing Strong',    'Reach level 15 in a single run.',    'INV_Misc_Book_09',              4, 0,    15, 2,    11),  -- Chain Lightning
+( 9, 'Rough Lands',       'Reach stage 3 on Medium.',           'INV_Misc_Map_01',               3, 3,     3, 5,     8),
+(10, 'Into the Fire',     'Reach stage 2 on Hard.',             'Spell_Fire_LavaSpawn',          3, 2,     2, 2,    19),
+(11, 'Growing Strong',    'Reach level 15 in a single run.',    'INV_Misc_Book_09',              4, 0,    15, 2,    11),
 (12, 'Unstoppable',       'Reach level 30 in a single run.',    'Spell_Holy_WordFortitude',      4, 0,    30, 1,     5),
-(13, 'Shard Seeker',      'Find 10 Talent Shards.',             'INV_Enchant_ShardBrilliantLarge', 5, 0,  10, 4,     6),  -- Banishment
--- Weapon mastery: kills with each class's first weapon, or its evolution
+(13, 'Shard Seeker',      'Find 10 Talent Shards.',             'INV_Enchant_ShardBrilliantLarge', 5, 0,  10, 4,     6),
 (20, 'Thunderous',        'Kill 500 enemies with Thunder Clap.',     'Spell_Nature_ThunderClap',  2,  1, 500, 1, 2),
 (21, 'Hallowed Ground',   'Kill 500 enemies with Consecration.',     'Spell_Holy_InnerFire',      2,  3, 500, 1, 2),
 (22, 'Smiter',            'Kill 500 enemies with Smite.',            'Spell_Holy_HolySmite',      2,  6, 500, 1, 2),
@@ -53,7 +45,6 @@ INSERT INTO `bonk_quest` (`id`, `name`, `description`, `icon`, `type`, `target`,
 (27, 'Shadowcaster',      'Kill 500 enemies with Shadow Bolt.',      'Spell_Shadow_ShadowBolt',   2, 17, 500, 1, 2),
 (28, 'Wrathful',          'Kill 500 enemies with Wrath.',            'Spell_Nature_AbolishMagic', 2, 20, 500, 1, 2);
 
--- The quest board at camp, between the talent trainer and the arena master.
 DELETE FROM `creature_template` WHERE `entry` = 900005;
 INSERT INTO `creature_template` (`entry`, `patch`, `name`, `subname`, `level_min`, `level_max`, `faction`, `npc_flags`,
     `display_id1`, `display_probability1`, `display_total_probability`, `type`, `unit_class`, `inhabit_type`,
@@ -72,8 +63,6 @@ INSERT INTO `broadcast_text` (`entry`, `male_text`, `female_text`) VALUES
 DELETE FROM `npc_text` WHERE `ID` = 900005;
 INSERT INTO `npc_text` (`ID`, `BroadcastTextID0`, `Probability0`) VALUES (900005, 900005, 1);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

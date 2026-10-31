@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkPlayer.h"
 #include "Creature.h"
 #include "Item.h"
@@ -959,7 +960,7 @@ bool BonkRun::TakeThunderCount(uint32 spellId)
 
 std::string BonkRun::DescribeThunderCount(OwnedWeapon const& owned) const
 {
-    return "Claps after every " + std::to_string(GetThunderHitsNeeded(owned)) + " casts of your other spells that hit an enemy.";
+    return GetString(BONK_STRING_THUNDER_CLAPS_AFTER, { std::to_string(GetThunderHitsNeeded(owned)) });
 }
 
 void BonkRun::DemoralizingShout(OwnedWeapon const& owned, SpellEntry const* spellInfo, std::vector<Creature*> const& hit)

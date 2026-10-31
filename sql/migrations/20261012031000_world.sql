@@ -6,21 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012031000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012031000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: warrior Thunder Clap, and "spells" instead of "weapons"
---
--- The warrior's Thunder Clap (6343) hits at most 4 enemies, so in a horde
--- it barely did anything. It now casts the creature Thunderclap (8078):
--- same look and icon, no target cap, a 10 yard radius, and it slows the
--- enemies it hits.
---
--- What a run auto-casts are spells, so the text players read says so.
--- (The Throwing Knives note about needing a thrown weapon means a real
--- weapon and stays.)
--- =============================================================
 
 UPDATE `bonk_weapon` SET `spell_id` = 8078, `range` = 10, `damage_fraction` = 0.5,
     `description` = 'Thunder around you that damages and slows every enemy it hits.'
@@ -38,8 +23,6 @@ UPDATE `bonk_upgrade` SET `description` = '+1 projectile for bolt spells.' WHERE
 UPDATE `bonk_item_set_bonus` SET `description` = 'Spells recharge 8% faster.' WHERE `set_id` = 2 AND `pieces` = 2;
 UPDATE `bonk_item_set_bonus` SET `description` = '+15% Power, and heal for 3% of the damage your spells deal.' WHERE `set_id` = 2 AND `pieces` = 4;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

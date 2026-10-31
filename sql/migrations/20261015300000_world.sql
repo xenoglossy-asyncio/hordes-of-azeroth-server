@@ -6,21 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261015300000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261015300000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: Darkmoon Cards (Core loop v2, phase C)
---
--- Run-only items that stack, offered by chests (BonkRunCards.cpp). A card
--- adds up to two stats (BonkPassiveEffect, 255 for none) and may carry one
--- effect (BonkCardEffect in BonkMgr.h, with value1-3 and a cooldown).
--- Copies add up; chances stack with diminishing returns.
---
--- Stats: 0 Power, 1 Haste, 3 movement speed, 4 max health, 5 health a
--- second, 7 experience, 12 Armor, 15 Crit, 17 Shield.
--- Rarity: 0 Common, 1 Uncommon, 2 Rare, 3 Epic.
--- =============================================================
 
 CREATE TABLE IF NOT EXISTS `bonk_card` (
     `id` INT UNSIGNED NOT NULL,
@@ -42,7 +27,6 @@ CREATE TABLE IF NOT EXISTS `bonk_card` (
 
 DELETE FROM `bonk_card`;
 INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`, `stat1_value`, `stat2`, `stat2_value`, `effect`, `value1`, `value2`, `value3`, `cooldown_ms`) VALUES
--- Staying alive.
 (1,  'Major Healthstone', 'INV_Stone_04',
      'Below 35% health, heal 30% of your maximum health. 60 sec cooldown; each further copy makes it 15% shorter.',
      2, 255, 0, 255, 0, 1, 35, 30, 15, 60000),
@@ -88,7 +72,6 @@ INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`,
 (15, 'Soulstone', 'Spell_Shadow_SoulGem',
      'Cheat death once: when you would die, come back with 40% health.',
      3, 255, 0, 255, 0, 11, 40, 0, 0, 0),
--- Damage.
 (16, 'Hand of Ragnaros', 'INV_Hammer_Unique_Sulfuras',
      'Your hits have a 3% chance to erupt in flame, dealing 150% of the hit to enemies within 6 yards of the target.',
      3, 255, 0, 255, 0, 12, 3, 1.5, 6, 0),
@@ -119,7 +102,6 @@ INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`,
 (25, 'Earthstrike', 'INV_Jewelry_Talisman_04',
      '+4% Power and +2% Crit.',
      1, 0, 4, 15, 2, 0, 0, 0, 0, 0),
--- Riches and handiness.
 (26, 'Fat Goblin Purse', 'INV_Misc_Bag_10',
      '+15% Valor.',
      0, 255, 0, 255, 0, 19, 15, 0, 0, 0),
@@ -136,8 +118,6 @@ INSERT INTO `bonk_card` (`id`, `name`, `icon`, `description`, `rarity`, `stat1`,
      '+8% movement speed.',
      0, 3, 8, 255, 0, 0, 0, 0, 0, 0);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

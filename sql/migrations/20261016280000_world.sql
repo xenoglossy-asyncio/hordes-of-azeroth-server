@@ -6,19 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016280000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016280000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk, Phase F2: the Mythic zones (bonk_map 14-16) with their
--- dungeons' bosses, drafted from docs/zones/mythic_*.sql and reviewed (the
--- same ability rules as the Heroic zones; no fears). The raids leave the
--- Mythic pool: tier 0 makes them dungeon modes only (BonkMgr::LoadMaps).
--- =============================================================
-
--- Mythic run zone: Burning Steppes (bonk_map 14). Reviewed 2026-10-16.
--- Start: flat ground below Terror Wing Path (median of the Black Dragonspawn spawns there); terrain within 60 yd varies 3 yd,
--- no lava/water and no zone border within 300 yd, nearest humanoid camp 130+ yd. Bosses from Blackrock Depths / Blackrock Spire.
 
 DELETE FROM `bonk_map` WHERE `id` = 14;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
@@ -28,39 +15,31 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 14;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(14, 7047, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),         -- Black Broodling (DragonWhelp x1.5)
-(14, 7048, 0, 0, 180, 420, 5, 0, 1, 1, 0.9, 1),       -- Scalding Broodling (DragonWhelp x1.75)
-(14, 9777, 0, 0, 390, 0, 4, 0, 1, 1, 0.95, 1),        -- Flamekin Sprite (Grell x1.3)
--- grunts
-(14, 9690, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Ember Worg (DireWolf x1.0)
-(14, 7025, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),       -- Blackrock Soldier (OrcMale)
-(14, 7038, 0, 1, 120, 360, 7, 0, 1, 1, 0.8, 1),       -- Thaurissan Agent (DwarfMale)
-(14, 7027, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),       -- Blackrock Slayer (OrcMale)
-(14, 7031, 0, 1, 270, 510, 6, 0, 1, 1, 0.7, 1),       -- Obsidian Elemental (ElementalEarth x1.0)
-(14, 7037, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),      -- Thaurissan Firewalker (DwarfMale)
-(14, 7029, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),         -- Blackrock Battlemaster (OrcMale)
--- bruisers
-(14, 7033, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),           -- Firegut Ogre (Ogre x2.2)
-(14, 7039, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- War Reaver (GolemStone x1.75)
--- casters
-(14, 7026, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Blackrock Sorcerer (OrcMale)
-(14, 7028, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Blackrock Warlock (OrcMale)
--- charger
-(14, 9697, 0, 4, 420, 0, 2, 2, 1, 1, 0.85, 1),        -- Giant Ember Worg (DireWolf x1.5)
--- elites
-(14, 7040, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),        -- Black Dragonspawn (DragonSpawn x1.0)
-(14, 7041, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Black Wyrmkin (DragonSpawnCaster x1.0)
-(14, 9819, 1, 1, 200, 0, 2, 0, 1, 1, 0.8, 1.2),       -- Blackhand Veteran, UBRS (orc male/female x1.2)
-(14, 7042, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1.2),   -- Flamescale Dragonspawn (DragonSpawn x1.25)
--- stage bosses
-(14, 9019, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),        -- Emperor Dagran Thaurissan, BRD (DwarfMale x1.2)
-(14, 10363, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),         -- General Drakkisath, UBRS (DragonSpawnOverlord x2.0, already huge)
--- mini-bosses
-(14, 9196, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),          -- Highlord Omokk, LBRS (OgreWarlord x2.65, already huge)
-(14, 9237, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),         -- War Master Voone, LBRS (TrollMale x1.2)
-(14, 9568, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),          -- Overlord Wyrmthalak, LBRS (DragonSpawnArmored x2.0, already huge)
-(14, 9017, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);         -- Lord Incendius, BRD (FireElemental x1.5)
+(14, 7047, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),
+(14, 7048, 0, 0, 180, 420, 5, 0, 1, 1, 0.9, 1),
+(14, 9777, 0, 0, 390, 0, 4, 0, 1, 1, 0.95, 1),
+(14, 9690, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(14, 7025, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),
+(14, 7038, 0, 1, 120, 360, 7, 0, 1, 1, 0.8, 1),
+(14, 7027, 0, 1, 210, 450, 7, 0, 1, 1, 0.8, 1),
+(14, 7031, 0, 1, 270, 510, 6, 0, 1, 1, 0.7, 1),
+(14, 7037, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),
+(14, 7029, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),
+(14, 7033, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),
+(14, 7039, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(14, 7026, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(14, 7028, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(14, 9697, 0, 4, 420, 0, 2, 2, 1, 1, 0.85, 1),
+(14, 7040, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),
+(14, 7041, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),
+(14, 9819, 1, 1, 200, 0, 2, 0, 1, 1, 0.8, 1.2),
+(14, 7042, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1.2),
+(14, 9019, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(14, 10363, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(14, 9196, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),
+(14, 9237, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(14, 9568, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),
+(14, 9017, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (7026, 7028);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -99,10 +78,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (14, 330, 3, 1),
 (14, 540, 3, 1);
 
--- Mythic run zone: Eastern Plaguelands (bonk_map 15). Reviewed 2026-10-16.
--- Start: open field between Plaguewood and Northpass Tower (a Frenzied Plaguehound spawn, near the median of their 26 spawns there);
--- terrain within 60 yd varies 5 yd, no cliffs, water or zone border within 300 yd, nearest humanoid 260+ yd. Bosses from Stratholme.
-
 DELETE FROM `bonk_map` WHERE `id` = 15;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -111,38 +86,30 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 15;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(15, 8600, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),         -- Plaguebat (FelBat x0.6)
-(15, 8596, 0, 0, 240, 480, 4, 0, 1, 1, 0.95, 1),      -- Plaguehound Runt (DarkHound x1.0)
--- grunts
-(15, 8597, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),       -- Plaguehound (DarkHound x1.15)
-(15, 8530, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),        -- Cannibal Ghoul (Ghoul x1.3)
-(15, 8523, 0, 1, 120, 360, 7, 0, 1, 1, 0.75, 1),      -- Scourge Soldier (Skeleton x1.15)
-(15, 8547, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),      -- Death Cultist (human male/female)
-(15, 8556, 0, 1, 270, 510, 6, 0, 1, 1, 0.75, 1),      -- Crypt Walker (CryptFiend x0.85)
-(15, 11290, 0, 1, 300, 540, 6, 0, 1, 1, 0.7, 1),      -- Mossflayer Zombie (TrollMale)
-(15, 8540, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),         -- Torn Screamer (Banshee x1.15)
--- bruisers
-(15, 1812, 0, 2, 0, 0, 6, 0, 1, 1, 0.65, 1),          -- Rotting Behemoth (BogBeast x1.5)
-(15, 8545, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- Abomination (FleshGolem x1.75)
--- casters
-(15, 8551, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Dark Summoner (human male/female)
-(15, 8526, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Dark Caster (SkeletonNaked x1.3)
--- charger
-(15, 8598, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),         -- Frenzied Plaguehound (DarkHound x1.3)
--- elites
-(15, 8529, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),        -- Scourge Champion (Skeleton x1.5)
-(15, 10405, 1, 1, 120, 0, 2, 0, 1, 1, 0.85, 1.2),     -- Plague Ghoul, Stratholme (Ghoul x1.15)
-(15, 9449, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Scarlet Cleric, Tyr's Hand (human male/female)
-(15, 9448, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1.2),   -- Scarlet Praetorian, Tyr's Hand (human male/female)
--- stage bosses
-(15, 10440, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),         -- Baron Rivendare (MountedDeathKnight x1.5, already big)
-(15, 10813, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),         -- Balnazzar (DreadLord x2.5, already huge)
--- mini-bosses
-(15, 10439, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),         -- Ramstein the Gorger (FleshGolem x2.0, already huge)
-(15, 10997, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),        -- Cannon Master Willey (HumanMale)
-(15, 10438, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),        -- Maleki the Pallid (HumanMale)
-(15, 10435, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);        -- Magistrate Barthilas (Wight x1.0)
+(15, 8600, 0, 0, 0, 210, 7, 0, 1, 1, 0.9, 1),
+(15, 8596, 0, 0, 240, 480, 4, 0, 1, 1, 0.95, 1),
+(15, 8597, 0, 1, 0, 210, 10, 0, 1, 1, 0.85, 1),
+(15, 8530, 0, 1, 60, 270, 8, 0, 1, 1, 0.8, 1),
+(15, 8523, 0, 1, 120, 360, 7, 0, 1, 1, 0.75, 1),
+(15, 8547, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),
+(15, 8556, 0, 1, 270, 510, 6, 0, 1, 1, 0.75, 1),
+(15, 11290, 0, 1, 300, 540, 6, 0, 1, 1, 0.7, 1),
+(15, 8540, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),
+(15, 1812, 0, 2, 0, 0, 6, 0, 1, 1, 0.65, 1),
+(15, 8545, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(15, 8551, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(15, 8526, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(15, 8598, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),
+(15, 8529, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),
+(15, 10405, 1, 1, 120, 0, 2, 0, 1, 1, 0.85, 1.2),
+(15, 9449, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1.2),
+(15, 9448, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.7, 1.2),
+(15, 10440, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(15, 10813, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1),
+(15, 10439, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),
+(15, 10997, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(15, 10438, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(15, 10435, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (8551, 8526);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -181,10 +148,6 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (15, 330, 3, 1),
 (15, 540, 3, 1);
 
--- Mythic run zone: Western Plaguelands (bonk_map 16). Reviewed 2026-10-16.
--- Start: open field east of Gahrron's Withering among the Diseased Grizzly spawns (14 within 120 yd); terrain within 75 yd varies 8 yd,
--- no water within 300 yd, Thondroril River border 300 yd away, farmhouse and nearest humanoid 130+ yd. Bosses from Scholomance.
-
 DELETE FROM `bonk_map` WHERE `id` = 16;
 INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone_id`, `position_x`, `position_y`, `position_z`, `orientation`,
     `duration_sec`, `level_offset`, `health_multiplier`, `damage_multiplier`, `health_growth_per_min`, `damage_growth_per_min`,
@@ -193,37 +156,29 @@ INSERT INTO `bonk_map` (`id`, `key`, `name`, `tier`, `map_type`, `map_id`, `zone
 
 DELETE FROM `bonk_map_creature` WHERE `bonk_map_id` = 16;
 INSERT INTO `bonk_map_creature` (`bonk_map_id`, `entry`, `kind`, `archetype`, `min_sec`, `max_sec`, `weight`, `max_alive`, `health_multiplier`, `damage_multiplier`, `speed`, `scale`) VALUES
--- swarmers
-(16, 10441, 0, 0, 0, 210, 7, 0, 1, 1, 0.95, 1),       -- Plagued Rat (Rat x1.0)
-(16, 8603, 0, 0, 240, 480, 4, 0, 1, 1, 0.85, 1),      -- Carrion Grub (Larva x0.75)
--- grunts
-(16, 1783, 0, 1, 0, 210, 10, 0, 1, 1, 0.8, 1),        -- Skeletal Flayer (Skeleton x1.15)
-(16, 1884, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),       -- Scarlet Lumberjack (human male/female)
-(16, 1791, 0, 1, 120, 360, 7, 0, 1, 1, 0.85, 1),      -- Slavering Ghoul (Ghoul x1.15)
-(16, 1883, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),      -- Scarlet Worker (human male/female)
-(16, 1821, 0, 1, 270, 510, 6, 0, 1, 1, 0.85, 1),      -- Carrion Lurker (Tarantula x1.0)
-(16, 1833, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),      -- Scarlet Knight (human male/female)
-(16, 1793, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),         -- Rotting Ghoul (Ghoul x1.0)
--- bruisers
-(16, 1824, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),           -- Plague Lurker (MineSpider x1.0)
-(16, 1816, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),          -- Diseased Grizzly (Bear x1.5)
--- casters
-(16, 1784, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),       -- Skeletal Sorcerer (SkeletonNaked x1.15)
-(16, 1826, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),       -- Scarlet Mage (human male/female)
--- charger
-(16, 1817, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),         -- Diseased Wolf (Wolf x1.0)
--- elites
-(16, 1834, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),        -- Scarlet Paladin (human male/female)
-(16, 11076, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),     -- Cauldron Lord Razarch (SkeletonMage x1.5)
-(16, 1832, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1.2),      -- Scarlet Magus (human male/female)
-(16, 1805, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1.2),  -- Flesh Golem (FleshGolem x1.45)
--- stage boss
-(16, 1853, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),        -- Darkmaster Gandling (HumanMale x1.5)
--- mini-bosses
-(16, 11622, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),         -- Rattlegore (BoneGolem x2.0, already huge)
-(16, 10508, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),        -- Ras Frostwhisper (Lich x1.5)
-(16, 10507, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),        -- The Ravenian (Wight x1.0)
-(16, 10506, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3);       -- Kirtonos the Herald (Gargoyle x1.0)
+(16, 10441, 0, 0, 0, 210, 7, 0, 1, 1, 0.95, 1),
+(16, 8603, 0, 0, 240, 480, 4, 0, 1, 1, 0.85, 1),
+(16, 1783, 0, 1, 0, 210, 10, 0, 1, 1, 0.8, 1),
+(16, 1884, 0, 1, 60, 270, 8, 0, 1, 1, 0.75, 1),
+(16, 1791, 0, 1, 120, 360, 7, 0, 1, 1, 0.85, 1),
+(16, 1883, 0, 1, 210, 450, 7, 0, 1, 1, 0.75, 1),
+(16, 1821, 0, 1, 270, 510, 6, 0, 1, 1, 0.85, 1),
+(16, 1833, 0, 1, 300, 540, 6, 0, 1, 1, 0.75, 1),
+(16, 1793, 0, 1, 420, 0, 5, 0, 1, 1, 0.8, 1),
+(16, 1824, 0, 2, 0, 0, 6, 0, 1, 1, 0.7, 1),
+(16, 1816, 0, 2, 0, 0, 4, 0, 1, 1, 0.65, 1),
+(16, 1784, 0, 3, 150, 330, 3, 3, 1, 1, 0.7, 1),
+(16, 1826, 0, 3, 360, 540, 3, 3, 1, 1, 0.7, 1),
+(16, 1817, 0, 4, 420, 0, 2, 2, 1, 1, 0.9, 1),
+(16, 1834, 1, 1, 0, 0, 3, 0, 1, 1, 0.75, 1.2),
+(16, 11076, 1, 1, 120, 0, 2, 0, 1, 1, 0.75, 1.2),
+(16, 1832, 1, 1, 200, 0, 2, 0, 1, 1, 0.75, 1.2),
+(16, 1805, 1, 1, 300, 0, 2, 0, 1.2, 1.2, 0.65, 1.2),
+(16, 1853, 2, 1, 0, 0, 1, 0, 1, 1, 0.85, 1.5),
+(16, 11622, 3, 1, 0, 0, 2, 0, 1, 1, 0.75, 1),
+(16, 10508, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(16, 10507, 3, 1, 0, 0, 2, 0, 1, 1, 0.8, 1.3),
+(16, 10506, 3, 1, 0, 0, 2, 0, 1, 1, 0.85, 1.3);
 
 DELETE FROM `bonk_mob` WHERE `entry` IN (1784, 1826);
 INSERT INTO `bonk_mob` (`entry`, `role`, `range`, `comment`) VALUES
@@ -259,11 +214,8 @@ INSERT INTO `bonk_map_event` (`bonk_map_id`, `second`, `event`, `count`) VALUES
 (16, 330, 3, 1),
 (16, 540, 3, 1);
 
--- The raids: dungeon modes only.
 UPDATE `bonk_map` SET `tier` = 0 WHERE `id` IN (2, 5, 6);
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

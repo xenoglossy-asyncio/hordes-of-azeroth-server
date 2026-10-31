@@ -6,14 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016480000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016480000');
--- Add your query below.
 
-
--- Vanilla Bonk: copy pass over player-facing text (user, 2026-10-16: some of
--- it read like broken English). WoW tooltip style, full sentences, the same
--- words for the same things; every number checked against the data.
-
--- Spells: full sentences, "nearest", "largest group of enemies".
 UPDATE `bonk_weapon` SET `description` = 'Blasts all nearby enemies with thunder, damaging them and slowing their movement.' WHERE `id` = 1;
 UPDATE `bonk_weapon` SET `description` = 'Hurls an axe that stuns the nearest enemy.' WHERE `id` = 2;
 UPDATE `bonk_weapon` SET `description` = 'Consecrates the ground under you, damaging enemies who stand in it.' WHERE `id` = 3;
@@ -77,15 +70,12 @@ UPDATE `bonk_weapon` SET `description` = 'Strikes the legs of the nearest enemy,
 UPDATE `bonk_weapon` SET `description` = 'Fires a powerful shot that pierces every enemy in a line, aimed at the Marked group or else the largest group.' WHERE `id` = 203;
 UPDATE `bonk_weapon` SET `description` = 'A spirit wolf fights for you. Every 15 sec it howls, and your other pets deal double damage to all enemies in front for 6 sec.' WHERE `id` = 211;
 
--- Ground spells: durations from duration_ms (4 sec; Poison Cloud 8 sec).
 UPDATE `bonk_weapon` SET `description` = 'Ice shards pelt the largest group of enemies for 4 sec, slowing them.' WHERE `id` = 22;
 UPDATE `bonk_weapon` SET `description` = 'Fire rains down on the largest group of enemies for 4 sec.' WHERE `id` = 23;
 UPDATE `bonk_weapon` SET `description` = 'Stars rain down across a wide area on the largest group of enemies for 4 sec.' WHERE `id` = 24;
 UPDATE `bonk_weapon` SET `description` = 'A storm cloud strikes the largest group of enemies, then keeps striking them with lightning for 4 sec.' WHERE `id` = 25;
 UPDATE `bonk_weapon` SET `description` = 'Throws a cloud of poison onto the largest group of enemies. It lasts 8 sec and poisons every enemy inside twice per second.' WHERE `id` = 26;
 
--- Spreading spells: they spread from rank 8 (BONK_EVOLVE_RANK), or always
--- once evolved; ranks have no cap, so never "at max level".
 UPDATE `bonk_weapon` SET `description` = 'Corrupts random enemies with Shadow damage over time. From rank 8, it spreads to nearby enemies when a corrupted enemy dies.' WHERE `id` = 18;
 UPDATE `bonk_weapon` SET `description` = 'Burns random enemies with moonlight over time. From rank 8, it spreads to nearby enemies when an affected enemy dies.' WHERE `id` = 21;
 UPDATE `bonk_weapon` SET `description` = 'Garrotes random nearby enemies, making them bleed. From rank 8, it spreads to nearby enemies when a bleeding enemy dies.' WHERE `id` = 35;
@@ -101,7 +91,6 @@ UPDATE `bonk_weapon` SET `description` = 'Curses random enemies with doom, damag
 UPDATE `bonk_weapon` SET `description` = 'Sends locusts at random enemies, damaging them over time. The swarm spreads to nearby enemies when an infested enemy dies.' WHERE `id` = 148;
 UPDATE `bonk_weapon` SET `description` = 'Burns random enemies with moonlight, damaging them over time. It spreads to nearby enemies when an affected enemy dies.' WHERE `id` = 149;
 
--- Glyphs.
 UPDATE `bonk_glyph` SET `description` = 'When an elite, mini-boss or boss dies within 30 yards of you, you heal for 30% of your maximum health.' WHERE `id` = 5;
 UPDATE `bonk_glyph` SET `description` = 'You capture Ley Lines twice as fast, and they offer 4 blessings to choose from.' WHERE `id` = 6;
 UPDATE `bonk_glyph` SET `description` = 'Your spells have a 30% chance to cast twice.' WHERE `id` = 7;
@@ -113,7 +102,6 @@ UPDATE `bonk_glyph` SET `description` = 'Spell ranks offered at level-ups are 1 
 UPDATE `bonk_glyph` SET `description` = 'Every 3 sec, lightning strikes up to 8 enemies near you. Every strike is a critical strike.' WHERE `id` = 16;
 UPDATE `bonk_glyph` SET `description` = 'Every 6 sec, a meteor crashes into the largest group of enemies near you.' WHERE `id` = 17;
 
--- Darkmoon Cards, and the Glyph mirror cards kept in step with their Glyphs.
 UPDATE `bonk_card` SET `description` = 'When you drop below 35% health, heal for 30% of your maximum health. 60 sec cooldown, 15% shorter for each additional copy.' WHERE `id` = 1;
 UPDATE `bonk_card` SET `description` = 'Your critical strikes have a 25% chance to heal you for 1% of your maximum health (at most 2% per second).' WHERE `id` = 8;
 UPDATE `bonk_card` SET `description` = 'Gain a Shield equal to 8% of your maximum health. When your Shield breaks, a fire nova scorches enemies within 8 yards.' WHERE `id` = 11;
@@ -132,18 +120,15 @@ UPDATE `bonk_card` SET `description` = 'Your spells have a 6% chance to cast twi
 UPDATE `bonk_card` SET `description` = '+60% pickup range, and power-ups stay on the ground twice as long.' WHERE `id` = 151;
 UPDATE `bonk_card` SET `description` = 'Your spells have a 30% chance to cast twice.' WHERE `id` = 153;
 
--- Legendary items, kept in step with their cards.
 UPDATE `item_template` SET `description` = 'Your hits have a 5% chance to unleash shadow, dealing 200% of the hit to enemies within 8 yards of the target and healing you for 10% of the damage dealt.' WHERE `entry` = 901421;
 UPDATE `item_template` SET `description` = 'Your spells have a 10% chance to cast twice.' WHERE `entry` = 901423;
 UPDATE `item_template` SET `description` = '+1 Count and +15% Area. Your spells fire 1 additional bolt, land 1 additional ground effect, cast again or affect 1 additional target, depending on the spell. Your area spells and melee attacks also reach farther.' WHERE `entry` = 901424;
 UPDATE `item_template` SET `description` = 'Your critical strikes have a 50% chance to heal you for 1% of your maximum health (at most 3% per second).' WHERE `entry` = 901425;
 UPDATE `item_template` SET `description` = 'Your spells have a 6% chance to cast twice.' WHERE `entry` = 901426;
 
--- Run gear and the Hearthstone.
 UPDATE `item_template` SET `description` = 'Found during a run. Put it in the Extraction Vault to keep it.' WHERE `entry` BETWEEN 900300 AND 900437 AND `description` = 'Run gear: put it in the Extraction Vault to keep it.';
 UPDATE `item_template` SET `description` = 'Opens a ring at your feet. Stand in it for 10 sec to go home with your loot. Disappears when the run ends.' WHERE `entry` = 900230;
 
--- Passives.
 UPDATE `bonk_passive` SET `description` = '+8% Haste. You attack and dots tick 8% more often.' WHERE `id` = 2;
 UPDATE `bonk_passive` SET `description` = '+10% Area. Your area spells cover more ground and your melee attacks reach farther.' WHERE `id` = 11;
 UPDATE `bonk_passive` SET `description` = '+10 Armor. Enemies deal less damage to you.' WHERE `id` = 13;
@@ -152,8 +137,6 @@ UPDATE `bonk_passive` SET `description` = '+5 Luck. Chests and level-ups offer r
 UPDATE `bonk_passive` SET `description` = '+1 Count. Your spells fire 1 additional bolt, land 1 additional ground effect, cast again or affect 1 additional target.' WHERE `id` = 19;
 UPDATE `bonk_passive` SET `description` = 'Your hits have a 10% chance to heal you for 1% of your maximum health (at most 3% per second).' WHERE `id` = 20;
 
--- Item set bonuses. The 4-piece Regalia bonus is Leech (passive effect 9):
--- a chance per hit to heal 1% of maximum health, not a share of damage dealt.
 UPDATE `bonk_item_set_bonus` SET `description` = '+12.5 Armor. Regain 1% of your health every second.' WHERE `set_id` = 1 AND `pieces` = 4;
 UPDATE `bonk_item_set_bonus` SET `description` = '+15% Power, and your hits have a 3% chance to heal you for 1% of your maximum health.' WHERE `set_id` = 2 AND `pieces` = 4;
 UPDATE `bonk_item_set_bonus` SET `description` = '+18.75 Armor. Regain 1.5% of your health every second.' WHERE `set_id` = 3 AND `pieces` = 4;
@@ -161,8 +144,6 @@ UPDATE `bonk_item_set_bonus` SET `description` = '+22.5% Power, and your hits ha
 UPDATE `bonk_item_set_bonus` SET `description` = '+28.1 Armor. Regain 2.25% of your health every second.' WHERE `set_id` = 5 AND `pieces` = 4;
 UPDATE `bonk_item_set_bonus` SET `description` = '+33.75% Power, and your hits have a 6.75% chance to heal you for 1% of your maximum health.' WHERE `set_id` = 6 AND `pieces` = 4;
 
--- Upgrades. The tooltip scales every number equal to the value per rank and
--- shows the first one as "Next rank:", so each keeps a leading signed value.
 UPDATE `bonk_upgrade` SET `description` = '+3 Luck. Chests and level-ups offer rarer choices.' WHERE `id` = 15;
 UPDATE `bonk_upgrade` SET `description` = '+0.8 yards of dash distance.' WHERE `id` = 16;
 UPDATE `bonk_upgrade` SET `description` = '-4% Valor cost for chests and the wandering vendor''s wares.' WHERE `id` = 19;
@@ -177,8 +158,6 @@ UPDATE `bonk_upgrade` SET `description` = 'Adds a second slot to the Extraction 
 UPDATE `bonk_upgrade` SET `description` = '+1 Darkmoon Card or Glyph you can switch off in the Spellbook. Runs never offer what you switch off.' WHERE `id` = 29;
 UPDATE `bonk_upgrade` SET `description` = 'Choose a Glyph at the start of every run, on top of the ones mini-bosses and bosses give.' WHERE `id` = 30;
 
--- Sayge's Fortunes. Rerolls, banishes and skips work on any offer (level-up
--- or chest), and a skip pays a quarter of the chest price (BONK_SKIP_COINS).
 UPDATE `bonk_talent` SET `description` = 'Reroll the choices you are offered, once per run.' WHERE `id` = 5;
 UPDATE `bonk_talent` SET `description` = 'Banish one of the choices you are offered, once per run. It won''t be offered again that run.' WHERE `id` = 6;
 UPDATE `bonk_talent` SET `description` = 'Once per run, when you would die, you come back with 50% health.' WHERE `id` = 7;
@@ -186,7 +165,6 @@ UPDATE `bonk_talent` SET `description` = 'Skip a choice you are offered, once pe
 UPDATE `bonk_talent` SET `description` = '+1 passive slot in runs. You start with 3.' WHERE `id` = 10;
 UPDATE `bonk_talent` SET `description` = '+1 spell slot in runs. You start with 3.' WHERE `id` = 11;
 
--- Class Mastery: a spell that hits more enemies.
 UPDATE `bonk_mastery` SET `description` = 'Rend affects 1 additional target.' WHERE `id` = 10108;
 UPDATE `bonk_mastery` SET `description` = 'Mortal Strike affects 1 additional target.' WHERE `id` = 10208;
 UPDATE `bonk_mastery` SET `description` = 'Holy Shock affects 1 additional target.' WHERE `id` = 20108;
@@ -207,10 +185,8 @@ UPDATE `bonk_mastery` SET `description` = 'Shadow Bolt affects 1 additional targ
 UPDATE `bonk_mastery` SET `description` = 'Wrath affects 1 additional target.' WHERE `id` = 110108;
 UPDATE `bonk_mastery` SET `description` = 'Insect Swarm affects 1 additional target.' WHERE `id` = 110308;
 
--- Class Mastery: a cast that resets its cooldown (Clearcasting).
 UPDATE `bonk_mastery` SET `description` = 'Your spells have a 10% chance to reset their cooldown when cast.' WHERE `id` IN (10209, 30109, 40209, 50109, 70109, 80109, 110109);
 
--- Class Mastery: a starting spell that a quest unlocks.
 UPDATE `bonk_mastery` SET `description` = 'Once a quest unlocks Serpent Sting, start every run with it.' WHERE `id` = 30306;
 UPDATE `bonk_mastery` SET `description` = 'Once a quest unlocks Poison Cloud, start every run with it.' WHERE `id` = 40106;
 UPDATE `bonk_mastery` SET `description` = 'Once a quest unlocks Starfall, start every run with it.' WHERE `id` = 50106;
@@ -219,15 +195,12 @@ UPDATE `bonk_mastery` SET `description` = 'Once a quest unlocks Frost Nova, star
 UPDATE `bonk_mastery` SET `description` = 'Once a quest unlocks Searing Pain, start every run with it.' WHERE `id` = 90306;
 UPDATE `bonk_mastery` SET `description` = 'Once a quest unlocks Entangling Roots, start every run with it.' WHERE `id` = 110206;
 
--- Class Mastery: a kill with a school heals (Soul Siphon).
 UPDATE `bonk_mastery` SET `description` = 'Killing an enemy with a Holy spell heals you for 0.5% of your maximum health (at most 3% per second).' WHERE `id` IN (20109, 50209);
 UPDATE `bonk_mastery` SET `description` = 'Killing an enemy with a Nature spell heals you for 0.5% of your maximum health (at most 3% per second).' WHERE `id` IN (30309, 70309, 110309);
 UPDATE `bonk_mastery` SET `description` = 'Killing an enemy with a Shadow spell heals you for 0.5% of your maximum health (at most 3% per second).' WHERE `id` IN (50309, 90109);
 
--- Class Mastery: Leech nodes (passive effect 9) are a chance per hit.
 UPDATE `bonk_mastery` SET `description` = '+0.5% chance for your hits to heal you for 1% of your maximum health.' WHERE `id` IN (20107, 70308);
 
--- Class Mastery: shared stat wording.
 UPDATE `bonk_mastery` SET `description` = 'Regain 0.1% of your health every second.' WHERE `id` IN (10203, 20102, 50102, 50207, 70302, 80107, 90107, 90202, 110302);
 UPDATE `bonk_mastery` SET `description` = '+5% Area.' WHERE `id` IN (10308, 20208, 50108, 70208, 90208);
 UPDATE `bonk_mastery` SET `description` = '+4% Area.' WHERE `id` IN (80105, 80307, 90303, 110103);
@@ -239,7 +212,6 @@ UPDATE `bonk_mastery` SET `description` = 'Reduces the cooldown of Throwing Kniv
 UPDATE `bonk_mastery` SET `description` = 'Reduces the cooldown of Entangling Roots by 6%.' WHERE `id` = 110304;
 UPDATE `bonk_mastery` SET `description` = '+10% pickup range for experience orbs and turkey legs.' WHERE `id` = 30203;
 
--- Class Mastery: spell schools capitalized.
 UPDATE `bonk_mastery` SET `description` = '+2% Physical damage.' WHERE `id` IN (10202, 20302, 40202, 70202);
 UPDATE `bonk_mastery` SET `description` = '+2% Holy damage.' WHERE `id` IN (20101, 50202);
 UPDATE `bonk_mastery` SET `description` = '+2% Physical and Arcane damage.' WHERE `id` = 30202;
@@ -249,8 +221,6 @@ UPDATE `bonk_mastery` SET `description` = '+2% Fire damage.' WHERE `id` IN (8020
 UPDATE `bonk_mastery` SET `description` = '+2% Frost damage.' WHERE `id` = 80302;
 UPDATE `bonk_mastery` SET `description` = '+2% Nature and Arcane damage.' WHERE `id` = 110102;
 
--- Quests: "win a run" instead of "clear Normal", lowercase class names,
--- "Kill" throughout, and the odd ones out.
 UPDATE `bonk_quest` SET `description` = 'Win a run on Mythic.' WHERE `id` = 9;
 UPDATE `bonk_quest` SET `description` = 'Win a run on Heroic.' WHERE `id` = 14;
 UPDATE `bonk_quest` SET `description` = 'Win a run on Heroic.' WHERE `id` = 51;
@@ -313,19 +283,15 @@ UPDATE `bonk_quest` SET `description` = 'Kill 10,000 enemies with physical attac
 UPDATE `bonk_quest` SET `description` = 'Find Hogger hiding during a Westfall run and defeat him.' WHERE `id` = 500;
 UPDATE `bonk_quest` SET `description` = 'Find Old Murk-Eye in his camp during a Westfall run and defeat him.' WHERE `id` = 501;
 
--- Difficulties.
 UPDATE `bonk_tier` SET `description` = 'One stage in wide-open lands. Beat its boss to win the run.' WHERE `id` = 1;
 UPDATE `bonk_tier` SET `description` = 'Three stages against the deadliest foes, then Endless mode for those who dare.' WHERE `id` = 2;
 UPDATE `bonk_tier` SET `description` = 'Two stages in rougher lands, with tougher foes, better loot and more Darkmoon Tickets.' WHERE `id` = 3;
 
--- Callouts: the 10 s warning reads "<name> in 10s", the start "<name>!".
 UPDATE `bonk_wave` SET `name` = 'Brute Wave' WHERE `start_sec` = 240;
 UPDATE `bonk_wave` SET `name` = 'The Swarm' WHERE `start_sec` = 420;
 
--- Upgrades vendor tree: Sayge keeps "Fortune".
 UPDATE `bonk_shop_tree` SET `name` = 'Prosperity' WHERE `id` = 2;
 
--- NPC gossip text (male and female text are the same).
 UPDATE `broadcast_text` SET `male_text` = 'Back already, $n? Pick a difficulty and I''ll send you in. Each stage is harder than the last.$B$BWin or lose, you wake up right here.', `female_text` = 'Back already, $n? Pick a difficulty and I''ll send you in. Each stage is harder than the last.$B$BWin or lose, you wake up right here.' WHERE `entry` = 900001;
 UPDATE `broadcast_text` SET `male_text` = 'Care to hear your fortune, $n? Each reading costs a Darkmoon Ticket or two. A bright Fortune makes the road kinder; a Dark Fortune makes it harder, but pays better. Tickets are rare out there, though elites and bosses carry more of them.', `female_text` = 'Care to hear your fortune, $n? Each reading costs a Darkmoon Ticket or two. A bright Fortune makes the road kinder; a Dark Fortune makes it harder, but pays better. Tickets are rare out there, though elites and bosses carry more of them.' WHERE `entry` = 900004;
 UPDATE `broadcast_text` SET `male_text` = 'Every hero who makes it back has a story. Finish a task on my board and I''ll see that you''re rewarded. Some of what I hand out can''t be found anywhere else.', `female_text` = 'Every hero who makes it back has a story. Finish a task on my board and I''ll see that you''re rewarded. Some of what I hand out can''t be found anywhere else.' WHERE `entry` = 900005;
@@ -334,20 +300,15 @@ UPDATE `broadcast_text` SET `male_text` = 'Every class walks its own road, $n. B
 UPDATE `broadcast_text` SET `male_text` = 'The Extraction Vault is empty. Go home anyway? Everything you found will be sold for gold.', `female_text` = 'The Extraction Vault is empty. Go home anyway? Everything you found will be sold for gold.' WHERE `entry` = 900010;
 UPDATE `broadcast_text` SET `male_text` = 'This is Bixi''s vault. Whatever you leave inside will be waiting in your mailbox when you get home; everything else you found is sold.', `female_text` = 'This is Bixi''s vault. Whatever you leave inside will be waiting in your mailbox when you get home; everything else you found is sold.' WHERE `entry` = 900011;
 
--- Camp NPC titles (Bixi stays "Banker": she opens the bank).
 UPDATE `creature_template` SET `subname` = 'Upgrade Vendor' WHERE `entry` = 900002;
 UPDATE `creature_template` SET `subname` = 'Gear Vendor' WHERE `entry` = 900004;
 UPDATE `creature_template` SET `subname` = 'Quest Giver' WHERE `entry` = 900005;
 UPDATE `creature_template` SET `subname` = 'Spellbook Keeper' WHERE `entry` = 900006;
 
--- The run gear loot sack.
 UPDATE `gameobject_template` SET `name` = 'Loot Sack' WHERE `entry` = 900040;
 
--- The exploder's buff.
 UPDATE `spell_template` SET `auraDescription` = 'Explodes when it reaches you.' WHERE `entry` = 33400;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

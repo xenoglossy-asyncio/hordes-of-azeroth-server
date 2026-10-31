@@ -6,14 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261016430000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261016430000');
--- Add your query below.
 
-
--- Vanilla Bonk: Hunter traps as in vanilla (user, 2026-10-16). The hero
--- places them at their feet (target 7, BonkRun::DropTraps) and they go off
--- when an enemy comes close; Deploy Range (upgrade 12, 4 yd a step, up to
--- 20) places them that much further out toward the nearest enemy, in place
--- of the spell's own Haste.
 UPDATE `bonk_weapon` SET `target` = 7,
     `description` = 'Places a fire trap that goes off when an enemy comes close. It explodes and burns the ground for 4 sec, applying Burning.'
 WHERE `id` = 202;
@@ -22,8 +15,6 @@ UPDATE `bonk_weapon` SET `target` = 7,
 WHERE `id` = 204;
 UPDATE `bonk_weapon_upgrade` SET `upgrade` = 12, `step` = 4 WHERE `weapon_id` IN (202, 204) AND `upgrade` = 3;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

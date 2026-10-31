@@ -2,6 +2,7 @@
 #include "BonkEnchant.h"
 #include "BonkFoundGear.h"
 #include "BonkPlayer.h"
+#include "BonkStrings.h"
 #include "Creature.h"
 #include "Map.h"
 #include "Player.h"
@@ -98,23 +99,23 @@ bool BonkRun::RollEnchant(uint8 slot, std::string& error)
 {
     if (!IsNearEnchanter())
     {
-        error = "Talk to the enchanter at the end of a floor to enchant your gear.";
+        error = GetString(BONK_STRING_TALK_TO_ENCHANTER);
         return false;
     }
     if (!BonkEnchanting::IsEnchantSlot(slot))
     {
-        error = "That slot can't be enchanted.";
+        error = GetString(BONK_STRING_SLOT_CANT_BE_ENCHANTED);
         return false;
     }
     if (!m_enchantOffers.empty())
     {
-        error = "Pick an enchant or keep the one you have first.";
+        error = GetString(BONK_STRING_PICK_ENCHANT_FIRST);
         return false;
     }
     uint32 const price = GetEnchantPrice();
     if (m_coins < price)
     {
-        error = "An enchant costs " + std::to_string(price) + " Valor. You have " + std::to_string(m_coins) + ".";
+        error = GetString(BONK_STRING_ENCHANT_COSTS_VALOR_YOU_HAVE, { std::to_string(price), std::to_string(m_coins) });
         return false;
     }
     m_coins -= price;
@@ -134,7 +135,7 @@ bool BonkRun::PickEnchant(uint8 index, std::string& error)
 {
     if (index >= m_enchantOffers.size())
     {
-        error = "There is no enchant to pick.";
+        error = GetString(BONK_STRING_NO_ENCHANT_TO_PICK);
         return false;
     }
     BonkEnchant const picked = m_enchantOffers[index];
@@ -142,7 +143,7 @@ bool BonkRun::PickEnchant(uint8 index, std::string& error)
     m_enchantOffers.clear();
     UpdateGear();
     m_player->GetBonkPlayer()->SendGearInfo();
-    m_player->GetBonkPlayer()->Notify(std::string(BonkEnchanting::GetGradeName(picked.grade)) + " enchant applied.");
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_ENCHANT_APPLIED, { GetString(BonkEnchanting::GetGradeName(picked.grade)) });
     return true;
 }
 

@@ -6,22 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012180000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012180000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: the mage's ten spells and their Legendary evolutions
--- (feature plan, Phase 1, Spells tab). Frostbolt, Fireball, Frost Nova,
--- Blizzard and Arcane Explosion stay; Arcane Missiles, Flamestrike, Cone of
--- Cold, Scorch and Mana Shield join; Fire Blast leaves. The "hit every
--- enemy nearby" volleys become Frozen Orb, Pyroblast and (for the warlock)
--- Shadowburn.
---
--- New spell behaviors (bonk_weapon.behavior): 3 echo, 4 shield, 5 shield
--- per enemy, 6 delayed burst, 7 orb, 8 freeze, 9 ward, 10 stacking debuff,
--- 11 execute. alt_spell_id is the spell a behavior casts, or with
--- alt_every, what every alt_every-th cast is instead (alt_damage times).
--- =============================================================
 
 ALTER TABLE `bonk_weapon`
     ADD COLUMN `base_targets` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'enemies fired at before ranks and passives' AFTER `tick_ms`,
@@ -29,7 +13,6 @@ ALTER TABLE `bonk_weapon`
     ADD COLUMN `alt_every` TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER `alt_spell_id`,
     ADD COLUMN `alt_damage` FLOAT NOT NULL DEFAULT 1 COMMENT 'times the weapon''s damage for the alt spell' AFTER `alt_every`;
 
--- Fire Blast and the volleys leave; what pointed at Fire Blast points at Scorch.
 DELETE FROM `bonk_weapon` WHERE `id` IN (45, 145, 101, 102);
 UPDATE `bonk_quest` SET `reward_value` = 163 WHERE `id` = 46 AND `reward_type` = 2 AND `reward_value` = 45;
 UPDATE `bonk_mastery` SET `target` = 163, `name` = 'Improved Scorch', `description` = 'Scorch recharges 6% faster.' WHERE `id` = 80204;
@@ -38,7 +21,6 @@ UPDATE `bonk_mastery` SET `target` = 163, `description` = '+8% Scorch damage.' W
 INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `target`, `cooldown_ms`, `range`, `damage_fraction`,
     `class_mask`, `starter_class_mask`, `evolves_from`, `heal_pct`, `duration_ms`, `chains`, `behavior`, `behavior_value`, `tick_ms`,
     `base_targets`, `alt_spell_id`, `alt_every`, `alt_damage`) VALUES
--- New mage spells.
 (160, 'Arcane Missiles', 'Spell_Nature_StarFall',                 'Three arcane missiles at the nearest enemies.',
     7268,  0,  2000, 30, 0.35, 128, 0,   0, 0, 0,    0,  0,    0,   0, 3,     0, 0, 1),
 (161, 'Flamestrike',     'Spell_Fire_SelfDestruct',               'A pillar of fire on the biggest pack of enemies that leaves the ground burning.',
@@ -49,7 +31,6 @@ INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `tar
     2948,  0,  1000, 20, 0.3,  128, 0,   0, 0, 0,    0, 10,    0,   0, 1, 22959, 0, 1),
 (164, 'Mana Shield',     'Spell_Shadow_DetectLesserInvisibility', 'Shields you for 8% of your maximum health every 10 seconds.',
     1463,  1, 10000,  0, 0.5,  128, 0,   0, 0, 0,    0,  4,    8,   0, 1,     0, 0, 1),
--- Legendary evolutions.
 (170, 'Frozen Orb',      'Spell_Frost_Wisp',                      'A slow orb of frost rolls ahead, firing frostbolts at the enemies it passes.',
     116,   0,  4000, 12, 0.45,   0, 0,  13, 0, 6000, 0,  7,    0, 600, 1,     0, 0, 1),
 (171, 'Pyroblast',       'Spell_Fire_Fireball02',                 'Fireballs, and every fourth cast a huge Pyroblast that burns on.',
@@ -71,16 +52,12 @@ INSERT INTO `bonk_weapon` (`id`, `name`, `icon`, `description`, `spell_id`, `tar
 (179, 'Arcane Ward',     'Spell_Arcane_ArcaneResilience',         'Shields you for 10% of your maximum health every 10 seconds; when it breaks, an arcane blast goes off around you.',
     1463,  1, 10000, 10, 0.5,    0, 0, 164, 0, 0,    0,  9,   10,   0, 1,  1449, 0, 2);
 
--- The warlock's Shadow Bolt evolves into Shadowburn: shadow bolts, triple
--- damage below 20% health.
 UPDATE `bonk_weapon` SET `name` = 'Shadowburn', `icon` = 'Spell_Shadow_ScourgeBuild',
     `description` = 'Shadow bolts that deal triple damage to enemies below 20% health.',
     `spell_id` = 686, `target` = 0, `cooldown_ms` = 1800, `range` = 30, `damage_fraction` = 0.6,
     `behavior` = 11, `behavior_value` = 20, `alt_damage` = 3
 WHERE `id` = 103;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

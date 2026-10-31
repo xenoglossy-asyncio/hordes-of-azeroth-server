@@ -6,19 +6,6 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261012160000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261012160000');
--- Add your query below.
-
-
--- =============================================================
--- Vanilla Bonk: enemies and spawning (feature plan, Phase 1)
---
--- Normal enemies get an archetype (swarmer, grunt, bruiser, caster,
--- charger) that sets their health, damage, experience and orb. Instead of
--- per-map waves, one spawn curve keeps a minimum crowd alive that rises
--- over a stage, brings in bruisers and elites, and is scaled per tier and
--- capped at 200 (8 bruisers); past the cap the rest goes into enemy health
--- and damage. Stage 2 is 25% and stage 3 60% tougher.
--- =============================================================
 
 CREATE TABLE IF NOT EXISTS `bonk_archetype` (
     `id`                TINYINT UNSIGNED NOT NULL COMMENT '0 swarmer, 1 grunt, 2 bruiser, 3 caster, 4 charger',
@@ -57,8 +44,6 @@ INSERT INTO `bonk_spawn_curve` (`second`, `min_alive`, `bruiser_share`, `elite_i
 (480, 130, 20, 60),
 (600, 160, 20, 60);
 
--- Tiers: the curve's crowd per difficulty, the caps, the first elite, and
--- steeper stages.
 ALTER TABLE `bonk_tier`
     DROP COLUMN `stage_spawn_growth`,
     ADD COLUMN `stage_health_accel` FLOAT NOT NULL DEFAULT 0.05 COMMENT 'enemy health at stage s: 1 + growth (s - 1) + accel (s - 1)(s - 2)' AFTER `stage_damage_growth`,
@@ -72,7 +57,6 @@ UPDATE `bonk_tier` SET `min_alive_multiplier` = 1.0 WHERE `key` = 'easy';
 UPDATE `bonk_tier` SET `min_alive_multiplier` = 1.3 WHERE `key` = 'medium';
 UPDATE `bonk_tier` SET `min_alive_multiplier` = 1.6 WHERE `key` = 'hard';
 
--- Maps no longer set their own waves.
 ALTER TABLE `bonk_map`
     DROP COLUMN `spawn_interval_ms`,
     DROP COLUMN `spawn_batch`,
@@ -82,11 +66,6 @@ ALTER TABLE `bonk_map`
     DROP COLUMN `max_alive_ramp_sec`,
     DROP COLUMN `elite_interval_sec`;
 
--- Rosters: every normal enemy gets an archetype from what it already was.
--- Casters cast from range, exploders and the frail and quick swarm,
--- chargers charge, the toughest are bruisers, the rest are grunts. The
--- archetype carries health and damage now, and bruisers come by the
--- curve's share rather than their old time window.
 ALTER TABLE `bonk_map_creature`
     ADD COLUMN `archetype` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'normal enemies: 0 swarmer, 1 grunt, 2 bruiser, 3 caster, 4 charger' AFTER `kind`;
 UPDATE `bonk_map_creature` mc LEFT JOIN `bonk_mob` m ON m.`entry` = mc.`entry`
@@ -101,8 +80,6 @@ WHERE mc.`kind` = 0;
 UPDATE `bonk_map_creature` SET `min_sec` = 0, `max_sec` = 0 WHERE `kind` = 0 AND `archetype` = 2;
 UPDATE `bonk_map_creature` SET `health_multiplier` = 1, `damage_multiplier` = 1 WHERE `kind` = 0;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

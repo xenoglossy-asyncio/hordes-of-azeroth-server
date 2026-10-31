@@ -6,11 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011191001');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011191001');
--- Add your query below.
 
-
--- Vanilla Bonk: how deep the account has gone on each tier; reaching a
--- stage on one tier unlocks the next.
 CREATE TABLE IF NOT EXISTS `bonk_account_tier` (
     `account`    INT UNSIGNED      NOT NULL,
     `tier`       TINYINT UNSIGNED  NOT NULL,
@@ -18,8 +14,6 @@ CREATE TABLE IF NOT EXISTS `bonk_account_tier` (
     PRIMARY KEY (`account`, `tier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk account-wide tier progress';
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

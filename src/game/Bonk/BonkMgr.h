@@ -14,6 +14,7 @@
 
 class Map;
 class Player;
+enum BonkString : uint32;
 
 WorldLocation const BONK_CAMP_LOCATION(1, 16226.2f, 16257.0f, 13.2022f, 1.65007f);
 WorldLocation const BONK_CAMP_ARRIVAL(1, 16242.1f, 16304.9f, 20.899f, 6.1865f);
@@ -758,41 +759,12 @@ struct BonkWeapon
             return behavior == BONK_BEHAVIOR_TRAP || behavior == BONK_BEHAVIOR_PET;
         return target != BONK_TARGET_SELF_AREA && target != BONK_TARGET_CONE;
     }
-    char const* GetPetNoun() const
-    {
-        if (HasFlag(BONK_WEAPON_FLAG_TOTEM))
-            return "totem";
-        if (classMask & (1 << (CLASS_SHAMAN - 1)))
-            return "spirit wolf";
-        if (classMask & (1 << (CLASS_PRIEST - 1)))
-            return "shadowfiend";
-        return (classMask & (1 << (CLASS_MAGE - 1))) ? "elemental" : "beast";
-    }
-    char const* GetTargetNoun() const
-    {
-        if (behavior == BONK_BEHAVIOR_TRAP)
-            return "trap";
-        if (behavior == BONK_BEHAVIOR_PET)
-            return GetPetNoun();
-        if (behavior == BONK_BEHAVIOR_WRATH)
-            return "wolf";
-        return target == BONK_TARGET_GROUND ? "pack" : "target";
-    }
-    std::string DescribeTargets(uint32 count) const
-    {
-        std::string const number = std::to_string(count);
-        std::string const plural = count == 1 ? "" : "s";
-        if (behavior == BONK_BEHAVIOR_TRAP)
-            return (target == BONK_TARGET_GROUND ? "Throws " : "Places ") + number + " trap" + plural + ".";
-        if (behavior == BONK_BEHAVIOR_PET)
-            return "Calls up to " + number + " " + GetPetNoun() + plural + ".";
-        if (target == BONK_TARGET_GROUND)
-            return "Lands on " + number + " pack" + plural + " of enemies.";
-        return "Targets up to " + number + (count == 1 ? " enemy." : " enemies.");
-    }
+    BonkString GetPetNoun(bool plural) const;
+    BonkString GetTargetNoun(bool plural) const;
+    std::string DescribeTargets(uint32 count, LocaleConstant locale) const;
 };
 
-std::string DescribeBonkSpellUpgrade(BonkWeapon const& weapon, BonkSpellUpgrade upgrade, float amount);
+std::string DescribeBonkSpellUpgrade(BonkWeapon const& weapon, BonkSpellUpgrade upgrade, float amount, LocaleConstant locale);
 
 struct BonkStatChange
 {
@@ -800,8 +772,9 @@ struct BonkStatChange
     std::string before;
     std::string after;
 };
-std::string GetBonkMagicSchoolName(uint32 spellId);
-std::string DescribeBonkWeaponTags(BonkWeapon const& weapon, std::string const& school);
+std::string GetBonkMagicSchoolName(uint32 spellId, LocaleConstant locale);
+BonkString GetBonkClassName(uint32 classId);
+std::string DescribeBonkWeaponTags(BonkWeapon const& weapon, std::string const& school, LocaleConstant locale);
 
 uint32 const BONK_MAX_SUMMONS        = 12;
 
@@ -985,8 +958,9 @@ struct BonkBoltLook
     bool castNear = false;
 };
 
-std::string FormatBonkMoney(uint32 copper);
-std::string FormatBonkShards(uint32 count);
+std::string FormatBonkMoney(uint32 copper, LocaleConstant locale = LOCALE_enUS);
+std::string FormatBonkShards(uint32 count, LocaleConstant locale = LOCALE_enUS);
+std::string FormatBonkNumber(float value);
 
 enum BonkShop : uint8
 {
@@ -1079,9 +1053,9 @@ enum BonkTrinketEffect : uint8
 
 struct BonkTrinket
 {
-    char const* name;
+    BonkString name;
     char const* icon;
-    char const* text;
+    BonkString text;
 };
 uint8 const BONK_DETERMINATION_MAX_STACKS = 5;
 uint32 const BONK_FLOORS_PER_TALENT_POINT = 2;
@@ -1396,8 +1370,8 @@ class BonkMgr
         std::vector<BonkWeapon const*> GetEvolutions(uint32 weaponId) const;
         bool HasStarterSpell(uint32 classMask) const;
         bool HasPoisonSpell(uint32 classMask) const;
-        std::string DescribeEvolutionNames(uint32 weaponId) const;
-        std::string DescribeEvolutionAdds(BonkWeapon const& evolved) const;
+        std::string DescribeEvolutionNames(uint32 weaponId, LocaleConstant locale) const;
+        std::string DescribeEvolutionAdds(BonkWeapon const& evolved, LocaleConstant locale) const;
 
         BonkProjectileInfo const* GetProjectile(uint32 spellId) const;
 
@@ -1413,10 +1387,10 @@ class BonkMgr
         std::vector<BonkScalingPoint> const& GetScaling() const { return m_scaling; }
 
         BonkPassive const* GetPassive(uint32 id) const;
-        std::string DescribePassive(BonkPassive const& passive, uint32 rank = 1) const;
-        std::string DescribePassiveRankUp(BonkPassive const& passive, uint32 rank) const;
-        void DescribePassiveStats(BonkPassive const& passive, uint32 rank, std::vector<BonkStatChange>& stats) const;
-        std::string DescribePassiveNow(BonkPassive const& passive, uint32 rank) const;
+        std::string DescribePassive(BonkPassive const& passive, uint32 rank, LocaleConstant locale) const;
+        std::string DescribePassiveRankUp(BonkPassive const& passive, uint32 rank, LocaleConstant locale) const;
+        void DescribePassiveStats(BonkPassive const& passive, uint32 rank, std::vector<BonkStatChange>& stats, LocaleConstant locale) const;
+        std::string DescribePassiveNow(BonkPassive const& passive, uint32 rank, LocaleConstant locale) const;
         std::map<uint32, BonkPassive> const& GetPassives() const { return m_passives; }
 
         std::vector<BonkPowerup> const& GetPowerups() const { return m_powerups; }

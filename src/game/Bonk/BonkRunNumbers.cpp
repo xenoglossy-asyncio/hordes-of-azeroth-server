@@ -1,4 +1,5 @@
 #include "BonkRun.h"
+#include "BonkLocale.h"
 #include "BonkMgr.h"
 #include "Creature.h"
 #include "Map.h"
@@ -23,25 +24,25 @@ namespace
         return weapon.behavior == BONK_BEHAVIOR_CORRUPTION || weapon.behavior == BONK_BEHAVIOR_CURSE_OF_AGONY;
     }
 
-    char const* GetSchoolName(SpellEntry const* spellInfo)
+    std::string GetSchoolName(SpellEntry const* spellInfo, LocaleConstant locale)
     {
         switch (spellInfo ? spellInfo->School : SPELL_SCHOOL_NORMAL)
         {
-            case SPELL_SCHOOL_HOLY:   return "Holy";
-            case SPELL_SCHOOL_FIRE:   return "Fire";
-            case SPELL_SCHOOL_NATURE: return "Nature";
-            case SPELL_SCHOOL_FROST:  return "Frost";
-            case SPELL_SCHOOL_SHADOW: return "Shadow";
-            case SPELL_SCHOOL_ARCANE: return "Arcane";
-            default:                  return "Physical";
+            case SPELL_SCHOOL_HOLY:   return sBonkLocale.GetString(BONK_STRING_SCHOOL_HOLY, locale);
+            case SPELL_SCHOOL_FIRE:   return sBonkLocale.GetString(BONK_STRING_SCHOOL_FIRE, locale);
+            case SPELL_SCHOOL_NATURE: return sBonkLocale.GetString(BONK_STRING_SCHOOL_NATURE, locale);
+            case SPELL_SCHOOL_FROST:  return sBonkLocale.GetString(BONK_STRING_SCHOOL_FROST, locale);
+            case SPELL_SCHOOL_SHADOW: return sBonkLocale.GetString(BONK_STRING_SCHOOL_SHADOW, locale);
+            case SPELL_SCHOOL_ARCANE: return sBonkLocale.GetString(BONK_STRING_SCHOOL_ARCANE, locale);
+            default:                  return sBonkLocale.GetString(BONK_STRING_SCHOOL_PHYSICAL, locale);
         }
     }
 
-    std::string DescribeRange(float hit, float spread)
+    std::string DescribeRange(float hit, float spread, LocaleConstant locale)
     {
         uint32 const low = uint32(std::max(1.0f, std::floor(hit * (1.0f - spread))));
         uint32 const high = uint32(std::max(1.0f, std::ceil(hit * (1.0f + spread))));
-        return low == high ? std::to_string(low) : std::to_string(low) + " to " + std::to_string(high);
+        return low == high ? std::to_string(low) : sBonkLocale.GetString(BONK_STRING_RANGE, locale, { std::to_string(low), std::to_string(high) });
     }
 
     bool IsTickingKeyword(BonkKeyword keyword)
@@ -62,10 +63,10 @@ namespace
         return std::to_string(uint32(std::max(1.0f, std::round(value))));
     }
 
-    std::string ShownSeconds(float ms)
+    std::string ShownSeconds(float ms, LocaleConstant locale)
     {
         float const seconds = ms / 1000.0f;
-        return FormatNumber(seconds, seconds < 1.0f ? "%.2f" : "%.1f") + " sec";
+        return sBonkLocale.GetString(BONK_STRING_SECONDS_SHORT, locale, { FormatNumber(seconds, seconds < 1.0f ? "%.2f" : "%.1f") });
     }
 
     std::string ShownPercent(float value, bool signed_)
@@ -80,19 +81,19 @@ namespace
         return text;
     }
 
-    std::string GetIntervalLabel(BonkWeapon const& weapon)
+    std::string GetIntervalLabel(BonkWeapon const& weapon, LocaleConstant locale)
     {
         if (weapon.behavior == BONK_BEHAVIOR_DEEP_WOUNDS || weapon.IsRevenge())
-            return "Can occur every";
+            return sBonkLocale.GetString(BONK_STRING_INTERVAL_CAN_OCCUR, locale);
         if (weapon.behavior == BONK_BEHAVIOR_BLOOD_AURA)
-            return "Pulses every";
-        return "Casts every";
+            return sBonkLocale.GetString(BONK_STRING_INTERVAL_PULSES, locale);
+        return sBonkLocale.GetString(BONK_STRING_INTERVAL_CASTS, locale);
     }
 
-    BonkStatChange SplitUpgradeText(BonkWeapon const& weapon, BonkSpellUpgrade upgrade, float before, float after)
+    BonkStatChange SplitUpgradeText(BonkWeapon const& weapon, BonkSpellUpgrade upgrade, float before, float after, LocaleConstant locale)
     {
-        std::string const now = DescribeBonkSpellUpgrade(weapon, upgrade, before);
-        std::string const next = DescribeBonkSpellUpgrade(weapon, upgrade, after);
+        std::string const now = DescribeBonkSpellUpgrade(weapon, upgrade, before, locale);
+        std::string const next = DescribeBonkSpellUpgrade(weapon, upgrade, after, locale);
         size_t const nowSpace = now.find(' ');
         size_t const nextSpace = next.find(' ');
         if (nowSpace == std::string::npos || nextSpace == std::string::npos)
@@ -110,13 +111,13 @@ namespace
         return "|cffffffff" + text + "|r";
     }
 
-    std::string MarkRange(float hit, float spread, bool better)
+    std::string MarkRange(float hit, float spread, bool better, LocaleConstant locale)
     {
         uint32 const low = uint32(std::max(1.0f, std::floor(hit * (1.0f - spread))));
         uint32 const high = uint32(std::max(1.0f, std::ceil(hit * (1.0f + spread))));
         if (low == high)
             return MarkNumber(std::to_string(low), better);
-        return MarkNumber(std::to_string(low), better) + " to " + MarkNumber(std::to_string(high), better);
+        return sBonkLocale.GetString(BONK_STRING_RANGE, locale, { MarkNumber(std::to_string(low), better), MarkNumber(std::to_string(high), better) });
     }
 
     std::string TrimNumber(float value)
@@ -252,7 +253,7 @@ std::string BonkRun::GetPetAttackLabel(OwnedWeapon const& owned) const
 {
     bool pulses = false;
     GetPetAttackMs(owned, &pulses);
-    return pulses ? "Pulses every" : "Attacks every";
+    return GetString(pulses ? BONK_STRING_INTERVAL_PULSES : BONK_STRING_INTERVAL_ATTACKS);
 }
 
 float BonkRun::RollDamageSpread() const
@@ -389,9 +390,9 @@ float BonkRun::GetShownTick(OwnedWeapon const& owned, float extraPower) const
 std::string BonkRun::DescribeShownRange(OwnedWeapon const& owned, float extraPower) const
 {
     if (float const hit = GetShownHit(owned, extraPower))
-        return DescribeRange(hit, GetShownSpread(owned));
+        return DescribeRange(hit, GetShownSpread(owned), GetLocale());
     if (float const tick = GetShownTick(owned, extraPower))
-        return std::to_string(uint32(std::max(1.0f, std::round(tick)))) + " a tick per stack";
+        return GetString(BONK_STRING_TICK_PER_STACK, { std::to_string(uint32(std::max(1.0f, std::round(tick)))) });
     return "";
 }
 
@@ -401,14 +402,18 @@ std::string BonkRun::DescribeShownDamage(OwnedWeapon const& owned) const
     if (float const hit = GetShownHit(owned, 0.0f))
     {
         if (owned.weapon.behavior == BONK_BEHAVIOR_PET)
-            text = "Its attacks deal " + DescribeRange(hit, BONK_PET_SWING_SPREAD) + " damage";
+            text = GetString(BONK_STRING_PET_ATTACKS_DEAL, { DescribeRange(hit, BONK_PET_SWING_SPREAD, GetLocale()) });
         else
-            text = DescribeRange(hit, BONK_DAMAGE_SPREAD) + " " + GetSchoolName(sSpellMgr.GetSpellEntry(owned.weapon.spellId)) + " damage";
+            text = GetString(BONK_STRING_SCHOOL_DAMAGE, { DescribeRange(hit, BONK_DAMAGE_SPREAD, GetLocale()),
+                GetSchoolName(sSpellMgr.GetSpellEntry(owned.weapon.spellId), GetLocale()) });
     }
     if (float const tick = GetShownTick(owned, 0.0f))
         if (BonkKeywordInfo const* info = sBonkMgr.GetKeyword(owned.weapon.applies))
-            text += (text.empty() ? "" : ", ") + std::to_string(uint32(std::max(1.0f, std::round(tick)))) + " " +
-                GetSchoolName(sSpellMgr.GetSpellEntry(info->spellId)) + " damage a tick per stack of " + info->name;
+        {
+            std::string const ticks = GetString(BONK_STRING_SCHOOL_DAMAGE_TICK_PER_STACK, { std::to_string(uint32(std::max(1.0f, std::round(tick)))),
+                GetSchoolName(sSpellMgr.GetSpellEntry(info->spellId), GetLocale()), Localize(BONK_FIELD_KEYWORD_NAME, uint32(info->id), info->name) });
+            text = text.empty() ? ticks : GetString(BONK_STRING_LIST_ITEM, { text, ticks });
+        }
     return text;
 }
 
@@ -472,7 +477,7 @@ void BonkRun::AddCurvedTotal(BonkPassiveEffect effect, float gain, std::vector<B
         snprintf(text, sizeof(text), fine ? "%.1f%%" : "%.0f%%", value);
         return std::string(text);
     };
-    stats.push_back({ effect == BONK_PASSIVE_HASTE ? "Total Haste" : "Total Area", percent(before), percent(after) });
+    stats.push_back({ GetString(effect == BONK_PASSIVE_HASTE ? BONK_STRING_TOTAL_HASTE : BONK_STRING_TOTAL_AREA), percent(before), percent(after) });
 }
 
 void BonkRun::DescribeOfferStats(Offer const& offer, std::vector<BonkStatChange>& stats) const
@@ -485,7 +490,7 @@ void BonkRun::DescribeOfferStats(Offer const& offer, std::vector<BonkStatChange>
     {
         if (BonkPassive const* passive = sBonkMgr.GetPassive(offer.id))
         {
-            sBonkMgr.DescribePassiveStats(*passive, offer.newLevel, stats);
+            sBonkMgr.DescribePassiveStats(*passive, offer.newLevel, stats, GetLocale());
             if (!stats.empty())
                 AddCurvedTotal(BonkPassiveEffect(passive->effect), passive->valuePerRank * passive->RankWeight(offer.newLevel), stats);
         }
@@ -515,7 +520,7 @@ void BonkRun::DescribeOfferStats(Offer const& offer, std::vector<BonkStatChange>
         GetWeaponStrength(next.weapon, next.damageBonus, after, strength) && std::fabs(strength.value - before.value) >= 0.05f)
     {
         bool const signed_ = strength.folded == BONK_SPELL_UPGRADE_MARK || strength.folded == BONK_SPELL_UPGRADE_SLOWED;
-        stats.push_back({ strength.label, ShownPercent(before.value, signed_), ShownPercent(strength.value, signed_) });
+        stats.push_back({ GetString(strength.label), ShownPercent(before.value, signed_), ShownPercent(strength.value, signed_) });
     }
 
     AddUpgradeStats(*owned, next, hasDamage, stats);
@@ -525,12 +530,18 @@ void BonkRun::AddDamageStats(OwnedWeapon const& owned, OwnedWeapon const& next, 
 {
     float const hit = GetShownHit(next, 0.0f);
     if (hit > 0.0f)
-        stats.push_back({ "Damage", ShownNumber(GetShownHit(owned, 0.0f)), ShownNumber(hit) });
+        stats.push_back({ GetString(BONK_STRING_STAT_DAMAGE), ShownNumber(GetShownHit(owned, 0.0f)), ShownNumber(hit) });
 
     float const tick = GetShownTick(next, 0.0f);
-    if (tick > 0.0f)
-        if (BonkKeywordInfo const* info = sBonkMgr.GetKeyword(next.weapon.applies))
-            stats.push_back({ info->name + " damage per stack", ShownNumber(GetShownTick(owned, 0.0f)), ShownNumber(tick) });
+    if (tick <= 0.0f)
+        return;
+    std::string const tickBefore = ShownNumber(GetShownTick(owned, 0.0f));
+    std::string const tickAfter = ShownNumber(tick);
+    if (tickBefore == tickAfter)
+        return;
+    if (BonkKeywordInfo const* info = sBonkMgr.GetKeyword(next.weapon.applies))
+        stats.push_back({ GetString(BONK_STRING_KEYWORD_DAMAGE_PER_STACK, { Localize(BONK_FIELD_KEYWORD_NAME, uint32(info->id), info->name) }),
+            tickBefore, tickAfter });
 }
 
 void BonkRun::AddUpgradeStats(OwnedWeapon const& owned, OwnedWeapon const& next, bool hasDamage, std::vector<BonkStatChange>& stats) const
@@ -559,45 +570,48 @@ void BonkRun::AddUpgradeStats(OwnedWeapon const& owned, OwnedWeapon const& next,
                 if (weapon.behavior == BONK_BEHAVIOR_PET)
                 {
                     if (uint32 const attackMs = GetPetAttackMs(owned))
-                        stats.push_back({ GetPetAttackLabel(owned), ShownSeconds(float(attackMs)), ShownSeconds(float(GetPetAttackMs(next))) });
+                        stats.push_back({ GetPetAttackLabel(owned), ShownSeconds(float(attackMs), GetLocale()), ShownSeconds(float(GetPetAttackMs(next)), GetLocale()) });
                 }
                 else
-                    stats.push_back({ GetIntervalLabel(weapon), ShownSeconds(float(GetWeaponCooldown(owned))), ShownSeconds(float(GetWeaponCooldown(next))) });
+                    stats.push_back({ GetIntervalLabel(weapon, GetLocale()), ShownSeconds(float(GetWeaponCooldown(owned)), GetLocale()),
+                        ShownSeconds(float(GetWeaponCooldown(next)), GetLocale()) });
                 break;
             case BONK_SPELL_UPGRADE_DURATION:
                 if (weapon.durationMs > 0)
                 {
-                    BonkStatChange stat = SplitUpgradeText(weapon, upgrade, now[upgrade], after[upgrade]);
-                    stats.push_back({ stat.label, ShownSeconds(GetWindowLengthMs(owned)), ShownSeconds(GetWindowLengthMs(next)) });
+                    BonkStatChange stat = SplitUpgradeText(weapon, upgrade, now[upgrade], after[upgrade], GetLocale());
+                    stats.push_back({ stat.label, ShownSeconds(GetWindowLengthMs(owned), GetLocale()), ShownSeconds(GetWindowLengthMs(next), GetLocale()) });
                 }
                 else
-                    stats.push_back(SplitUpgradeText(weapon, upgrade, now[upgrade], after[upgrade]));
+                    stats.push_back(SplitUpgradeText(weapon, upgrade, now[upgrade], after[upgrade], GetLocale()));
                 break;
             case BONK_SPELL_UPGRADE_STACKS:
             {
                 BonkKeywordInfo const* info = sBonkMgr.GetKeyword(weapon.applies);
                 uint32 const base = std::max<uint32>(1, weapon.applyStacks);
-                stats.push_back({ (info ? info->name : std::string("Effect")) + " stacks per hit", std::to_string(base + uint32(now[upgrade])),
+                std::string const effect = info ? Localize(BONK_FIELD_KEYWORD_NAME, uint32(info->id), info->name) : GetString(BONK_STRING_STACKS_EFFECT);
+                stats.push_back({ GetString(BONK_STRING_KEYWORD_STACKS_PER_HIT, { effect }), std::to_string(base + uint32(now[upgrade])),
                     std::to_string(base + uint32(after[upgrade])) });
                 break;
             }
             case BONK_SPELL_UPGRADE_ECHO:
-                stats.push_back({ "Extra casts", FormatNumber(now[upgrade], "%g"), FormatNumber(after[upgrade], "%g") });
+                stats.push_back({ GetString(BONK_STRING_EXTRA_CASTS), FormatNumber(now[upgrade], "%g"), FormatNumber(after[upgrade], "%g") });
                 break;
             case BONK_SPELL_UPGRADE_TARGETS:
-                stats.push_back({ "Enemies affected", std::to_string(weapon.baseTargets + uint32(now[upgrade])),
+                stats.push_back({ GetString(BONK_STRING_ENEMIES_AFFECTED), std::to_string(weapon.baseTargets + uint32(now[upgrade])),
                     std::to_string(weapon.baseTargets + uint32(after[upgrade])) });
                 break;
             case BONK_SPELL_UPGRADE_REACH:
-                stats.push_back({ "Range", FormatNumber(weapon.range * GetWeaponArea(owned), "%.1f") + " yd",
-                    FormatNumber(weapon.range * GetWeaponArea(next), "%.1f") + " yd" });
+                stats.push_back({ GetString(BONK_STRING_STAT_RANGE), GetString(BONK_STRING_YARDS, { FormatNumber(weapon.range * GetWeaponArea(owned), "%.1f") }),
+                    GetString(BONK_STRING_YARDS, { FormatNumber(weapon.range * GetWeaponArea(next), "%.1f") }) });
                 break;
             case BONK_SPELL_UPGRADE_DEPLOY:
-                stats.push_back({ "Deploy range","+" + FormatNumber(now[upgrade], "%g") + " yd", "+" + FormatNumber(after[upgrade], "%g") + " yd" });
+                stats.push_back({ GetString(BONK_STRING_DEPLOY_RANGE), GetString(BONK_STRING_YARDS, { "+" + FormatNumber(now[upgrade], "%g") }),
+                    GetString(BONK_STRING_YARDS, { "+" + FormatNumber(after[upgrade], "%g") }) });
                 break;
             default:
             {
-                BonkStatChange stat = SplitUpgradeText(weapon, upgrade, now[upgrade], after[upgrade]);
+                BonkStatChange stat = SplitUpgradeText(weapon, upgrade, now[upgrade], after[upgrade], GetLocale());
                 if (!stat.label.empty())
                     stats.push_back(stat);
                 break;
@@ -608,7 +622,7 @@ void BonkRun::AddUpgradeStats(OwnedWeapon const& owned, OwnedWeapon const& next,
 
 std::string BonkRun::GetShownSchool(OwnedWeapon const& owned) const
 {
-    std::string school = GetBonkMagicSchoolName(owned.weapon.spellId);
+    std::string school = GetBonkMagicSchoolName(owned.weapon.spellId, GetLocale());
     if (!school.empty() || owned.weapon.behavior != BONK_BEHAVIOR_PET)
         return school;
     BonkPetFamily const* family = GetPetFamily(owned);
@@ -616,12 +630,12 @@ std::string BonkRun::GetShownSchool(OwnedWeapon const& owned) const
         return school;
     for (BonkPetAbility const& ability : family->abilities)
     {
-        school = GetBonkMagicSchoolName(ability.spellId);
+        school = GetBonkMagicSchoolName(ability.spellId, GetLocale());
         if (!school.empty())
             return school;
     }
     BonkKeywordInfo const* info = sBonkMgr.GetKeyword(family->applies);
-    return info ? GetBonkMagicSchoolName(info->spellId) : school;
+    return info ? GetBonkMagicSchoolName(info->spellId, GetLocale()) : school;
 }
 
 std::string BonkRun::DescribeFormRanges(OwnedWeapon const& owned, OwnedWeapon const& fresh, std::string text) const
@@ -643,7 +657,7 @@ std::string BonkRun::DescribeFormRanges(OwnedWeapon const& owned, OwnedWeapon co
         std::string const needle = std::string("for ") + shown.school + " damage";
         size_t const at = text.find(needle, start);
         if (at != std::string::npos && (end == std::string::npos || at < end))
-            text.replace(at, needle.size(), "for " + MarkRange(hit * shown.share, GetShownSpread(owned), better) + " " + shown.school + " damage");
+            text.replace(at, needle.size(), "for " + MarkRange(hit * shown.share, GetShownSpread(owned), better, LOCALE_enUS) + " " + shown.school + " damage");
         text.replace(start, label.size(), std::string(shown.label) + " (" + TrimNumber(shown.range * GetWeaponArea(owned)) + " yd range):");
     }
     return text;
@@ -664,12 +678,12 @@ std::string BonkRun::DescribeLiveSpell(OwnedWeapon const& owned, std::string tex
         text = DescribeFormRanges(owned, fresh, text);
     else if (float const hit = GetShownHit(owned, 0.0f))
     {
-        std::string const range = MarkRange(hit, GetShownSpread(owned), hit > GetShownHit(fresh, 0.0f) * BONK_SHOWN_BETTER);
-        std::string const school = GetSchoolName(sSpellMgr.GetSpellEntry(weapon.spellId));
+        std::string const range = MarkRange(hit, GetShownSpread(owned), hit > GetShownHit(fresh, 0.0f) * BONK_SHOWN_BETTER, GetLocale());
+        std::string const school = GetSchoolName(sSpellMgr.GetSpellEntry(weapon.spellId), GetLocale());
         if (pet)
-            text += " Its attacks deal " + range + " damage.";
+            text += " " + GetString(BONK_STRING_PET_ATTACKS_DEAL_SENTENCE, { range });
         else if (!InsertDamageRange(text, school, range))
-            text += " Deals " + range + " " + school + " damage.";
+            text += " " + GetString(BONK_STRING_SCHOOL_DAMAGE_SENTENCE, { range, school });
     }
 
     BonkKeyword keyword = weapon.applies;
@@ -693,15 +707,15 @@ std::string BonkRun::DescribeLiveSpell(OwnedWeapon const& owned, std::string tex
         if (info)
         {
             bool const better = tick > GetShownTick(fresh, 0.0f) * BONK_SHOWN_BETTER;
-            keywordLine = "|n|n" + info->name + ": " + MarkNumber(ShownNumber(tick), better) + " " +
-                GetSchoolName(sSpellMgr.GetSpellEntry(info->spellId)) + " damage per stack every tick";
+            std::vector<std::string> args = { Localize(BONK_FIELD_KEYWORD_NAME, uint32(info->id), info->name), MarkNumber(ShownNumber(tick), better),
+                GetSchoolName(sSpellMgr.GetSpellEntry(info->spellId), GetLocale()) };
             if (keyword == BONK_KEYWORD_AGONY)
             {
                 float const peakSeconds = GetAgonyPeakTicks() * info->tickMs / GetHasteRate() / 1000.0f;
-                keywordLine += ", rising to " + MarkNumber(ShownNumber(tick * GetAgonyPeakScale()), better) + " after " +
-                    MarkNumber(TrimNumber(peakSeconds), GetHasteRate() > BONK_SHOWN_BETTER) + " sec";
+                args.push_back(MarkNumber(ShownNumber(tick * GetAgonyPeakScale()), better));
+                args.push_back(MarkNumber(TrimNumber(peakSeconds), GetHasteRate() > BONK_SHOWN_BETTER));
             }
-            keywordLine += ".";
+            keywordLine = "|n|n" + GetString(keyword == BONK_KEYWORD_AGONY ? BONK_STRING_KEYWORD_TICK_LINE_RISING : BONK_STRING_KEYWORD_TICK_LINE, args);
         }
 
     if (weapon.durationMs)
@@ -728,7 +742,7 @@ std::string BonkRun::DescribeLiveSpell(OwnedWeapon const& owned, std::string tex
         std::string const marked = MarkNumber(std::to_string(targets), targets > weapon.baseTargets);
         if (weapon.baseTargets <= 1 || !MarkTargetCount(text, std::to_string(weapon.baseTargets), marked))
         {
-            std::string sentence = weapon.DescribeTargets(targets);
+            std::string sentence = weapon.DescribeTargets(targets, GetLocale());
             MarkNumberFollowedBy(sentence, std::to_string(targets), " ", marked);
             text += " " + sentence;
         }
@@ -740,21 +754,22 @@ std::string BonkRun::DescribeSpellHeader(OwnedWeapon const& owned, uint32 interv
 {
     BonkWeapon const& weapon = owned.weapon;
     better = !weapon.IsBlink() && GetWeaponCooldown(owned) < weapon.cooldownMs;
-    auto seconds = [](uint32 ms) { return TrimNumber(ms / 1000.0f) + " sec"; };
+    auto seconds = [this](uint32 ms) { return GetString(BONK_STRING_SECONDS_SHORT, { TrimNumber(ms / 1000.0f) }); };
     if (weapon.behavior == BONK_BEHAVIOR_ROLLING_THUNDER || weapon.IsSeal())
         return "";
     if (weapon.behavior == BONK_BEHAVIOR_PET)
     {
-        uint32 const attackMs = GetPetAttackMs(owned);
-        return attackMs ? GetPetAttackLabel(owned) + " " + seconds(attackMs) : "";
+        bool pulses = false;
+        uint32 const attackMs = GetPetAttackMs(owned, &pulses);
+        return attackMs ? GetString(pulses ? BONK_STRING_HEADER_PULSES_EVERY : BONK_STRING_HEADER_ATTACKS_EVERY, { seconds(attackMs) }) : "";
     }
     if (weapon.IsBlink())
-        return seconds(intervalMs) + " cooldown";
+        return GetString(BONK_STRING_HEADER_COOLDOWN, { seconds(intervalMs) });
     if (weapon.behavior == BONK_BEHAVIOR_DEEP_WOUNDS)
-        return "Once every " + seconds(intervalMs) + " per enemy";
+        return GetString(BONK_STRING_HEADER_ONCE_EVERY_PER_ENEMY, { seconds(intervalMs) });
     if (weapon.IsRevenge())
-        return "Once every " + seconds(intervalMs);
+        return GetString(BONK_STRING_HEADER_ONCE_EVERY, { seconds(intervalMs) });
     if (weapon.behavior == BONK_BEHAVIOR_BLOOD_AURA)
-        return "Pulses every " + seconds(intervalMs);
-    return seconds(intervalMs) + " cooldown";
+        return GetString(BONK_STRING_HEADER_PULSES_EVERY, { seconds(intervalMs) });
+    return GetString(BONK_STRING_HEADER_COOLDOWN, { seconds(intervalMs) });
 }

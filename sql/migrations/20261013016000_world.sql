@@ -6,13 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261013016000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261013016000');
--- Add your query below.
 
-
--- Vanilla Bonk, spells v2 step 1: keywords (docs/Spells.md, Keywords;
--- docs/Spells v2 - Build Design.md, section 2). One debuff per keyword per
--- enemy, carrying a stack count, cast by the hero. Its spell gives the icon,
--- hover text and look on the enemy; Bonk sets every number itself.
 CREATE TABLE IF NOT EXISTS `bonk_keyword` (
     `id`               TINYINT UNSIGNED NOT NULL COMMENT 'BonkKeyword',
     `name`             VARCHAR(32)      NOT NULL,
@@ -26,10 +20,6 @@ CREATE TABLE IF NOT EXISTS `bonk_keyword` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Vanilla Bonk keywords: shared debuffs with stacks';
 
--- Damage over time: a stack deals 1/30 of a same-level enemy's health a
--- second, so 10 stacks match one single-target spell's damage per second
--- (a Grunt in about 3 seconds): payoffs on a full stack roughly double.
--- Durations are starting points for tuning.
 DELETE FROM `bonk_keyword`;
 INSERT INTO `bonk_keyword` (`id`, `name`, `icon`, `spell_id`, `max_stacks`, `value_per_stack`, `tick_ms`, `duration_ms`, `spreads_on_death`) VALUES
 ( 1, 'Chill',                'Spell_Frost_IceStorm',       12485,  5, 10,     0,  4000, 0),
@@ -43,29 +33,20 @@ INSERT INTO `bonk_keyword` (`id`, `name`, `icon`, `spell_id`, `max_stacks`, `val
 ( 9, 'Hunter''s Mark',       'Ability_Hunter_SniperShot',  20374,  1, 15,     0,  8000, 0),
 (10, 'Dazed',                'Spell_Frost_Stun',           13496,  1, 30,     0,  4000, 0);
 
--- What a spell applies and pays off (both 0 until the v2 kits use them).
 ALTER TABLE `bonk_weapon`
     ADD COLUMN `applies`      TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'BonkKeyword put on every enemy each hit or tick strikes' AFTER `flags`,
     ADD COLUMN `apply_stacks` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'stacks of it per hit or tick' AFTER `applies`,
     ADD COLUMN `uses`         TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'BonkKeyword it pays off, 255 = every different keyword on the enemy' AFTER `apply_stacks`,
     ADD COLUMN `uses_pct`     FLOAT            NOT NULL DEFAULT 0 COMMENT '% more damage for each stack (or keyword) of it on the enemy' AFTER `uses`;
 
--- Frozen holds an enemy in place. No root spell has the ice-block look, so
--- Freeze (18798, the Freezing Band proc: its only other user) roots instead
--- of stunning.
 DELETE FROM `spell_effect_mod` WHERE `Id` = 18798 AND `EffectIndex` = 0;
 INSERT INTO `spell_effect_mod` (`Id`, `EffectIndex`, `Effect`, `EffectDieSides`, `EffectBaseDice`, `EffectDicePerLevel`, `EffectRealPointsPerLevel`, `EffectBasePoints`, `EffectAmplitude`, `EffectPointsPerComboPoint`, `EffectChainTarget`, `EffectMultipleValue`, `EffectMechanic`, `EffectImplicitTargetA`, `EffectImplicitTargetB`, `EffectRadiusIndex`, `EffectApplyAuraName`, `EffectItemType`, `EffectMiscValue`, `EffectTriggerSpell`, `Comment`) VALUES
 (18798, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 26, -1, -1, -1, 'Vanilla Bonk: Frozen keyword holds in place (root, not stun)');
 
--- Sunder Armor (27991, one Naxxramas NPC uses it, no Bonk enemy does) takes
--- 48 armor a level off; as a keyword it is +4% Physical damage taken per
--- stack, like the Fire and Shadow vulnerabilities.
 DELETE FROM `spell_effect_mod` WHERE `Id` = 27991 AND `EffectIndex` = 0;
 INSERT INTO `spell_effect_mod` (`Id`, `EffectIndex`, `Effect`, `EffectDieSides`, `EffectBaseDice`, `EffectDicePerLevel`, `EffectRealPointsPerLevel`, `EffectBasePoints`, `EffectAmplitude`, `EffectPointsPerComboPoint`, `EffectChainTarget`, `EffectMultipleValue`, `EffectMechanic`, `EffectImplicitTargetA`, `EffectImplicitTargetB`, `EffectRadiusIndex`, `EffectApplyAuraName`, `EffectItemType`, `EffectMiscValue`, `EffectTriggerSpell`, `Comment`) VALUES
 (27991, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 87, -1, 1, -1, 'Vanilla Bonk: Sunder Armor keyword, +% Physical damage taken');
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

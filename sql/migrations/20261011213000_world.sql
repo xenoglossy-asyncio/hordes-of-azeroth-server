@@ -6,10 +6,7 @@ DECLARE v INT DEFAULT 1;
 SET v = (SELECT COUNT(*) FROM `migrations` WHERE `id`='20261011213000');
 IF v = 0 THEN
 INSERT INTO `migrations` VALUES ('20261011213000');
--- Add your query below.
 
-
--- Vanilla Bonk: the camp shops show their wares as talent trees.
 CREATE TABLE IF NOT EXISTS `bonk_shop_tree` (
     `id`         INT UNSIGNED     NOT NULL,
     `shop`       TINYINT UNSIGNED NOT NULL COMMENT '1 = upgrades (quartermaster), 2 = talents (talent trainer)',
@@ -26,8 +23,6 @@ INSERT INTO `bonk_shop_tree` (`id`, `shop`, `name`, `background`) VALUES
 (4, 2, 'Tricks',     'MageArcane'),
 (5, 2, 'Challenges', 'WarlockDestruction');
 
--- Rows run 1-7 from the top, columns 1-4 from the left. A requirement is
--- drawn as an arrow when it sits straight above in the same tree.
 ALTER TABLE `bonk_upgrade`
     ADD COLUMN `icon`          VARCHAR(64)      NOT NULL DEFAULT 'INV_Misc_QuestionMark' COMMENT 'Interface\\Icons file name',
     ADD COLUMN `tree`          INT UNSIGNED     NOT NULL DEFAULT 0 COMMENT 'bonk_shop_tree.id',
@@ -44,31 +39,29 @@ ALTER TABLE `bonk_talent`
     ADD COLUMN `required_id`   INT UNSIGNED     NOT NULL DEFAULT 0 COMMENT 'bonk_talent.id to learn first',
     ADD COLUMN `required_rank` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'ranks of it needed';
 
--- Upgrades share their icons with the matching run passives.
-UPDATE `bonk_upgrade` SET `icon` = 'Spell_Holy_FistOfJustice',  `tree` = 1, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 1;  -- Might
-UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_PocketWatch_01',   `tree` = 1, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 2;  -- Haste
+UPDATE `bonk_upgrade` SET `icon` = 'Spell_Holy_FistOfJustice',  `tree` = 1, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 1;
+UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_PocketWatch_01',   `tree` = 1, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 2;
 UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_Gem_Variety_01',   `tree` = 1, `tree_row` = 3, `tree_column` = 2,
-    `required_id` = 1, `required_rank` = 3 WHERE `id` = 8;                                                                     -- Duplicator
-UPDATE `bonk_upgrade` SET `icon` = 'Spell_Holy_WordFortitude',  `tree` = 2, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 3;  -- Vitality
-UPDATE `bonk_upgrade` SET `icon` = 'Ability_Rogue_Sprint',      `tree` = 2, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 5;  -- Swiftness
+    `required_id` = 1, `required_rank` = 3 WHERE `id` = 8;
+UPDATE `bonk_upgrade` SET `icon` = 'Spell_Holy_WordFortitude',  `tree` = 2, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 3;
+UPDATE `bonk_upgrade` SET `icon` = 'Ability_Rogue_Sprint',      `tree` = 2, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 5;
 UPDATE `bonk_upgrade` SET `icon` = 'Spell_Nature_Rejuvenation', `tree` = 2, `tree_row` = 2, `tree_column` = 2,
-    `required_id` = 3, `required_rank` = 2 WHERE `id` = 4;                                                                     -- Recovery
-UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_Bag_10',           `tree` = 3, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 6;  -- Greed
-UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_Book_09',          `tree` = 3, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 7;  -- Growth
+    `required_id` = 3, `required_rank` = 2 WHERE `id` = 4;
+UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_Bag_10',           `tree` = 3, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 6;
+UPDATE `bonk_upgrade` SET `icon` = 'INV_Misc_Book_09',          `tree` = 3, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 7;
 
-UPDATE `bonk_talent` SET `icon` = 'INV_Misc_Coin_02',            `tree` = 4, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 8;  -- Pocket Change
-UPDATE `bonk_talent` SET `icon` = 'Spell_Holy_MindVision',       `tree` = 4, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 5;  -- Second Thoughts
+UPDATE `bonk_talent` SET `icon` = 'INV_Misc_Coin_02',            `tree` = 4, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 8;
+UPDATE `bonk_talent` SET `icon` = 'Spell_Holy_MindVision',       `tree` = 4, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 5;
 UPDATE `bonk_talent` SET `icon` = 'Spell_Shadow_Cripple',        `tree` = 4, `tree_row` = 2, `tree_column` = 3,
-    `required_id` = 5, `required_rank` = 1 WHERE `id` = 6;                                                                      -- Banishment
-UPDATE `bonk_talent` SET `icon` = 'Spell_Nature_Reincarnation',  `tree` = 4, `tree_row` = 3, `tree_column` = 2 WHERE `id` = 7;  -- Second Wind
-UPDATE `bonk_talent` SET `icon` = 'Spell_Nature_StoneSkinTotem', `tree` = 5, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 1;  -- Hardened Foes
-UPDATE `bonk_talent` SET `icon` = 'Spell_Nature_InsectSwarm',    `tree` = 5, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 3;  -- Swarming
+    `required_id` = 5, `required_rank` = 1 WHERE `id` = 6;
+UPDATE `bonk_talent` SET `icon` = 'Spell_Nature_Reincarnation',  `tree` = 4, `tree_row` = 3, `tree_column` = 2 WHERE `id` = 7;
+UPDATE `bonk_talent` SET `icon` = 'Spell_Nature_StoneSkinTotem', `tree` = 5, `tree_row` = 1, `tree_column` = 2 WHERE `id` = 1;
+UPDATE `bonk_talent` SET `icon` = 'Spell_Nature_InsectSwarm',    `tree` = 5, `tree_row` = 1, `tree_column` = 3 WHERE `id` = 3;
 UPDATE `bonk_talent` SET `icon` = 'Ability_Racial_BloodRage',    `tree` = 5, `tree_row` = 2, `tree_column` = 2,
-    `required_id` = 1, `required_rank` = 1 WHERE `id` = 2;                                                                      -- Brutal Foes
+    `required_id` = 1, `required_rank` = 1 WHERE `id` = 2;
 UPDATE `bonk_talent` SET `icon` = 'Ability_Warrior_Challange',   `tree` = 5, `tree_row` = 2, `tree_column` = 3,
-    `required_id` = 3, `required_rank` = 1 WHERE `id` = 4;                                                                      -- Champions
+    `required_id` = 3, `required_rank` = 1 WHERE `id` = 4;
 
--- Descriptions read as tooltip lines now.
 UPDATE `bonk_upgrade` SET `description` = '+5% weapon damage.'                       WHERE `id` = 1;
 UPDATE `bonk_upgrade` SET `description` = 'Weapons fire 4% faster.'                  WHERE `id` = 2;
 UPDATE `bonk_upgrade` SET `description` = '+10% maximum health.'                     WHERE `id` = 3;
@@ -86,8 +79,6 @@ UPDATE `bonk_talent` SET `description` = 'Banish an upgrade once per run.'      
 UPDATE `bonk_talent` SET `description` = 'Revive once per run at half health.'       WHERE `id` = 7;
 UPDATE `bonk_talent` SET `description` = '+25 coins at the start of a run.'          WHERE `id` = 8;
 
-
--- End of migration.
 END IF;
 END??
 DELIMITER ;

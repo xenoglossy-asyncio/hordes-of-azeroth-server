@@ -193,51 +193,33 @@ namespace
         return numbers;
     }
 
-    char const* GetPassiveStatLabel(BonkPassiveEffect effect, size_t index)
+    BonkString GetPassiveStatLabel(BonkPassiveEffect effect, size_t index)
     {
         if (index > 0)
-            return effect == BONK_PASSIVE_LEECH && index == 1 ? "Most healing each second" : nullptr;
+            return effect == BONK_PASSIVE_LEECH && index == 1 ? BONK_STRING_PASSIVE_LABEL_MOST_HEALING : BonkString(0);
         switch (effect)
         {
-            case BONK_PASSIVE_POWER:         return "Power";
-            case BONK_PASSIVE_HASTE:         return "Haste";
-            case BONK_PASSIVE_AMOUNT:        return "Count";
-            case BONK_PASSIVE_MOVE_SPEED:    return "Movement speed";
-            case BONK_PASSIVE_MAX_HEALTH:    return "Maximum health";
-            case BONK_PASSIVE_RECOVERY:      return "Health regained each second";
-            case BONK_PASSIVE_GREED:         return "Gold";
-            case BONK_PASSIVE_GROWTH:        return "Experience";
-            case BONK_PASSIVE_PICKUP:        return "Pickup range";
-            case BONK_PASSIVE_LEECH:         return "Chance to heal on hit";
-            case BONK_PASSIVE_AREA:          return "Area";
-            case BONK_PASSIVE_DURATION:      return "Duration";
-            case BONK_PASSIVE_ARMOR:         return "Armor";
-            case BONK_PASSIVE_DODGE:         return "Dodge chance";
-            case BONK_PASSIVE_CRIT:          return "Critical strike chance";
-            case BONK_PASSIVE_CRIT_DAMAGE:   return "Critical strike damage";
-            case BONK_PASSIVE_SHIELD:        return "Shield, % of maximum health";
-            case BONK_PASSIVE_LUCK:          return "Luck";
-            case BONK_PASSIVE_POISON_DAMAGE: return "Poison damage";
-            default:                         return nullptr;
+            case BONK_PASSIVE_POWER:         return BONK_STRING_STAT_POWER;
+            case BONK_PASSIVE_HASTE:         return BONK_STRING_STAT_HASTE;
+            case BONK_PASSIVE_AMOUNT:        return BONK_STRING_STAT_COUNT;
+            case BONK_PASSIVE_MOVE_SPEED:    return BONK_STRING_PASSIVE_LABEL_MOVE_SPEED;
+            case BONK_PASSIVE_MAX_HEALTH:    return BONK_STRING_PASSIVE_LABEL_MAX_HEALTH;
+            case BONK_PASSIVE_RECOVERY:      return BONK_STRING_PASSIVE_LABEL_RECOVERY;
+            case BONK_PASSIVE_GREED:         return BONK_STRING_PASSIVE_LABEL_GOLD;
+            case BONK_PASSIVE_GROWTH:        return BONK_STRING_PASSIVE_LABEL_EXPERIENCE;
+            case BONK_PASSIVE_PICKUP:        return BONK_STRING_PASSIVE_LABEL_PICKUP;
+            case BONK_PASSIVE_LEECH:         return BONK_STRING_PASSIVE_LABEL_LEECH;
+            case BONK_PASSIVE_AREA:          return BONK_STRING_STAT_AREA;
+            case BONK_PASSIVE_DURATION:      return BONK_STRING_PASSIVE_LABEL_DURATION;
+            case BONK_PASSIVE_ARMOR:         return BONK_STRING_STAT_ARMOR;
+            case BONK_PASSIVE_DODGE:         return BONK_STRING_PASSIVE_LABEL_DODGE;
+            case BONK_PASSIVE_CRIT:          return BONK_STRING_STAT_CRIT_CHANCE;
+            case BONK_PASSIVE_CRIT_DAMAGE:   return BONK_STRING_STAT_CRIT_DAMAGE;
+            case BONK_PASSIVE_SHIELD:        return BONK_STRING_STRENGTH_SHIELD_LABEL;
+            case BONK_PASSIVE_LUCK:          return BONK_STRING_STAT_LUCK;
+            case BONK_PASSIVE_POISON_DAMAGE: return BONK_STRING_PASSIVE_LABEL_POISON_DAMAGE;
+            default:                         return BonkString(0);
         }
-    }
-
-    std::vector<std::string> SplitSentences(std::string const& text)
-    {
-        std::vector<std::string> sentences;
-        size_t pos = 0;
-        while (pos < text.size())
-        {
-            size_t const end = text.find(". ", pos);
-            if (end == std::string::npos)
-            {
-                sentences.push_back(text.substr(pos));
-                break;
-            }
-            sentences.push_back(text.substr(pos, end + 1 - pos));
-            pos = end + 2;
-        }
-        return sentences;
     }
 }
 
@@ -1032,25 +1014,42 @@ void BonkMgr::LoadWeapons()
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk weapons with %u upgrades", uint32(m_weapons.size()), upgrades);
 }
 
-std::string GetBonkMagicSchoolName(uint32 spellId)
+std::string GetBonkMagicSchoolName(uint32 spellId, LocaleConstant locale)
 {
     SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(spellId);
     switch (spellInfo ? spellInfo->School : SPELL_SCHOOL_NORMAL)
     {
-        case SPELL_SCHOOL_HOLY:   return "Holy";
-        case SPELL_SCHOOL_FIRE:   return "Fire";
-        case SPELL_SCHOOL_NATURE: return "Nature";
-        case SPELL_SCHOOL_FROST:  return "Frost";
-        case SPELL_SCHOOL_SHADOW: return "Shadow";
-        case SPELL_SCHOOL_ARCANE: return "Arcane";
+        case SPELL_SCHOOL_HOLY:   return sBonkLocale.GetString(BONK_STRING_SCHOOL_HOLY, locale);
+        case SPELL_SCHOOL_FIRE:   return sBonkLocale.GetString(BONK_STRING_SCHOOL_FIRE, locale);
+        case SPELL_SCHOOL_NATURE: return sBonkLocale.GetString(BONK_STRING_SCHOOL_NATURE, locale);
+        case SPELL_SCHOOL_FROST:  return sBonkLocale.GetString(BONK_STRING_SCHOOL_FROST, locale);
+        case SPELL_SCHOOL_SHADOW: return sBonkLocale.GetString(BONK_STRING_SCHOOL_SHADOW, locale);
+        case SPELL_SCHOOL_ARCANE: return sBonkLocale.GetString(BONK_STRING_SCHOOL_ARCANE, locale);
         default:                  return "";
     }
 }
 
-std::string DescribeBonkWeaponTags(BonkWeapon const& weapon, std::string const& school)
+BonkString GetBonkClassName(uint32 classId)
+{
+    switch (classId)
+    {
+        case CLASS_WARRIOR: return BONK_STRING_CLASS_WARRIOR;
+        case CLASS_PALADIN: return BONK_STRING_CLASS_PALADIN;
+        case CLASS_HUNTER:  return BONK_STRING_CLASS_HUNTER;
+        case CLASS_ROGUE:   return BONK_STRING_CLASS_ROGUE;
+        case CLASS_PRIEST:  return BONK_STRING_CLASS_PRIEST;
+        case CLASS_SHAMAN:  return BONK_STRING_CLASS_SHAMAN;
+        case CLASS_MAGE:    return BONK_STRING_CLASS_MAGE;
+        case CLASS_WARLOCK: return BONK_STRING_CLASS_WARLOCK;
+        case CLASS_DRUID:   return BONK_STRING_CLASS_DRUID;
+        default:            return BONK_STRING_CLASS_HERO;
+    }
+}
+
+std::string DescribeBonkWeaponTags(BonkWeapon const& weapon, std::string const& school, LocaleConstant locale)
 {
     BonkMasteryTree const* tree = sBonkMastery.GetTree(BonkMastery::GetSpec(weapon.id));
-    std::string spec = tree ? tree->name : "";
+    std::string spec = tree ? sBonkLocale.Localize(BONK_FIELD_MASTERY_TREE_NAME, tree->id, tree->name, locale) : "";
     if (spec.empty() && weapon.behavior == BONK_BEHAVIOR_PET)
         spec = "Pet";
     bool const aimed = weapon.target == BONK_TARGET_NEAREST || weapon.target == BONK_TARGET_RANDOM ||
@@ -1059,55 +1058,99 @@ std::string DescribeBonkWeaponTags(BonkWeapon const& weapon, std::string const& 
         FormatScaled(aimed ? weapon.range : 0.0f);
 }
 
-std::string DescribeBonkSpellUpgrade(BonkWeapon const& weapon, BonkSpellUpgrade upgrade, float amount)
+BonkString BonkWeapon::GetPetNoun(bool plural) const
+{
+    if (HasFlag(BONK_WEAPON_FLAG_TOTEM))
+        return plural ? BONK_STRING_NOUN_TOTEMS : BONK_STRING_NOUN_TOTEM;
+    if (classMask & (1 << (CLASS_SHAMAN - 1)))
+        return plural ? BONK_STRING_NOUN_SPIRIT_WOLVES : BONK_STRING_NOUN_SPIRIT_WOLF;
+    if (classMask & (1 << (CLASS_PRIEST - 1)))
+        return plural ? BONK_STRING_NOUN_SHADOWFIENDS : BONK_STRING_NOUN_SHADOWFIEND;
+    if (classMask & (1 << (CLASS_MAGE - 1)))
+        return plural ? BONK_STRING_NOUN_ELEMENTALS : BONK_STRING_NOUN_ELEMENTAL;
+    return plural ? BONK_STRING_NOUN_BEASTS : BONK_STRING_NOUN_BEAST;
+}
+
+BonkString BonkWeapon::GetTargetNoun(bool plural) const
+{
+    if (behavior == BONK_BEHAVIOR_TRAP)
+        return plural ? BONK_STRING_NOUN_TRAPS : BONK_STRING_NOUN_TRAP;
+    if (behavior == BONK_BEHAVIOR_PET)
+        return GetPetNoun(plural);
+    if (behavior == BONK_BEHAVIOR_WRATH)
+        return BONK_STRING_NOUN_WOLF;
+    if (target == BONK_TARGET_GROUND)
+        return plural ? BONK_STRING_NOUN_PACKS : BONK_STRING_NOUN_PACK;
+    return plural ? BONK_STRING_NOUN_TARGETS : BONK_STRING_NOUN_TARGET;
+}
+
+std::string BonkWeapon::DescribeTargets(uint32 count, LocaleConstant locale) const
+{
+    std::string const number = std::to_string(count);
+    bool const one = count == 1;
+    if (behavior == BONK_BEHAVIOR_TRAP)
+    {
+        if (target == BONK_TARGET_GROUND)
+            return sBonkLocale.GetString(one ? BONK_STRING_TARGETS_THROWS_TRAP : BONK_STRING_TARGETS_THROWS_TRAPS, locale, { number });
+        return sBonkLocale.GetString(one ? BONK_STRING_TARGETS_PLACES_TRAP : BONK_STRING_TARGETS_PLACES_TRAPS, locale, { number });
+    }
+    if (behavior == BONK_BEHAVIOR_PET)
+        return sBonkLocale.GetString(BONK_STRING_TARGETS_CALLS_UP_TO, locale, { number, sBonkLocale.GetString(GetPetNoun(!one), locale) });
+    if (target == BONK_TARGET_GROUND)
+        return sBonkLocale.GetString(one ? BONK_STRING_TARGETS_LANDS_ON_PACK : BONK_STRING_TARGETS_LANDS_ON_PACKS, locale, { number });
+    return sBonkLocale.GetString(one ? BONK_STRING_TARGETS_UP_TO_ENEMY : BONK_STRING_TARGETS_UP_TO_ENEMIES, locale, { number });
+}
+
+std::string DescribeBonkSpellUpgrade(BonkWeapon const& weapon, BonkSpellUpgrade upgrade, float amount, LocaleConstant locale)
 {
     char number[32];
     snprintf(number, sizeof(number), "%g", amount);
     std::string const percent = std::string("+") + number + "%";
+    bool const one = amount == 1.0f;
+    auto text = [locale](BonkString id, std::vector<std::string> const& args) { return sBonkLocale.GetString(id, locale, args); };
     switch (upgrade)
     {
         case BONK_SPELL_UPGRADE_CLEAVE:
-            return percent + " splash damage to up to " + std::to_string(BONK_SPELL_CLEAVE_TARGETS) + " nearby enemies";
-        case BONK_SPELL_UPGRADE_HIT_TWICE:  return percent + " chance to hit twice";
-        case BONK_SPELL_UPGRADE_HASTE:      return percent + " Haste for this spell";
+            return percent + " " + text(BONK_STRING_UPGRADE_CLEAVE, { std::to_string(BONK_SPELL_CLEAVE_TARGETS) });
+        case BONK_SPELL_UPGRADE_HIT_TWICE:  return percent + " " + text(BONK_STRING_UPGRADE_HIT_TWICE, {});
+        case BONK_SPELL_UPGRADE_HASTE:      return percent + " " + text(BONK_STRING_UPGRADE_HASTE, {});
         case BONK_SPELL_UPGRADE_DURATION:
         {
             if (weapon.behavior == BONK_BEHAVIOR_ICE_PATH)
-                return percent + " ice duration";
+                return percent + " " + text(BONK_STRING_UPGRADE_ICE_DURATION, {});
             if (weapon.behavior == BONK_BEHAVIOR_TRAP && weapon.HasFlag(BONK_WEAPON_FLAG_SNAKES))
-                return percent + " snake duration";
+                return percent + " " + text(BONK_STRING_UPGRADE_SNAKE_DURATION, {});
             if (weapon.behavior == BONK_BEHAVIOR_TRAP)
             {
                 SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(weapon.spellId);
-                return percent + (spellInfo && spellInfo->School == SPELL_SCHOOL_FROST ? " ice duration" : " burn duration");
+                bool const frost = spellInfo && spellInfo->School == SPELL_SCHOOL_FROST;
+                return percent + " " + text(frost ? BONK_STRING_UPGRADE_ICE_DURATION : BONK_STRING_UPGRADE_BURN_DURATION, {});
             }
-            return percent + " duration";
+            return percent + " " + text(BONK_STRING_UPGRADE_DURATION, {});
         }
-        case BONK_SPELL_UPGRADE_DEPLOY:     return std::string("+") + number + " yd deploy range";
-        case BONK_SPELL_UPGRADE_TRAP_AREA:  return percent + " trap radius";
-        case BONK_SPELL_UPGRADE_REACH:      return percent + " range";
+        case BONK_SPELL_UPGRADE_DEPLOY:     return text(BONK_STRING_UPGRADE_DEPLOY, { number });
+        case BONK_SPELL_UPGRADE_TRAP_AREA:  return percent + " " + text(BONK_STRING_UPGRADE_TRAP_AREA, {});
+        case BONK_SPELL_UPGRADE_REACH:      return percent + " " + text(BONK_STRING_UPGRADE_REACH, {});
         case BONK_SPELL_UPGRADE_TARGETS:
-            return std::string("affects ") + number + (amount == 1.0f ? " additional enemy" : " additional enemies");
-        case BONK_SPELL_UPGRADE_SHIELD_SIZE: return percent + " Shield size";
-        case BONK_SPELL_UPGRADE_TRIGGER_COOLDOWN: return std::string("-") + number + "% internal cooldown";
+            return text(one ? BONK_STRING_UPGRADE_TARGETS_ONE : BONK_STRING_UPGRADE_TARGETS, { number });
+        case BONK_SPELL_UPGRADE_SHIELD_SIZE: return percent + " " + text(BONK_STRING_UPGRADE_SHIELD_SIZE, {});
+        case BONK_SPELL_UPGRADE_TRIGGER_COOLDOWN: return std::string("-") + number + "% " + text(BONK_STRING_UPGRADE_TRIGGER_COOLDOWN, {});
         case BONK_SPELL_UPGRADE_ECHO:
-        {
-            std::string const plural = amount == 1.0f ? "" : "s";
             if (weapon.target == BONK_TARGET_GROUND)
-                return std::string("+") + number + " cast" + plural + " at the next largest group" + plural;
-            return std::string("+") + number + " cast" + plural + ", 0.3 sec apart";
-        }
-        case BONK_SPELL_UPGRADE_MARK:       return percent + " damage taken by marked enemies";
+                return text(one ? BONK_STRING_UPGRADE_ECHO_GROUPS_ONE : BONK_STRING_UPGRADE_ECHO_GROUPS, { number });
+            return text(one ? BONK_STRING_UPGRADE_ECHO_ONE : BONK_STRING_UPGRADE_ECHO, { number });
+        case BONK_SPELL_UPGRADE_MARK:       return percent + " " + text(BONK_STRING_UPGRADE_MARK, {});
         case BONK_SPELL_UPGRADE_PET_DAMAGE:
-            return percent + " damage dealt by its " + weapon.GetTargetNoun() + (weapon.behavior == BONK_BEHAVIOR_WRATH ? "" : "s");
-        case BONK_SPELL_UPGRADE_PET_SIZE:   return percent + " " + weapon.GetTargetNoun() + " size";
-        case BONK_SPELL_UPGRADE_SLOWED:     return percent + " damage taken by enemies it slows";
-        case BONK_SPELL_UPGRADE_FRENZY:     return percent + " damage dealt by frenzied pets";
+            return percent + " " + text(BONK_STRING_UPGRADE_PET_DAMAGE, { text(weapon.GetTargetNoun(true), {}) });
+        case BONK_SPELL_UPGRADE_PET_SIZE:   return percent + " " + text(BONK_STRING_UPGRADE_PET_SIZE, { text(weapon.GetTargetNoun(false), {}) });
+        case BONK_SPELL_UPGRADE_SLOWED:     return percent + " " + text(BONK_STRING_UPGRADE_SLOWED, {});
+        case BONK_SPELL_UPGRADE_FRENZY:     return percent + " " + text(BONK_STRING_UPGRADE_FRENZY, {});
         case BONK_SPELL_UPGRADE_STACKS:
         {
             BonkKeywordInfo const* keyword = sBonkMgr.GetKeyword(weapon.applies);
-            std::string const stacks = std::string("applies ") + number + (amount == 1.0f ? " more stack" : " more stacks");
-            return stacks + " of " + (keyword ? keyword->name : std::string("its effect"));
+            std::string const effect = keyword ? sBonkLocale.Localize(BONK_FIELD_KEYWORD_NAME, uint32(keyword->id), keyword->name, locale) :
+                text(BONK_STRING_UPGRADE_ITS_EFFECT, {});
+            return text(one ? BONK_STRING_UPGRADE_STACKS_ONE : BONK_STRING_UPGRADE_STACKS, { number, effect });
         }
         default:                      return "";
     }
@@ -1307,16 +1350,16 @@ void BonkMgr::LoadCards()
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded %u Bonk cards", uint32(m_cards.size()));
 }
 
-std::string FormatBonkMoney(uint32 copper)
+std::string FormatBonkMoney(uint32 copper, LocaleConstant locale)
 {
     std::string text;
     if (uint32 const gold = copper / 10000)
-        text += std::to_string(gold) + "g";
+        text += sBonkLocale.GetString(BONK_STRING_MONEY_GOLD, locale, { std::to_string(gold) });
     if (uint32 const silver = (copper / 100) % 100)
-        text += (text.empty() ? "" : " ") + std::to_string(silver) + "s";
+        text += (text.empty() ? "" : " ") + sBonkLocale.GetString(BONK_STRING_MONEY_SILVER, locale, { std::to_string(silver) });
     if (uint32 const rest = copper % 100)
-        text += (text.empty() ? "" : " ") + std::to_string(rest) + "c";
-    return text.empty() ? "0c" : text;
+        text += (text.empty() ? "" : " ") + sBonkLocale.GetString(BONK_STRING_MONEY_COPPER, locale, { std::to_string(rest) });
+    return text.empty() ? sBonkLocale.GetString(BONK_STRING_MONEY_COPPER, locale, { "0" }) : text;
 }
 
 uint32 GetBonkMapRewardPercent(BonkMapType type)
@@ -1329,9 +1372,16 @@ uint32 GetBonkMapRewardPercent(BonkMapType type)
     }
 }
 
-std::string FormatBonkShards(uint32 count)
+std::string FormatBonkShards(uint32 count, LocaleConstant locale)
 {
-    return std::to_string(count) + (count == 1 ? " Darkmoon Ticket" : " Darkmoon Tickets");
+    return sBonkLocale.GetString(count == 1 ? BONK_STRING_TICKETS_ONE : BONK_STRING_TICKETS, locale, { std::to_string(count) });
+}
+
+std::string FormatBonkNumber(float value)
+{
+    char text[32];
+    std::snprintf(text, sizeof(text), "%g", value);
+    return text;
 }
 
 char const* GetBonkRarityName(BonkRarity rarity)
@@ -1858,19 +1908,20 @@ bool BonkMgr::HasPoisonSpell(uint32 classMask) const
     });
 }
 
-std::string BonkMgr::DescribeEvolutionAdds(BonkWeapon const& evolved) const
+std::string BonkMgr::DescribeEvolutionAdds(BonkWeapon const& evolved, LocaleConstant locale) const
 {
+    std::string const description = sBonkLocale.Localize(BONK_FIELD_WEAPON_DESCRIPTION, evolved.id, evolved.description, locale);
     BonkWeapon const* base = GetWeapon(evolved.evolvesFrom);
     if (!base)
-        return evolved.description;
+        return description;
 
-    std::vector<std::string> const baseSentences = SplitSentences(base->description);
-    std::vector<std::string> const sentences = SplitSentences(evolved.description);
+    std::vector<std::string> const baseSentences = BonkLocale::SplitSentences(sBonkLocale.Localize(BONK_FIELD_WEAPON_DESCRIPTION, base->id, base->description, locale));
+    std::vector<std::string> const sentences = BonkLocale::SplitSentences(description);
     size_t shared = 0;
     while (shared < baseSentences.size() && shared < sentences.size() && baseSentences[shared] == sentences[shared])
         ++shared;
     if (!shared || shared == sentences.size())
-        return evolved.description;
+        return description;
 
     std::string adds;
     for (size_t i = shared; i < sentences.size(); ++i)
@@ -1878,17 +1929,13 @@ std::string BonkMgr::DescribeEvolutionAdds(BonkWeapon const& evolved) const
     return adds;
 }
 
-std::string BonkMgr::DescribeEvolutionNames(uint32 weaponId) const
+std::string BonkMgr::DescribeEvolutionNames(uint32 weaponId, LocaleConstant locale) const
 {
     std::vector<BonkWeapon const*> const evolutions = GetEvolutions(weaponId);
-    std::string text;
-    for (size_t i = 0; i < evolutions.size(); ++i)
-    {
-        if (i)
-            text += i + 1 == evolutions.size() ? " or " : ", ";
-        text += evolutions[i]->name;
-    }
-    return text;
+    std::vector<std::string> names;
+    for (BonkWeapon const* evolved : evolutions)
+        names.push_back(sBonkLocale.Localize(BONK_FIELD_WEAPON_NAME, evolved->id, evolved->name, locale));
+    return sBonkLocale.JoinList(names, BONK_STRING_LIST_OR, locale);
 }
 
 BonkMob const* BonkMgr::GetMob(uint32 entry) const
@@ -2331,17 +2378,19 @@ float BonkPassive::RankScale(uint32 rank) const
     return scale;
 }
 
-std::string BonkMgr::DescribePassive(BonkPassive const& passive, uint32 rank) const
+std::string BonkMgr::DescribePassive(BonkPassive const& passive, uint32 rank, LocaleConstant locale) const
 {
-    return ScalePassiveText(passive.description, passive.RankScale(std::max(1u, rank)));
+    return ScalePassiveText(sBonkLocale.Localize(BONK_FIELD_PASSIVE_DESCRIPTION, passive.id, passive.description, locale), passive.RankScale(std::max(1u, rank)));
 }
 
-std::string BonkMgr::DescribePassiveRankUp(BonkPassive const& passive, uint32 rank) const
+std::string BonkMgr::DescribePassiveRankUp(BonkPassive const& passive, uint32 rank, LocaleConstant locale) const
 {
-    return rank <= 1 ? DescribePassive(passive, 1) : ScalePassiveText(passive.description, passive.RankWeight(rank));
+    if (rank <= 1)
+        return DescribePassive(passive, 1, locale);
+    return ScalePassiveText(sBonkLocale.Localize(BONK_FIELD_PASSIVE_DESCRIPTION, passive.id, passive.description, locale), passive.RankWeight(rank));
 }
 
-void BonkMgr::DescribePassiveStats(BonkPassive const& passive, uint32 rank, std::vector<BonkStatChange>& stats) const
+void BonkMgr::DescribePassiveStats(BonkPassive const& passive, uint32 rank, std::vector<BonkStatChange>& stats, LocaleConstant locale) const
 {
     stats.clear();
     if (rank <= 1)
@@ -2354,20 +2403,20 @@ void BonkMgr::DescribePassiveStats(BonkPassive const& passive, uint32 rank, std:
         if (std::find(shown.begin(), shown.end(), after[i]) != shown.end())
             continue;
         shown.push_back(after[i]);
-        char const* label = GetPassiveStatLabel(BonkPassiveEffect(passive.effect), stats.size());
+        BonkString const label = GetPassiveStatLabel(BonkPassiveEffect(passive.effect), stats.size());
         if (!label)
             continue;
-        stats.push_back({ label, before[i], after[i] });
+        stats.push_back({ sBonkLocale.GetString(label, locale), before[i], after[i] });
     }
 }
 
-std::string BonkMgr::DescribePassiveNow(BonkPassive const& passive, uint32 rank) const
+std::string BonkMgr::DescribePassiveNow(BonkPassive const& passive, uint32 rank, LocaleConstant locale) const
 {
     float scale = passive.RankScale(std::max(1u, rank));
     float const cap = BonkRun::GetPassiveCap(passive.effect);
     if (cap > 0.0f && passive.valuePerRank > 0.0f)
         scale = std::min(scale, cap / passive.valuePerRank);
-    return ScalePassiveText(passive.description, scale);
+    return ScalePassiveText(sBonkLocale.Localize(BONK_FIELD_PASSIVE_DESCRIPTION, passive.id, passive.description, locale), scale);
 }
 
 bool BonkMgr::IsArenaLocation(uint32 mapId, uint32 zoneId) const
