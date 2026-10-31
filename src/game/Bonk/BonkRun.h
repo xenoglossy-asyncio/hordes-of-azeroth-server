@@ -138,6 +138,8 @@ class BonkRun
         void FollowToStage(BonkMap const& map, uint32 stage);
         void EndWithHost();
         void EndInWipe();
+        void SetCoopPlayers(uint32 players);
+        uint32 GetCoopPlayers() const { return m_coopPlayers; }
         void ShareExperience(float levelFraction);
         bool OffersChest(ObjectGuid chest, Player* opener) const;
         uint32 OpenChestFor(GameObject* chest, Player* opener);
@@ -1418,6 +1420,8 @@ class BonkRun
         BonkMap m_map;
         uint32 m_stage = 1;
         ObjectGuid m_coopHost;
+        uint32 m_coopPlayers = 1;
+        float GetCoopHealthScale(BonkSpawnKind kind) const;
         float m_stageX = 0.0f, m_stageY = 0.0f, m_stageZ = 0.0f;
         void ClearStageObjects();
         bool PlaceNearHost(float& x, float& y, float& z, float& o) const;

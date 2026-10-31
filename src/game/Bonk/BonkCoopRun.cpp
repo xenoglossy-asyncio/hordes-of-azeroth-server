@@ -501,6 +501,9 @@ void BonkCoop::BeginGroupRun(Player* host, uint32 players)
     group = GroupRun();
     group.cap = players + 1;
     group.pool = group.cap;
+    for (Player* member : GroupMembers(host))
+        if (BonkRun* run = member->GetBonkPlayer()->GetRun())
+            run->SetCoopPlayers(players);
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s starts a group run, %u players, pool %u", host->GetName(), players, group.pool);
     SendDowned(group, GroupMembers(host));
 }

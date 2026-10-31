@@ -105,6 +105,9 @@ namespace
     float const BONK_VETERAN_SIZE          = 1.2f;
     uint32 const BONK_STRESS_SPAWN_PER_TICK = 40;
     float const BONK_BOSS_CROWD            = 0.5f;
+    float const BONK_COOP_SPAWN_PER_PLAYER = 0.15f;
+    float const BONK_COOP_HEALTH_PER_PLAYER = 0.15f;
+    float const BONK_COOP_BOSS_HEALTH_PER_PLAYER = 0.75f;
     uint32 const BONK_MOB_SWING_MS         = 2000;
     uint32 const BONK_BEAT_WARN_SECONDS    = 10;
     uint32 const BONK_OVERTIME_AFTER_SEC   = 90;
@@ -2210,6 +2213,8 @@ void BonkRun::UpdateSpawns(uint32 diff)
     UpdateLanes(diff);
     UpdatePerch(diff);
 
+    if (!m_bossSpawned && elapsedSeconds >= m_map.durationSeconds && IsCoopGuest())
+        m_bossSpawned = true;
     if (!m_bossSpawned && elapsedSeconds >= m_map.durationSeconds)
     {
         BonkMapCreature const* boss = PickCreature(BONK_SPAWN_BOSS);
@@ -2701,6 +2706,7 @@ uint32 BonkRun::GetSpawnTarget() const
     float target = std::min(GetCurveMinAlive(), float(m_tier.maxAlive));
     if (m_bossSpawned)
         target *= BONK_BOSS_CROWD;
+    target *= 1.0f + BONK_COOP_SPAWN_PER_PLAYER * float(m_coopPlayers - 1);
     return uint32(target + 0.5f);
 }
 
@@ -3697,7 +3703,21 @@ float BonkRun::GetSpawnHealthUncapped(BonkSpawnKind kind, BonkArchetype archetyp
     uint32 const level = std::min(GetMobLevel() + GetKindLevelBonus(kind), 63u);
     float const archetypeHealth = kind == BONK_SPAWN_NORMAL ? sBonkMgr.GetArchetype(archetype).healthMultiplier : 1.0f;
     return std::max(1.0f, GetMobHealth(level) * GetStageHealthMultiplier() * m_map.healthMultiplier * creatureMultiplier * archetypeHealth *
-        GetCrowdOverflow() * GetKindHealth(kind) * GetTierKindHealth(kind) * GetScalingNow().health);
+        GetCrowdOverflow() * GetKindHealth(kind) * GetTierKindHealth(kind) * GetScalingNow().health * GetCoopHealthScale(kind));
+}
+
+float BonkRun::GetCoopHealthScale(BonkSpawnKind kind) const
+{
+    float const perPlayer = kind == BONK_SPAWN_BOSS ? BONK_COOP_BOSS_HEALTH_PER_PLAYER : BONK_COOP_HEALTH_PER_PLAYER;
+    return 1.0f + perPlayer * float(m_coopPlayers - 1);
+}
+
+void BonkRun::SetCoopPlayers(uint32 players)
+{
+    m_coopPlayers = std::max(1u, players);
+    sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
+        "Bonk coop: %s runs with %u players (stage %u, %s, %s, class %u, %s)", m_player->GetName(), m_coopPlayers, m_stage, m_map.key.c_str(),
+        m_tier.key.c_str(), uint32(m_player->GetClass()), IsCoopGuest() ? "guest" : "host");
 }
 
 uint32 BonkRun::GetSpawnHealth(BonkSpawnKind kind, BonkArchetype archetype, float creatureMultiplier) const
