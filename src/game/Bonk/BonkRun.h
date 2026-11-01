@@ -469,6 +469,7 @@ class BonkRun
             ObjectGuid guid;
             uint32 experience = 0;
             bool pulled = false;
+            ObjectGuid puller;
             float aimX = 0.0f, aimY = 0.0f, aimZ = 0.0f;
             BonkOrb colour = BONK_ORB_BLUE;
             uint32 droppedMs = 0;
@@ -966,6 +967,16 @@ class BonkRun
 
         void GiveExperience(uint32 xp);
         void GiveCollectedExperience(uint32 xp);
+        struct OrbCollector
+        {
+            Player* player = nullptr;
+            BonkRun* run = nullptr;
+            float x = 0.0f, y = 0.0f, z = 0.0f;
+            float magnet = 0.0f;
+        };
+        enum class PickupSpot : uint8 { Body, Chest };
+        std::vector<OrbCollector> GetPickupPlayers(PickupSpot spot, bool hurtOnly);
+        void EatHealDrop();
         BonkRun* GetKillRewardRun(Unit* killer);
         static bool IsPlatedMob(Creature const* mob);
         void RewardKill(Creature* mob, BonkSpawnKind kind, Unit* killer, bool eventGroup);
@@ -1434,6 +1445,7 @@ class BonkRun
         uint32 GetCoopBossCount() const;
         float GetCoopCrowd() const;
         float GetCoopSpawnShare() const;
+        void UpdateOwnCombat(uint32 diff);
         bool OnStageBossKilled(Creature* mob);
         void NotifyArrived(Creature* mob) const;
         float m_stageX = 0.0f, m_stageY = 0.0f, m_stageZ = 0.0f;
@@ -1655,6 +1667,7 @@ class BonkRun
             ObjectGuid guid;
             ObjectGuid sparkle;
             bool pulled = false;
+            ObjectGuid puller;
             float aimX = 0.0f, aimY = 0.0f, aimZ = 0.0f;
         };
         std::vector<HealDrop> m_healDrops;

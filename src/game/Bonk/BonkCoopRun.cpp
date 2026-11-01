@@ -74,7 +74,7 @@ namespace
     float const REVIVE_RADIUS = 5.0f;
     float const REVIVE_HEALTH = 0.3f;
     float const RAISED_AT_BOSS_HEALTH = 1.0f;
-    uint32 const BONK_SPELL_DOWNED_LOOK = 9036;
+    uint32 const BONK_SPELL_DOWNED_LOOK = 33650;
     uint32 const HELD_FILL_SLOWDOWN = 1000;
 
     enum ReviveFill : uint8
@@ -93,6 +93,7 @@ namespace
         uint32 lookKey = 0;
         bool ringShown = false;
         ReviveFill fill = REVIVE_FILL_NONE;
+        size_t watchChoices = 0;
     };
 
     struct GroupRun
@@ -285,6 +286,15 @@ namespace
         }
     }
 
+    void HideDownedLook(Downed& downed, std::vector<Player*> const& members)
+    {
+        if (!downed.lookKey)
+            return;
+        for (Player* member : members)
+            SendBonkAuraGone(member, downed.lookKey);
+        downed.lookKey = 0;
+    }
+
     void ClearDownedLooks(ObjectGuid const& guid, Downed& downed, std::vector<Player*> const& members)
     {
         for (Player* member : members)
@@ -301,10 +311,16 @@ namespace
         downed.fill = REVIVE_FILL_NONE;
     }
 
+    void SendWatching(Player* watcher, Player* watched, size_t choices)
+    {
+        watcher->GetBonkPlayer()->SendAddon("coopwatch~" + std::string(watched ? watched->GetName() : "") + "~" + std::to_string(choices));
+    }
+
     void StopWatching(Player* player)
     {
         if (player->IsInWorld() && player->GetCamera().GetBody() != player)
             player->GetCamera().ResetView();
+        SendWatching(player, nullptr, 0);
     }
 
     bool CanBeWatched(Player* member, Player* watcher)
@@ -312,35 +328,59 @@ namespace
         return member != watcher && member->IsAlive() && member->IsInWorld() && !BonkCoop::IsAway(member) && member->GetMapId() == watcher->GetMapId();
     }
 
+    std::vector<Player*> WatchChoices(Player* watcher, std::vector<Player*> const& members)
+    {
+        std::vector<Player*> choices;
+        for (Player* member : members)
+            if (CanBeWatched(member, watcher))
+                choices.push_back(member);
+        return choices;
+    }
+
+    void Watch(Player* downedPlayer, Downed& downed, Player* watched, size_t choices)
+    {
+        downed.watching = watched->GetObjectGuid();
+        downed.watchChoices = choices;
+        downedPlayer->GetCamera().SetView(watched);
+        downedPlayer->GetBonkPlayer()->Notify(BONK_STRING_COOP_WATCHING, { watched->GetName() });
+        SendWatching(downedPlayer, watched, choices);
+    }
+
     void WatchStanding(Player* downedPlayer, Downed& downed, std::vector<Player*> const& members)
     {
-        if (!downedPlayer->IsInWorld() || BonkCoop::IsAway(downedPlayer))
+        if (!downed.spectator || !downedPlayer->IsInWorld() || BonkCoop::IsAway(downedPlayer))
             return;
+        std::vector<Player*> const choices = WatchChoices(downedPlayer, members);
         Player* current = downed.watching.IsEmpty() ? nullptr : ObjectAccessor::FindPlayerNotInWorld(downed.watching);
-        if (current && CanBeWatched(current, downedPlayer) && std::find(members.begin(), members.end(), current) != members.end())
+        if (current && std::find(choices.begin(), choices.end(), current) != choices.end())
+        {
+            if (downed.watchChoices != choices.size())
+            {
+                downed.watchChoices = choices.size();
+                SendWatching(downedPlayer, current, choices.size());
+            }
             return;
+        }
         Player* nearest = nullptr;
         float nearestDistance = 0.0f;
-        for (Player* member : members)
+        for (Player* choice : choices)
         {
-            if (!CanBeWatched(member, downedPlayer))
-                continue;
-            float const distance = downedPlayer->GetDistance2d(member);
+            float const distance = downedPlayer->GetDistance2d(choice);
             if (!nearest || distance < nearestDistance)
             {
-                nearest = member;
+                nearest = choice;
                 nearestDistance = distance;
             }
         }
         if (!nearest)
         {
+            if (!downed.watching.IsEmpty())
+                StopWatching(downedPlayer);
             downed.watching.Clear();
-            StopWatching(downedPlayer);
+            downed.watchChoices = 0;
             return;
         }
-        downed.watching = nearest->GetObjectGuid();
-        downedPlayer->GetCamera().SetView(nearest);
-        downedPlayer->GetBonkPlayer()->Notify(BONK_STRING_COOP_WATCHING, { nearest->GetName() });
+        Watch(downedPlayer, downed, nearest, choices.size());
     }
 
     void ReleaseDowned(ObjectGuid const& guid, Downed& downed, std::vector<Player*> const& members)
@@ -1061,7 +1101,8 @@ bool BonkCoop::Down(Player* player)
     }
     group.sendTimer = DOWNED_SEND_MS;
     std::vector<Player*> const members = GroupMembers(host);
-    ShowDownedLook(player, downed, members);
+    if (!downed.spectator)
+        ShowDownedLook(player, downed, members);
     if (!AnyoneStanding(host))
     {
         Wipe(host, group);
@@ -1070,6 +1111,24 @@ bool BonkCoop::Down(Player* player)
     ShowReviveRing(player, downed, !downed.spectator, members);
     WatchStanding(player, downed, members);
     return true;
+}
+
+void BonkCoop::WatchNext(Player* player, bool forward)
+{
+    auto found = s_groups.find(HostOf(player));
+    Player* host = found != s_groups.end() ? ObjectAccessor::FindPlayerNotInWorld(found->first) : nullptr;
+    if (!host)
+        return;
+    auto downed = found->second.downed.find(player->GetObjectGuid());
+    if (downed == found->second.downed.end() || !downed->second.spectator)
+        return;
+    std::vector<Player*> const choices = WatchChoices(player, GroupMembers(host));
+    if (choices.size() < 2)
+        return;
+    auto current = std::find_if(choices.begin(), choices.end(), [&downed](Player* choice) { return choice->GetObjectGuid() == downed->second.watching; });
+    size_t const at = current == choices.end() ? 0 : size_t(current - choices.begin());
+    Player* next = choices[(at + (forward ? 1 : choices.size() - 1)) % choices.size()];
+    Watch(player, downed->second, next, choices.size());
 }
 
 void BonkCoop::UpdateDowned(uint32 diff)
@@ -1148,6 +1207,7 @@ void BonkCoop::UpdateDowned(uint32 diff)
                 {
                     downed.spectator = true;
                     downed.reviveMs = 0;
+                    HideDownedLook(downed, members);
                     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s bled out", downedPlayer->GetName());
                     for (Player* member : members)
                         member->GetBonkPlayer()->Notify(BONK_STRING_COOP_BLED_OUT, { downedPlayer->GetName() });

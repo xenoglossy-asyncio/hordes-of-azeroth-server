@@ -263,6 +263,8 @@ namespace
     float const BONK_START_SPREAD       = 80.0f;
     float const BONK_COOP_FOLLOW_MIN    = 3.0f;
     float const BONK_COOP_FOLLOW_MAX    = 7.0f;
+    float const BONK_COOP_PLACE_HEIGHT  = 8.0f;
+    float const BONK_COOP_PLACE_LIFT    = 0.5f;
     uint32 const BONK_ZONE_START_TRIES  = 40;
     float const BONK_ZONE_START_MARGIN  = 6.0f;
     float const BONK_ZONE_START_FLAT    = 12.0f;
@@ -1426,7 +1428,15 @@ bool BonkRun::PlaceNearHost(float& x, float& y, float& z, float& o) const
     float const distance = frand(BONK_COOP_FOLLOW_MIN, BONK_COOP_FOLLOW_MAX);
     x = hostX + std::cos(angle) * distance;
     y = hostY + std::sin(angle) * distance;
-    z = hostZ;
+    bool const hostOnStage = host->GetMapId() == hostRun->m_map.mapId && !host->IsBeingTeleported();
+    z = hostOnStage ? host->GetMap()->GetHeight(x, y, hostZ + BONK_COOP_PLACE_HEIGHT, true, 2.0f * BONK_COOP_PLACE_HEIGHT) : INVALID_HEIGHT;
+    if (z <= INVALID_HEIGHT || std::fabs(z - hostZ) > BONK_COOP_PLACE_HEIGHT)
+    {
+        x = hostX;
+        y = hostY;
+        z = hostZ;
+    }
+    z += BONK_COOP_PLACE_LIFT;
     o = std::atan2(hostY - y, hostX - x);
     if (o < 0.0f)
         o += 2.0f * M_PI_F;
@@ -1750,6 +1760,37 @@ void BonkRun::SendFullState() const
     m_player->GetBonkPlayer()->SendDash();
 }
 
+void BonkRun::UpdateOwnCombat(uint32 diff)
+{
+    UpdateSteadyAim();
+    UpdateWeapons(diff);
+    if (m_state != STATE_RUNNING)
+        return;
+    UpdatePendingCasts(diff);
+    LandDueBolts();
+    UpdateArrowStorms(diff);
+    UpdateKeywordClouds(diff);
+    UpdateWarrior(diff);
+    UpdateMage(diff);
+    UpdateTalents(diff);
+    UpdateShaman(diff);
+    UpdatePriest(diff);
+    UpdateRogue(diff);
+    UpdateWarlock(diff);
+    UpdateDruid(diff);
+    UpdateTalents();
+    UpdateIcePath(diff);
+    UpdateWeaponOrbs(diff);
+    UpdateProjectiles(diff);
+    UpdateShotSources(diff);
+    UpdateTraps(diff);
+    UpdatePetTargets(diff);
+    UpdateBeasts(diff);
+    ResolveCriticalStrikes();
+    UpdateKeywords(diff);
+    UpdateDefensive(diff);
+}
+
 void BonkRun::UpdateRunning(uint32 diff)
 {
     if (!m_player->IsAlive() && !BonkCoop::IsDowned(m_player))
@@ -1829,34 +1870,11 @@ void BonkRun::UpdateRunning(uint32 diff)
         return;
 
     UpdateCrowd(diff);
-    UpdateSteadyAim();
-    UpdateWeapons(diff);
+    if (m_player->IsAlive())
+        UpdateOwnCombat(diff);
     if (m_state != STATE_RUNNING)
         return;
-    UpdatePendingCasts(diff);
-    LandDueBolts();
-    UpdateArrowStorms(diff);
-    UpdateKeywordClouds(diff);
-    UpdateWarrior(diff);
-    UpdateMage(diff);
-    UpdateTalents(diff);
-    UpdateShaman(diff);
-    UpdatePriest(diff);
-    UpdateRogue(diff);
-    UpdateWarlock(diff);
-    UpdateDruid(diff);
-    UpdateTalents();
-    UpdateIcePath(diff);
-    UpdateWeaponOrbs(diff);
-    UpdateProjectiles(diff);
     UpdateEnemyMissiles(diff);
-    UpdateShotSources(diff);
-    UpdateTraps(diff);
-    UpdatePetTargets(diff);
-    UpdateBeasts(diff);
-    ResolveCriticalStrikes();
-    UpdateKeywords(diff);
-    UpdateDefensive(diff);
     m_telegraphs.Update(m_player, diff);
     if (m_state != STATE_RUNNING)
         return;
@@ -5123,9 +5141,14 @@ void BonkRun::UpdatePowerups(uint32 diff, bool spawn)
     m_powerupCheckTimer = 0;
 
     Map* map = m_player->GetMap();
-    float heroX, heroY, heroZ;
-    GetHeroPositionNow(m_player, heroX, heroY, heroZ);
-    std::vector<std::pair<BonkPowerup const*, std::string>> picked;
+    std::vector<OrbCollector> const takers = GetPickupPlayers(PickupSpot::Body, false);
+    struct Picked
+    {
+        BonkPowerup const* powerup;
+        std::string name;
+        OrbCollector const* taker;
+    };
+    std::vector<Picked> picked;
     for (auto itr = m_powerups.begin(); itr != m_powerups.end();)
     {
         GameObject* go = map->GetGameObject(*itr);
@@ -5136,7 +5159,11 @@ void BonkRun::UpdatePowerups(uint32 diff, bool spawn)
             continue;
         }
 
-        if (GetHeroDistance(m_player, heroX, heroY, heroZ, go) > BONK_POWERUP_PICKUP_RANGE)
+        auto taker = std::find_if(takers.begin(), takers.end(), [go](OrbCollector const& candidate)
+        {
+            return GetHeroDistance(candidate.player, candidate.x, candidate.y, candidate.z, go) <= BONK_POWERUP_PICKUP_RANGE;
+        });
+        if (taker == takers.end())
         {
             ++itr;
             continue;
@@ -5144,19 +5171,19 @@ void BonkRun::UpdatePowerups(uint32 diff, bool spawn)
 
         auto powerup = std::find_if(sBonkMgr.GetPowerups().begin(), sBonkMgr.GetPowerups().end(),
             [go](BonkPowerup const& p) { return p.entry == go->GetEntry(); });
-        std::string const name = m_player->GetBonkPlayer()->GetLocalName(go);
+        std::string const name = taker->player->GetBonkPlayer()->GetLocalName(go);
         ForgetPowerupObjective(go->GetObjectGuid());
         go->Delete();
         itr = m_powerups.erase(itr);
         if (powerup != sBonkMgr.GetPowerups().end())
-            picked.emplace_back(&*powerup, name);
+            picked.push_back({ &*powerup, name, &*taker });
     }
 
-    for (auto const& pick : picked)
+    for (Picked const& pick : picked)
     {
-        bool const thing = pick.first->effect == BONK_POWERUP_MAGNET || pick.first->effect == BONK_POWERUP_VALOR;
-        m_player->GetBonkPlayer()->Notify(thing ? BONK_STRING_YOU_PICKED_UP_A : BONK_STRING_YOU_PICKED_UP, { pick.second });
-        UsePowerup(*pick.first);
+        bool const thing = pick.powerup->effect == BONK_POWERUP_MAGNET || pick.powerup->effect == BONK_POWERUP_VALOR;
+        pick.taker->player->GetBonkPlayer()->Notify(thing ? BONK_STRING_YOU_PICKED_UP_A : BONK_STRING_YOU_PICKED_UP, { pick.name });
+        pick.taker->run->UsePowerup(*pick.powerup);
     }
 
     if (!spawn || !m_map.powerupIntervalSeconds)
@@ -11045,41 +11072,71 @@ void BonkRun::UpdateOrbs(uint32 diff)
         return;
     m_orbTimer = 0;
 
-    float const magnet = GetMagnetRange();
     Map* map = m_player->GetMap();
     float heroX, heroY, heroZ;
     GetHeroChestPositionNow(m_player, heroX, heroY, heroZ);
     uint32 const now = WorldTimer::getMSTime();
     if (!m_orbSweepAtMs || now - m_orbSweepAtMs > 2 * BONK_ORB_CHECK_MS)
         m_orbSweepFrom = Position(heroX, heroY, heroZ, 0.0f);
+    std::vector<OrbCollector> const collectors = GetPickupPlayers(PickupSpot::Chest, false);
     uint32 collected = 0;
+    std::map<BonkRun*, uint32> collectedByMates;
     for (auto itr = m_orbs.begin(); itr != m_orbs.end();)
     {
         Creature* orb = map->GetCreature(itr->guid);
-        float const distance = orb ? GetHeroDistance(m_player, heroX, heroY, heroZ, orb) : 0.0f;
-
-        if (!orb || GetHeroSweepDistance(m_player, m_orbSweepFrom, heroX, heroY, heroZ, orb) <= BONK_ORB_PICKUP_RANGE)
+        BonkRun* picker = orb ? nullptr : this;
+        for (size_t i = 0; orb && !picker && i < collectors.size(); ++i)
         {
-            collected += itr->experience;
-            ++m_orbsSinceXpSent;
+            OrbCollector const& collector = collectors[i];
+            float const reach = collector.run == this ? GetHeroSweepDistance(m_player, m_orbSweepFrom, heroX, heroY, heroZ, orb) :
+                GetHeroDistance(collector.player, collector.x, collector.y, collector.z, orb);
+            if (reach <= BONK_ORB_PICKUP_RANGE)
+                picker = collector.run;
+        }
+        if (picker)
+        {
+            if (picker == this)
+            {
+                collected += itr->experience;
+                ++m_orbsSinceXpSent;
+            }
+            else
+                collectedByMates[picker] += itr->experience;
             if (orb)
                 VanishOrb(orb);
             itr = m_orbs.erase(itr);
             continue;
         }
 
-        float const x = heroX;
-        float const y = heroY;
-        float const z = heroZ;
-        if (!itr->pulled ? distance <= magnet :
-            (x - itr->aimX) * (x - itr->aimX) + (y - itr->aimY) * (y - itr->aimY) + (z - itr->aimZ) * (z - itr->aimZ) >
-                BONK_ORB_REAIM_DISTANCE * BONK_ORB_REAIM_DISTANCE)
+        OrbCollector const* target = nullptr;
+        for (OrbCollector const& collector : collectors)
+            if (itr->pulled && collector.player->GetObjectGuid() == itr->puller)
+                target = &collector;
+        if (!target)
+        {
+            itr->pulled = false;
+            float nearest = 0.0f;
+            for (OrbCollector const& collector : collectors)
+            {
+                float const distance = GetHeroDistance(collector.player, collector.x, collector.y, collector.z, orb);
+                if (distance <= collector.magnet && (!target || distance < nearest))
+                {
+                    target = &collector;
+                    nearest = distance;
+                }
+            }
+        }
+
+        if (target && (!itr->pulled ||
+            (target->x - itr->aimX) * (target->x - itr->aimX) + (target->y - itr->aimY) * (target->y - itr->aimY) +
+                (target->z - itr->aimZ) * (target->z - itr->aimZ) > BONK_ORB_REAIM_DISTANCE * BONK_ORB_REAIM_DISTANCE))
         {
             itr->pulled = true;
-            itr->aimX = x;
-            itr->aimY = y;
-            itr->aimZ = z;
-            orb->MonsterMoveWithSpeed(x, y, z, -10.0f, BONK_ORB_FLY_SPEED, MOVE_FLY_MODE);
+            itr->puller = target->player->GetObjectGuid();
+            itr->aimX = target->x;
+            itr->aimY = target->y;
+            itr->aimZ = target->z;
+            orb->MonsterMoveWithSpeed(target->x, target->y, target->z, -10.0f, BONK_ORB_FLY_SPEED, MOVE_FLY_MODE);
         }
         ++itr;
     }
@@ -11088,6 +11145,39 @@ void BonkRun::UpdateOrbs(uint32 diff)
 
     if (collected)
         GiveCollectedExperience(collected);
+    for (auto const& mate : collectedByMates)
+        mate.first->GiveCollectedExperience(mate.second);
+}
+
+std::vector<BonkRun::OrbCollector> BonkRun::GetPickupPlayers(PickupSpot spot, bool hurtOnly)
+{
+    std::vector<Player*> const members = BonkCoop::InGroupRun(m_player) ? BonkCoop::RunGroupOf(m_player) : std::vector<Player*>{ m_player };
+    std::vector<OrbCollector> collectors;
+    for (Player* member : members)
+    {
+        BonkRun* run = member == m_player ? this : member->GetBonkPlayer()->GetRun();
+        if (!run || !member->IsAlive() || !member->IsInWorld() || member->GetMap() != m_player->GetMap() || run->IsAway())
+            continue;
+        if (hurtOnly && member->GetHealth() >= member->GetMaxHealth())
+            continue;
+        OrbCollector collector;
+        collector.player = member;
+        collector.run = run;
+        if (spot == PickupSpot::Chest)
+            GetHeroChestPositionNow(member, collector.x, collector.y, collector.z);
+        else
+            GetHeroPositionNow(member, collector.x, collector.y, collector.z);
+        collector.magnet = run->GetMagnetRange();
+        collectors.push_back(collector);
+    }
+    return collectors;
+}
+
+void BonkRun::EatHealDrop()
+{
+    float const amount = BONK_HEAL_AMOUNT * (1.0f + GetCardTotal(BONK_CARD_JERKY, 1) / 100.0f);
+    SupportScope scope(*this, { "Spell_Holy_Heal", GetString(BONK_STRING_SUPPORT_HEALING_ORBS) });
+    HealHero(ReduceHealing(std::max(1u, uint32(m_player->GetMaxHealth() * amount))), BONK_SPELL_HEAL_TEXT);
 }
 
 void BonkRun::PullAllOrbs()
@@ -11102,6 +11192,7 @@ void BonkRun::PullAllOrbs()
         if (Creature* creature = map->GetCreature(orb.guid))
         {
             orb.pulled = true;
+            orb.puller = m_player->GetObjectGuid();
             orb.aimX = heroX;
             orb.aimY = heroY;
             orb.aimZ = heroZ;
@@ -11435,11 +11526,8 @@ void BonkRun::UpdateHeals(uint32 diff)
         return;
     m_healTimer = 0;
 
-    bool hurt = m_player->IsAlive() && m_player->GetHealth() < m_player->GetMaxHealth();
-    float const range = GetMagnetRange();
     Map* map = m_player->GetMap();
-    float heroX, heroY, heroZ;
-    GetHeroPositionNow(m_player, heroX, heroY, heroZ);
+    std::vector<OrbCollector> takers = GetPickupPlayers(PickupSpot::Body, true);
     for (auto itr = m_healDrops.begin(); itr != m_healDrops.end();)
     {
         Creature* leg = map->GetCreature(itr->guid);
@@ -11449,7 +11537,39 @@ void BonkRun::UpdateHeals(uint32 diff)
             itr = m_healDrops.erase(itr);
             continue;
         }
-        if (!hurt)
+
+        auto eater = std::find_if(takers.begin(), takers.end(), [leg](OrbCollector const& taker)
+        {
+            return GetHeroDistance(taker.player, taker.x, taker.y, taker.z, leg) <= BONK_ORB_PICKUP_RANGE;
+        });
+        if (eater != takers.end())
+        {
+            eater->run->EatHealDrop();
+            RemoveHealDrop(*itr, leg, true);
+            itr = m_healDrops.erase(itr);
+            if (eater->player->GetHealth() >= eater->player->GetMaxHealth())
+                takers.erase(eater);
+            continue;
+        }
+
+        OrbCollector const* target = nullptr;
+        for (OrbCollector const& taker : takers)
+            if (itr->pulled && taker.player->GetObjectGuid() == itr->puller)
+                target = &taker;
+        if (!target)
+        {
+            float nearest = 0.0f;
+            for (OrbCollector const& taker : takers)
+            {
+                float const distance = GetHeroDistance(taker.player, taker.x, taker.y, taker.z, leg);
+                if (distance <= taker.magnet && (!target || distance < nearest))
+                {
+                    target = &taker;
+                    nearest = distance;
+                }
+            }
+        }
+        if (!target)
         {
             if (itr->pulled)
             {
@@ -11460,24 +11580,13 @@ void BonkRun::UpdateHeals(uint32 diff)
             continue;
         }
 
-        float const distance = GetHeroDistance(m_player, heroX, heroY, heroZ, leg);
-        if (distance <= BONK_ORB_PICKUP_RANGE)
-        {
-            float const amount = BONK_HEAL_AMOUNT * (1.0f + GetCardTotal(BONK_CARD_JERKY, 1) / 100.0f);
-            SupportScope scope(*this, { "Spell_Holy_Heal", GetString(BONK_STRING_SUPPORT_HEALING_ORBS) });
-            HealHero(ReduceHealing(std::max(1u, uint32(m_player->GetMaxHealth() * amount))), BONK_SPELL_HEAL_TEXT);
-            RemoveHealDrop(*itr, leg, true);
-            itr = m_healDrops.erase(itr);
-            hurt = m_player->GetHealth() < m_player->GetMaxHealth();
-            continue;
-        }
-
-        float const x = heroX, y = heroY, z = heroZ + 0.5f;
-        if (!itr->pulled ? distance <= range :
+        float const x = target->x, y = target->y, z = target->z + 0.5f;
+        if (!itr->pulled || itr->puller != target->player->GetObjectGuid() ||
             (x - itr->aimX) * (x - itr->aimX) + (y - itr->aimY) * (y - itr->aimY) + (z - itr->aimZ) * (z - itr->aimZ) >
                 BONK_ORB_REAIM_DISTANCE * BONK_ORB_REAIM_DISTANCE)
         {
             itr->pulled = true;
+            itr->puller = target->player->GetObjectGuid();
             itr->aimX = x;
             itr->aimY = y;
             itr->aimZ = z;

@@ -1292,6 +1292,12 @@ bool ChatHandler::HandleBonkCoopReadyCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleBonkWatchNextCommand(char* args)
+{
+    BonkCoop::WatchNext(m_session->GetPlayer(), !args || std::string(args) != "prev");
+    return true;
+}
+
 bool ChatHandler::HandleBonkStressCommand(char* args)
 {
     BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();

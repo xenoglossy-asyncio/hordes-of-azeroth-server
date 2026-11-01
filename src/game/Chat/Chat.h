@@ -260,6 +260,7 @@ class ChatHandler
         bool HandleBonkScalingCommand(char* args);
         bool HandleBonkStressCommand(char* args);
         bool HandleBonkCoopReadyCommand(char* args);
+        bool HandleBonkWatchNextCommand(char* args);
         bool HandleBonkCrowdCommand(char* args);
         bool HandleBonkSpawnLookCommand(char* args);
         bool HandleBonkBossTuneCommand(char* args);

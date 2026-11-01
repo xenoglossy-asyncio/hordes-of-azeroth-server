@@ -51,6 +51,7 @@ namespace BonkCoop
     bool Down(Player* player);
     bool IsDowned(Player const* player);
     uint32 StandingCount(Player* player);
+    void WatchNext(Player* player, bool forward);
     void UpdateDowned(uint32 diff);
     void UpdateSharedPause(uint32 diff);
     std::vector<Player*> RunGroupOf(Player* player);
