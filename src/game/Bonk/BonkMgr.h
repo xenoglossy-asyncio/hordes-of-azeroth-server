@@ -1066,8 +1066,10 @@ struct BonkTrinket
     BonkString text;
 };
 uint8 const BONK_DETERMINATION_MAX_STACKS = 5;
-uint32 const BONK_LEVELS_PER_TALENT_POINT = 2;
-uint32 const BONK_LEVEL_TALENT_POINTS_MAX = 10;
+uint32 const BONK_TALENT_NORMAL_LAST_LEVEL = 4;
+uint32 const BONK_TALENT_HEROIC_LAST_LEVEL = 9;
+uint32 const BONK_TALENT_MYTHIC_LEVELS = 20;
+uint32 const BONK_TALENT_MYTHIC_POINTS = 8;
 uint32 const BONK_LEVEL_TICKETS_BASE = 3;
 
 inline uint32 GetLevelFirstClearTickets(uint32 level)

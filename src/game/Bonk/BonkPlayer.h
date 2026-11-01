@@ -460,6 +460,7 @@ class BonkPlayer
         };
         std::map<uint8, LevelRecord> m_levels;
         std::map<std::pair<uint8, uint32>, LevelBest> m_levelBests;
+        std::map<uint8, uint32> m_keptTalentPoints;
         void LoadLevelBests(uint32 accountId);
         Record m_record;
         std::map<uint32, uint8> m_upgradeRanks;

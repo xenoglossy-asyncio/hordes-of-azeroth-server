@@ -39,7 +39,7 @@
 namespace
 {
     char const* const BONK_ACCOUNT_TABLES[] = { "bonk_account", "bonk_account_mastery", "bonk_account_mastery_node", "bonk_account_quest",
-        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_upgrade",
+        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_kept_talents", "bonk_account_upgrade",
         "bonk_account_mastery_preset", "bonk_account_mastery_preset_active" };
     uint8 const BONK_MASTERY_PRESET_SLOTS = 3;
     char const* const BONK_PROGRESS_ONLY_TABLES[] = { "bonk_account_disabled", "bonk_account_unlock" };
@@ -172,6 +172,14 @@ void BonkPlayer::OnLogin()
     }
 
     LoadLevelBests(accountId);
+    m_keptTalentPoints.clear();
+    result = CharacterDatabase.PQuery("SELECT `class`, `points` FROM `bonk_account_kept_talents` WHERE `account` = %u", accountId);
+    if (result)
+    {
+        do
+            m_keptTalentPoints[result->Fetch()[0].GetUInt8()] = result->Fetch()[1].GetUInt32();
+        while (result->NextRow());
+    }
 
     m_record = Record();
     result = CharacterDatabase.PQuery("SELECT `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned` FROM `bonk_character_stats` WHERE `guid` = %u",
@@ -463,7 +471,12 @@ std::string BonkPlayer::DescribeGear() const
 
 uint32 BonkPlayer::GetLevelTalentPoints() const
 {
-    return std::min(BONK_LEVEL_TALENT_POINTS_MAX, GetBestLevel() / BONK_LEVELS_PER_TALENT_POINT);
+    uint32 const best = GetBestLevel();
+    uint32 const mythic = std::min(BONK_TALENT_MYTHIC_LEVELS, best > BONK_TALENT_HEROIC_LAST_LEVEL ? best - BONK_TALENT_HEROIC_LAST_LEVEL : 0u);
+    uint32 const earned = (best >= BONK_TALENT_NORMAL_LAST_LEVEL ? 1u : 0u) + (best >= BONK_TALENT_HEROIC_LAST_LEVEL ? 1u : 0u) +
+        mythic * BONK_TALENT_MYTHIC_POINTS / BONK_TALENT_MYTHIC_LEVELS;
+    auto const kept = m_keptTalentPoints.find(m_player->GetClass());
+    return std::max(earned, kept != m_keptTalentPoints.end() ? kept->second : 0u);
 }
 
 uint32 BonkPlayer::GetMasterySpent() const
