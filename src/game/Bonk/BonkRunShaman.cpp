@@ -634,7 +634,9 @@ void BonkRun::DischargeStatic(PendingCast const& cast)
     for (Creature* mob : victims)
     {
         ShowStrike(m_player, look, mob);
+        m_meterSpellOverride = info->spellId;
         DealShamanHit(spellInfo, spellInfo->Id, mob, damage);
+        m_meterSpellOverride = 0;
         if (stuns && mob->IsAlive())
             m_pendingStuns.push_back(mob->GetObjectGuid());
     }

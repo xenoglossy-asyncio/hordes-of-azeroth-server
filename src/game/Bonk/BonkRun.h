@@ -331,6 +331,7 @@ class BonkRun
         void CreditDamageOverTime(Unit const* victim, uint32 spellId, uint32 damage, std::vector<std::pair<uint32, uint32>>& credits) const;
         uint32 GetKeywordStacks(Unit const* victim, BonkKeyword keyword) const;
         bool LimitStun(Creature* mob, int32& duration);
+        uint32 GetMeterSpellOverride() const { return m_meterSpellOverride; }
         bool LimitRoot(Creature* mob, int32& duration);
         void AddTelegraph(BonkTelegraphShape shape, float x, float y, float z, float orientation, float size, uint32 durationMs,
             std::function<void()> onFire = nullptr, bool lingers = false);
@@ -2078,6 +2079,7 @@ class BonkRun
         bool m_keywordlessHits = false;
         void ClearHunterEvolutions();
         bool UsesShotSources() const;
+        uint32 m_meterSpellOverride = 0;
         Creature* SummonShotSource();
         void WarmShotSources();
         Creature* TakeShotSource(float x, float y, float z);

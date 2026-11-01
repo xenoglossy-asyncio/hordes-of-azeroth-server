@@ -98,6 +98,7 @@ namespace
                 case BONK_KEYWORD_DECAY:   return "decay";
                 case BONK_KEYWORD_AGONY:   return "agony";
                 case BONK_KEYWORD_MOONFIRE: return "moonfire";
+                case BONK_KEYWORD_STATIC:  return "nature";
                 default:                   break;
             }
         }
@@ -606,7 +607,10 @@ void BonkOnDamage(Unit* attacker, Unit* victim, uint32 damage, SpellEntry const*
 
         BonkRun* run = player->GetBonkPlayer()->GetRun();
         std::vector<std::pair<uint32, uint32>> credits;
-        if (spellProto)
+        uint32 const meterOverride = owner ? 0 : run->GetMeterSpellOverride();
+        if (meterOverride)
+            credits.emplace_back(meterOverride, dealt);
+        else if (spellProto)
             run->CreditDamageOverTime(victim, spellProto->Id, dealt, credits);
         uint32 const dotSpellId = !credits.empty() ? spellProto->Id : 0;
         if (credits.empty())
