@@ -39,7 +39,7 @@
 namespace
 {
     char const* const BONK_ACCOUNT_TABLES[] = { "bonk_account", "bonk_account_mastery", "bonk_account_mastery_node", "bonk_account_quest",
-        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_kept_talents", "bonk_account_epic_luck", "bonk_account_upgrade",
+        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_kept_talents", "bonk_account_epic_luck", "bonk_account_board", "bonk_account_upgrade",
         "bonk_account_mastery_preset", "bonk_account_mastery_preset_active" };
     uint8 const BONK_MASTERY_PRESET_SLOTS = 3;
     char const* const BONK_PROGRESS_ONLY_TABLES[] = { "bonk_account_disabled", "bonk_account_unlock" };
@@ -182,6 +182,8 @@ void BonkPlayer::OnLogin()
     }
     result = CharacterDatabase.PQuery("SELECT `misses` FROM `bonk_account_epic_luck` WHERE `account` = %u", accountId);
     m_epicLuckMisses = result ? result->Fetch()[0].GetUInt32() : 0;
+    result = CharacterDatabase.PQuery("SELECT `show_on_board` FROM `bonk_account_board` WHERE `account` = %u", accountId);
+    m_boardChoice = result ? int32(result->Fetch()[0].GetUInt8()) : -1;
 
     m_record = Record();
     result = CharacterDatabase.PQuery("SELECT `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned` FROM `bonk_character_stats` WHERE `guid` = %u",
@@ -456,8 +458,9 @@ std::string BonkPlayer::DescribeFoundGear() const
         if (!tier)
             continue;
         BonkFoundGear gear;
-        sBonkFound.Get(item->GetGUIDLow(), gear);
-        found += (found.empty() ? "" : ",") + std::to_string(slot) + ":" + std::to_string(tier) + ":" + std::to_string(gear.lines.size());
+        bool const known = sBonkFound.Get(item->GetGUIDLow(), gear);
+        found += (found.empty() ? "" : ",") + std::to_string(slot) + ":" + std::to_string(tier) + ":" + std::to_string(gear.lines.size()) + ":" +
+            std::to_string(known ? gear.season : 0);
     }
     return found;
 }
@@ -2491,7 +2494,7 @@ void BonkPlayer::SendFoundItems() const
             return;
         uint32 const tier = BonkFound::GetItemTier(item);
         SendAddon("founditem~" + place + "~" + std::to_string(item->GetEntry()) + "~" + std::to_string(tier) + "~" +
-            BonkFound::DescribeLines(found, tier) + "~" + BonkFound::DescribeExtra(item, tier));
+            BonkFound::DescribeLines(found, tier) + "~" + BonkFound::DescribeExtra(item, tier) + "~" + (found.season != BONK_LEADERBOARD_SEASON ? "1" : "0"));
     };
     for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
         send(m_player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot), "inv:" + std::to_string(slot + 1));
@@ -3178,6 +3181,33 @@ void BonkPlayer::CountEpicLuck(bool epicDropped)
 void BonkPlayer::SendEpicLuck() const
 {
     SendAddon("epicluck~" + std::to_string(GetEpicLuckBonus()));
+}
+
+void BonkPlayer::SetBoardChoice(bool show)
+{
+    m_boardChoice = show ? 1 : 0;
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_board` (`account`, `show_on_board`) VALUES (%u, %u)", GetProgressAccount(), uint32(m_boardChoice));
+    SendBoardChoice();
+}
+
+void BonkPlayer::SendBoardChoice() const
+{
+    SendAddon("boardchoice~" + std::to_string(m_boardChoice));
+}
+
+bool BonkPlayer::HasBoardGear(uint32 level) const
+{
+    for (uint32 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+    {
+        Item const* item = m_player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        uint32 const tier = item ? BonkFound::GetItemTier(item) : 0;
+        if (!tier)
+            continue;
+        BonkFoundGear gear;
+        if (!sBonkFound.Get(item->GetGUIDLow(), gear) || gear.season != BONK_LEADERBOARD_SEASON || tier > level)
+            return false;
+    }
+    return true;
 }
 
 void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const

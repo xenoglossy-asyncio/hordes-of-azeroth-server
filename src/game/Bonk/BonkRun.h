@@ -1392,6 +1392,7 @@ class BonkRun
         void LogLevelClear() const;
         void LogFinale(float minutes, uint32 score) const;
         std::string DescribeBoardEntry() const;
+        std::string DescribeBoardParty() const;
         void LogBossFight(Creature const* mob, BonkSpawnKind kind, BossArrival const& arrival);
         uint32 m_nextLogMinute = 1;
         uint32 m_statsRefreshTimer = 0;

@@ -821,6 +821,15 @@ bool ChatHandler::HandleBonkBoardCommand(char* /*args*/)
     return true;
 }
 
+bool ChatHandler::HandleBonkBoardJoinCommand(char* args)
+{
+    uint32 show = 0;
+    if (!ExtractUInt32(&args, show))
+        return false;
+    m_session->GetPlayer()->GetBonkPlayer()->SetBoardChoice(show != 0);
+    return true;
+}
+
 bool ChatHandler::HandleBonkLangCommand(char* args)
 {
     Player* player = m_session->GetPlayer();

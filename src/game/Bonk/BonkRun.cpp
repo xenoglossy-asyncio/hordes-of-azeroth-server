@@ -2759,9 +2759,26 @@ void BonkRun::LogRunEnd(bool wentHome, std::string const& build) const
 
 std::string BonkRun::DescribeBoardEntry() const
 {
+    BonkPlayer const* bonk = m_player->GetBonkPlayer();
+    bool const coop = BonkCoop::IsInCoopGroup(m_player);
     char text[96];
-    snprintf(text, sizeof(text), "coop %u, gm %u", BonkCoop::IsInCoopGroup(m_player) ? 1u : 0u, m_player->GetSession()->GetSecurity() > SEC_PLAYER ? 1u : 0u);
-    return text;
+    snprintf(text, sizeof(text), "coop %u, gm %u, board %d, gear %u", coop ? 1u : 0u, m_player->GetSession()->GetSecurity() > SEC_PLAYER ? 1u : 0u,
+        bonk->GetBoardChoice(), bonk->HasBoardGear(m_difficultyLevel) ? 1u : 0u);
+    return coop ? std::string(text) + ", party " + DescribeBoardParty() : std::string(text);
+}
+
+std::string BonkRun::DescribeBoardParty() const
+{
+    std::string party;
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+    {
+        BonkPlayer const* bonk = member->GetBonkPlayer();
+        bool const shown = bonk->GetBoardChoice() == 1;
+        party += (party.empty() ? "" : ";") + std::to_string(member->GetGUIDLow()) + ":" + (shown ? std::string(member->GetName()) : "-") + ":" +
+            std::to_string(uint32(member->GetClass())) + ":" + (shown ? "1" : "0") + ":" + (bonk->HasBoardGear(m_difficultyLevel) ? "1" : "0") + ":" +
+            (member->GetSession()->GetSecurity() > SEC_PLAYER ? "1" : "0");
+    }
+    return party;
 }
 
 void BonkRun::LogLevelClear() const

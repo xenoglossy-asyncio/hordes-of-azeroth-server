@@ -17,6 +17,7 @@ uint8 const BONK_FOUND_MAX_LINES = 2;
 uint32 const BONK_FOUND_MAX_UPGRADES = 3;
 uint8 const BONK_FOUND_NO_LINE = 255;
 float const BONK_GEAR_TIER_STEP = 0.25f;
+uint32 const BONK_LEADERBOARD_SEASON = 1;
 
 float BonkGearTierScale(uint32 tier);
 
@@ -33,6 +34,7 @@ struct BonkFoundGear
     uint32 rerolls = 0;
     uint8 rerollLine = BONK_FOUND_NO_LINE;
     uint32 upgrades = 0;
+    uint32 season = BONK_LEADERBOARD_SEASON;
 };
 
 class BonkFoundStore

@@ -4,13 +4,14 @@
 #include "Player.h"
 #include "ScriptMgr.h"
 
+#include <cstring>
 #include <fstream>
 #include <string>
 
 namespace
 {
     char const* const LEADERBOARD_FILE = "leaderboard.txt";
-    size_t const MAX_LEADERBOARD_LINES = 400;
+    size_t const MAX_LEADERBOARD_LINES = 1000;
     size_t const MAX_LINE_LENGTH = 200;
 
     bool IsBoardLine(std::string const& line)
@@ -20,7 +21,10 @@ namespace
         for (char c : line)
             if (static_cast<unsigned char>(c) < 0x20)
                 return false;
-        return line.compare(0, 8, "updated~") == 0 || line.compare(0, 6, "level~") == 0 || line.compare(0, 7, "finale~") == 0;
+        for (char const* kind : { "updated~", "season~", "solo~", "group~", "mine~" })
+            if (line.compare(0, std::strlen(kind), kind) == 0)
+                return true;
+        return false;
     }
 }
 
@@ -42,6 +46,7 @@ namespace BonkLeaderboard
             bonk->SendAddon("board~" + line);
             ++sent;
         }
+        bonk->SendBoardChoice();
         bonk->SendAddon("boardend");
     }
 }

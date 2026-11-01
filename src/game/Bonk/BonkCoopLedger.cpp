@@ -52,6 +52,7 @@ namespace
         { "bonk_account_starter", false, 3 },
         { "bonk_account_disabled", false, 3 },
         { "bonk_account_epic_luck", false, 2 },
+        { "bonk_account_board", false, 2 },
         { "bonk_character_title", true, 2 },
     };
 

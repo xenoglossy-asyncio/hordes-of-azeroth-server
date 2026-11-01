@@ -110,8 +110,8 @@ namespace
             rolls[i] = found.lines[i].roll;
         }
         CharacterDatabase.PExecute("REPLACE INTO `bonk_item_found` (`item_guid`, `tier`, `line1_effect`, `line1_roll`, `line2_effect`, `line2_roll`, "
-            "`rerolls`, `reroll_line`, `upgrades`) VALUES (%u, %u, %u, %f, %u, %f, %u, %u, %u)", itemGuid, found.tier, effects[0], rolls[0], effects[1], rolls[1],
-            found.rerolls, uint32(found.rerollLine), found.upgrades);
+            "`rerolls`, `reroll_line`, `upgrades`, `season`) VALUES (%u, %u, %u, %f, %u, %f, %u, %u, %u, %u)", itemGuid, found.tier, effects[0], rolls[0], effects[1], rolls[1],
+            found.rerolls, uint32(found.rerollLine), found.upgrades, found.season);
     }
 }
 
@@ -120,7 +120,7 @@ void BonkFoundStore::Load()
     std::lock_guard<std::mutex> guard(m_lock);
     m_items.clear();
     std::unique_ptr<QueryResult> result(CharacterDatabase.Query(
-        "SELECT `item_guid`, `tier`, `line1_effect`, `line1_roll`, `line2_effect`, `line2_roll`, `rerolls`, `reroll_line`, `upgrades` FROM `bonk_item_found`"));
+        "SELECT `item_guid`, `tier`, `line1_effect`, `line1_roll`, `line2_effect`, `line2_roll`, `rerolls`, `reroll_line`, `upgrades`, `season` FROM `bonk_item_found`"));
     if (result)
     {
         do
@@ -142,6 +142,7 @@ void BonkFoundStore::Load()
             uint8 const rerollLine = fields[7].GetUInt8();
             found.rerollLine = rerollLine < found.lines.size() ? rerollLine : BONK_FOUND_NO_LINE;
             found.upgrades = fields[8].GetUInt32();
+            found.season = fields[9].GetUInt32();
             m_items[fields[0].GetUInt32()] = found;
         } while (result->NextRow());
     }
