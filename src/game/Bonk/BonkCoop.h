@@ -4,6 +4,7 @@
 #include "ObjectGuid.h"
 #include "Common.h"
 
+#include <string>
 #include <vector>
 
 class Player;
@@ -51,6 +52,8 @@ namespace BonkCoop
     void HideObjectFor(ObjectGuid object, ObjectGuid player);
     bool IsObjectHiddenFor(ObjectGuid object, ObjectGuid player);
     void ForgetHiddenObject(ObjectGuid object);
+    void Record(Player const* guest, std::string const& entry);
+    void UpdateLedger();
 }
 
 #endif

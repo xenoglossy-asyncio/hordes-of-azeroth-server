@@ -392,6 +392,7 @@ void BonkCoop::Update(uint32 diff)
         return;
     uint32 const elapsed = s_scanTimer;
     s_scanTimer = 0;
+    UpdateLedger();
 
     if (s_pending.active)
     {
