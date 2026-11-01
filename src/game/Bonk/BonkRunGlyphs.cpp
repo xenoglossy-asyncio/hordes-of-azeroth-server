@@ -442,6 +442,8 @@ void BonkRun::ReleaseGlyphBursts()
         {
             if (burst.effect == BONK_GLYPH_CLEAVE)
                 DealCarriedDamage(spellInfo, mob, burst.damage);
+            else if (burst.effect == BONK_GLYPH_CORPSE_BLAST)
+                DealCarriedDamage(spellInfo, mob, burst.damage * GetHealthScale(mob));
             else
                 DealSpellHit(spellInfo, mob, burst.damage);
         }
