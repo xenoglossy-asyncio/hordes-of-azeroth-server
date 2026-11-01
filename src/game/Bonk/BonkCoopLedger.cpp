@@ -575,8 +575,6 @@ namespace
             return ApplyQuest(home, fields);
         if (kind == "runstats")
             return ApplyRunStats(home, fields);
-        if (kind == "mail")
-            return ApplyMail(home, fields);
         return "unknown entry " + kind;
     }
 
@@ -665,6 +663,16 @@ namespace
         std::string const prefix = std::to_string(seq) + "\t";
         if (AlreadyApplied(accountId, game, seq))
             return prefix + "ok\n";
+        if (fields[1] == "mail")
+        {
+            if (!CharacterDatabase.DirectPExecute("INSERT INTO `bonk_coop_applied` (`account`, `game`, `seq`) VALUES (%u, '%s', %u)", accountId, game.c_str(), seq))
+                return prefix + "retry\n";
+            std::string const problem = ApplyMail(home, fields);
+            if (problem.empty())
+                return prefix + "ok\n";
+            sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op ledger: account %u refused entry %u (%s)", accountId, seq, problem.c_str());
+            return prefix + "refused\t" + problem + "\n";
+        }
         CharacterDatabase.BeginTransaction();
         std::string const problem = ApplyEntry(home, fields);
         if (!problem.empty())

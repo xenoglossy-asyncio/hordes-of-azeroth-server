@@ -580,7 +580,7 @@ bool ChatHandler::HandleBonkGearCommand(char* args)
         for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END && !stone; ++bag)
             if (Bag* container = dynamic_cast<Bag*>(player->GetItemByPos(INVENTORY_SLOT_BAG_0, bag)))
                 stone = container->GetItemByEntry(BONK_ITEM_HEARTHSTONE);
-        if (!stone || !run->UseItem(stone))
+        if (!stone || !run || !run->UseItem(stone))
             SendSysMessage("You need a Hearthstone in a run.");
         return true;
     }
