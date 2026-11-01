@@ -65,6 +65,7 @@ namespace BonkCoop
     void SyncGuest(Player* guest);
     void ForgetGuest(Player const* guest);
     void RecordMail(Player const* guest, uint32 entry, std::string const& subject, std::string const& body, BonkFoundGear const* found);
+    void RecordLevel(Player const* guest, uint32 classId, uint32 bestLevel, uint32 bestMs, uint32 finale);
 }
 
 #endif

@@ -2694,6 +2694,7 @@ bool BonkPlayer::RecordLevelClear(uint32 level, uint32 clearMs)
     record.bestMs = clearMs;
     CharacterDatabase.PExecute("REPLACE INTO `bonk_account_level` (`account`, `class`, `best_level`, `best_ms`, `best_finale`) VALUES (%u, %u, %u, %u, %u)",
         GetProgressAccount(), uint32(m_player->GetClass()), record.best, record.bestMs, record.finale);
+    BonkCoop::RecordLevel(m_player, m_player->GetClass(), record.best, record.bestMs, record.finale);
     if (!firstClear)
         return false;
 
@@ -2719,6 +2720,7 @@ void BonkPlayer::RecordFinale(uint32 score)
     record.finale = score;
     CharacterDatabase.PExecute("REPLACE INTO `bonk_account_level` (`account`, `class`, `best_level`, `best_ms`, `best_finale`) VALUES (%u, %u, %u, %u, %u)",
         GetProgressAccount(), uint32(m_player->GetClass()), record.best, record.bestMs, record.finale);
+    BonkCoop::RecordLevel(m_player, m_player->GetClass(), record.best, record.bestMs, record.finale);
 }
 
 void BonkPlayer::SendAddon(std::string const& line) const

@@ -273,6 +273,25 @@ namespace
         return "";
     }
 
+    std::string ApplyLevel(HomeTarget const& home, std::vector<std::string> const& fields)
+    {
+        uint32 classId = 0;
+        uint32 bestLevel = 0;
+        uint32 bestMs = 0;
+        uint32 finale = 0;
+        if (!ReadCount(fields, 2, classId) || !ReadCount(fields, 3, bestLevel) || !ReadCount(fields, 4, bestMs) || !ReadCount(fields, 5, finale))
+            return "broken level entry";
+        if (!classId || classId >= MAX_CLASSES)
+            return "unknown class " + std::to_string(classId);
+        CharacterDatabase.PExecute("INSERT INTO `bonk_account_level` (`account`, `class`, `best_level`, `best_ms`, `best_finale`) VALUES (%u, %u, %u, %u, %u) "
+            "ON DUPLICATE KEY UPDATE "
+            "`best_ms` = CASE WHEN VALUES(`best_level`) > `best_level` THEN VALUES(`best_ms`) "
+            "WHEN VALUES(`best_level`) = `best_level` AND VALUES(`best_ms`) > 0 AND (`best_ms` = 0 OR VALUES(`best_ms`) < `best_ms`) THEN VALUES(`best_ms`) ELSE `best_ms` END, "
+            "`best_level` = GREATEST(`best_level`, VALUES(`best_level`)), `best_finale` = GREATEST(`best_finale`, VALUES(`best_finale`))",
+            home.accountId, classId, bestLevel, bestMs, finale);
+        return "";
+    }
+
     std::string ApplyRunStats(HomeTarget const& home, std::vector<std::string> const& fields)
     {
         uint32 values[5] = {};
@@ -696,6 +715,8 @@ namespace
             return ApplyQuest(home, fields);
         if (kind == "runstats")
             return ApplyRunStats(home, fields);
+        if (kind == "level")
+            return ApplyLevel(home, fields);
         return "unknown entry " + kind;
     }
 
@@ -919,6 +940,11 @@ void BonkCoop::RecordMail(Player const* guest, uint32 entry, std::string const& 
     if (!IsGuestAccount(guest))
         return;
     Record(guest, "mail\t" + std::to_string(entry) + "\t" + Escape(subject) + "\t" + Escape(body) + "\t" + (found ? WriteFound(*found) : std::string("-")));
+}
+
+void BonkCoop::RecordLevel(Player const* guest, uint32 classId, uint32 bestLevel, uint32 bestMs, uint32 finale)
+{
+    Record(guest, "level	" + std::to_string(classId) + "	" + std::to_string(bestLevel) + "	" + std::to_string(bestMs) + "	" + std::to_string(finale));
 }
 
 bool BonkCoop::IsPlayingElsewhere(std::string const& username)
