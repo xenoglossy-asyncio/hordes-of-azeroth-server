@@ -200,6 +200,9 @@ class BonkPlayer
         bool HasLearnedParent(BonkMasteryNode const& node, uint32 ignoredId) const;
         uint32 GetMasterySpentAbove(uint32 treeId, uint8 row) const;
         uint32 GetLevelTalentPoints() const;
+        uint32 GetEpicLuckBonus() const;
+        void CountEpicLuck(bool epicDropped);
+        void SendEpicLuck() const;
         void TakeTalentResetNotice();
         uint32 GetMasterySpent() const;
         std::string DescribeLoadout() const;
@@ -463,6 +466,7 @@ class BonkPlayer
         std::map<uint8, LevelRecord> m_levels;
         std::map<std::pair<uint8, uint32>, LevelBest> m_levelBests;
         std::map<uint8, uint32> m_keptTalentPoints;
+        uint32 m_epicLuckMisses = 0;
         void LoadLevelBests(uint32 accountId);
         Record m_record;
         std::map<uint32, uint8> m_upgradeRanks;

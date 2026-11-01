@@ -172,9 +172,12 @@ uint32 BonkRun::GetLevelDropTier(BonkTier const& tier, uint32 bandLevel)
 
 uint8 BonkRun::RollGearQuality() const
 {
+    float const luck = m_levelRow.epicChance > 0.0f ? float(m_player->GetBonkPlayer()->GetEpicLuckBonus()) : 0.0f;
+    float const epic = std::min(100.0f, m_levelRow.epicChance + luck);
+    float const blue = std::max(0.0f, m_levelRow.blueChance - (epic - m_levelRow.epicChance));
     float roll = frand(0.0f, 100.0f);
     uint8 quality = ITEM_QUALITY_NORMAL;
-    for (auto const& odds : { std::make_pair(ITEM_QUALITY_EPIC, m_levelRow.epicChance), std::make_pair(ITEM_QUALITY_RARE, m_levelRow.blueChance),
+    for (auto const& odds : { std::make_pair(ITEM_QUALITY_EPIC, epic), std::make_pair(ITEM_QUALITY_RARE, blue),
         std::make_pair(ITEM_QUALITY_UNCOMMON, m_levelRow.greenChance) })
     {
         if (roll < odds.second)
@@ -197,9 +200,17 @@ void BonkRun::DropTierPiece(Creature const* mob, BonkSpawnKind kind)
     float const chance = kind == BONK_SPAWN_BOSS ? BONK_TIER_DROP_BOSS : kind == BONK_SPAWN_MINIBOSS ? miniBoss : 0.0f;
     if (!roll_chance_f(chance))
         return;
+    bool const luckCounts = m_levelRow.epicChance > 0.0f;
     if (kind == BONK_SPAWN_BOSS && roll_chance_f(m_levelRow.legendaryChance) && DropLegendary(mob))
+    {
+        if (luckCounts)
+            m_player->GetBonkPlayer()->CountEpicLuck(true);
         return;
-    PlaceTierPiece(mob, RollGearQuality());
+    }
+    uint8 const quality = RollGearQuality();
+    PlaceTierPiece(mob, quality);
+    if (luckCounts)
+        m_player->GetBonkPlayer()->CountEpicLuck(quality >= ITEM_QUALITY_EPIC);
 }
 
 bool BonkRun::MakeTierPiece(uint8 quality, PendingGear& piece) const

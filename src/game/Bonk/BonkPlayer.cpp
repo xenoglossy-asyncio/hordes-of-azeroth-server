@@ -39,7 +39,7 @@
 namespace
 {
     char const* const BONK_ACCOUNT_TABLES[] = { "bonk_account", "bonk_account_mastery", "bonk_account_mastery_node", "bonk_account_quest",
-        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_kept_talents", "bonk_account_upgrade",
+        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_kept_talents", "bonk_account_epic_luck", "bonk_account_upgrade",
         "bonk_account_mastery_preset", "bonk_account_mastery_preset_active" };
     uint8 const BONK_MASTERY_PRESET_SLOTS = 3;
     char const* const BONK_PROGRESS_ONLY_TABLES[] = { "bonk_account_disabled", "bonk_account_unlock" };
@@ -180,6 +180,8 @@ void BonkPlayer::OnLogin()
             m_keptTalentPoints[result->Fetch()[0].GetUInt8()] = result->Fetch()[1].GetUInt32();
         while (result->NextRow());
     }
+    result = CharacterDatabase.PQuery("SELECT `misses` FROM `bonk_account_epic_luck` WHERE `account` = %u", accountId);
+    m_epicLuckMisses = result ? result->Fetch()[0].GetUInt32() : 0;
 
     m_record = Record();
     result = CharacterDatabase.PQuery("SELECT `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned` FROM `bonk_character_stats` WHERE `guid` = %u",
@@ -3161,8 +3163,26 @@ void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bo
         uint32 const affixes = tier.eliteAffixes + bonuses.eliteAffixes + level.extraAffixes;
         float const legendary = level.legendaryChance;
         float const rest = (100.0f - legendary) / 100.0f;
+uint32 BonkPlayer::GetEpicLuckBonus() const
+{
+    return m_epicLuckMisses * BONK_EPIC_LUCK_PER_MISS;
+}
+
+void BonkPlayer::CountEpicLuck(bool epicDropped)
+{
+    m_epicLuckMisses = epicDropped ? 0 : m_epicLuckMisses + 1;
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_epic_luck` (`account`, `misses`) VALUES (%u, %u)", GetProgressAccount(), m_epicLuckMisses);
+    SendEpicLuck();
+}
+
+void BonkPlayer::SendEpicLuck() const
+{
+    SendAddon("epicluck~" + std::to_string(GetEpicLuckBonus()));
+}
+
         float const epic = rest * level.epicChance;
         float const blue = rest * level.blueChance;
+    SendEpicLuck();
         float const green = rest * level.greenChance;
         SendAddon("level~" + std::to_string(tier.id) + "~" + std::to_string(band) + "~" + Percent((health - 1.0f) * 100.0f) + "~" +
             Percent((damage - 1.0f) * 100.0f) + "~" + Percent(veterans) + "~" + std::to_string(affixes) + "~" + Percent((level.reward - 1.0f) * 100.0f) + "~" +

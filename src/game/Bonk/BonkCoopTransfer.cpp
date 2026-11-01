@@ -26,7 +26,7 @@ namespace
     size_t const MAX_NAME_LENGTH = 12;
 
     char const* const ACCOUNT_TABLES[] = {
-        "bonk_account", "bonk_account_disabled", "bonk_account_kept_talents", "bonk_account_level", "bonk_account_level_best", "bonk_account_mastery",
+        "bonk_account", "bonk_account_disabled", "bonk_account_epic_luck", "bonk_account_kept_talents", "bonk_account_level", "bonk_account_level_best", "bonk_account_mastery",
         "bonk_account_mastery_node", "bonk_account_mastery_preset", "bonk_account_mastery_preset_active", "bonk_account_quest",
         "bonk_account_starter", "bonk_account_talent", "bonk_account_unlock", "bonk_account_upgrade",
     };
