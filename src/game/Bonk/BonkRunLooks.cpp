@@ -1,6 +1,7 @@
 #include "BonkRun.h"
 #include "BonkPlayer.h"
 #include "BonkTelegraph.h"
+#include "ObjectAccessor.h"
 #include "Packets/Misc.h"
 #include "Player.h"
 #include "SpellMgr.h"
@@ -221,6 +222,8 @@ time_t BonkRun::GetSkyTime() const
     uint32 const key = GetSkyKey();
     if (!key)
         return sWorld.GetGameTime();
+    if (key != m_skyKey && TakeHostSky(key))
+        return m_skyTime;
     if (key != m_skyKey)
     {
         m_skyKey = key;
@@ -230,6 +233,21 @@ time_t BonkRun::GetSkyTime() const
         m_skyWeatherGrade = wet ? frand(BONK_WEATHER_MIN_GRADE, BONK_WEATHER_MAX_GRADE) : 0.0f;
     }
     return m_skyTime;
+}
+
+bool BonkRun::TakeHostSky(uint32 key) const
+{
+    if (!IsCoopGuest())
+        return false;
+    Player* host = ObjectAccessor::FindPlayerNotInWorld(m_coopHost);
+    BonkRun const* hostRun = host ? host->GetBonkPlayer()->GetRun() : nullptr;
+    if (!hostRun || hostRun->GetSkyKey() != key)
+        return false;
+    m_skyTime = hostRun->GetSkyTime();
+    m_skyKey = key;
+    m_skyWeather = hostRun->m_skyWeather;
+    m_skyWeatherGrade = hostRun->m_skyWeatherGrade;
+    return true;
 }
 
 void BonkRun::UpdateSky()

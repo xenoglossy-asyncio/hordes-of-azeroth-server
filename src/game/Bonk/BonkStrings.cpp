@@ -861,6 +861,9 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_COOP_VAULT_NOT_YOURS,                    "That Extraction Vault belongs to {1}. Yours is marked Your Vault." },
         { BONK_STRING_ITEM_FULLY_UPGRADED,                     "{1} has had all {2} of its upgrades." },
         { BONK_STRING_COOP_STARTS_WITHOUT_LOADING,             "{1} is still loading. Starting without them." },
+        { BONK_STRING_COOP_WATCHING,                           "You are watching {1}." },
+        { BONK_STRING_COOP_RAISED_AFTER_BOSS,                  "You're back up. Chests stay closed to you this stage." },
+        { BONK_STRING_COOP_CHESTS_CLOSED_AFTER_DOWN,           "You were down when the boss died. Chests open again next stage." },
     };
     return texts;
 }

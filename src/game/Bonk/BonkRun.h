@@ -152,6 +152,7 @@ class BonkRun
         bool OffersChest(ObjectGuid chest, Player* opener) const;
         uint32 OpenChestFor(GameObject* chest, Player* opener);
         void ReviveFromGroup(float health);
+        void SetMissedBoss() { m_missedBoss = true; }
         std::string GetString(BonkString id, std::vector<std::string> const& args = {}) const;
         std::string Localize(BonkTextField field, uint32 id, std::string const& english) const;
         LocaleConstant GetLocale() const;
@@ -1426,10 +1427,13 @@ class BonkRun
         uint32 m_stage = 1;
         ObjectGuid m_coopHost;
         uint32 m_coopPlayers = 1;
+        bool m_missedBoss = false;
         bool m_coopNoPause = false;
         bool m_coopOwnXp = false;
         float GetCoopHealthScale(BonkSpawnKind kind) const;
         uint32 GetCoopBossCount() const;
+        float GetCoopCrowd() const;
+        float GetCoopSpawnShare() const;
         bool OnStageBossKilled(Creature* mob);
         void NotifyArrived(Creature* mob) const;
         float m_stageX = 0.0f, m_stageY = 0.0f, m_stageZ = 0.0f;
@@ -1556,6 +1560,7 @@ class BonkRun
         uint32 m_vendorCheckMs = 0;
         uint32 m_vendorRerolls = 0;
         BonkRarity m_rarityFloor = BONK_RARITY_COMMON;
+        bool TakeHostSky(uint32 key) const;
         mutable uint32 m_skyKey = 0;
         mutable time_t m_skyTime = 0;
         uint32 m_skySentKey = 0;

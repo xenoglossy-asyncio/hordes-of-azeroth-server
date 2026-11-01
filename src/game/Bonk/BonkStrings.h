@@ -864,6 +864,9 @@ enum BonkString : uint32
     BONK_STRING_COOP_STARTS_WITHOUT_LOADING             = 951,
     BONK_STRING_COOP_VAULT_NOT_YOURS                    = 952,
     BONK_STRING_ITEM_FULLY_UPGRADED                     = 954,
+    BONK_STRING_COOP_WATCHING                           = 955,
+    BONK_STRING_COOP_RAISED_AFTER_BOSS                  = 956,
+    BONK_STRING_COOP_CHESTS_CLOSED_AFTER_DOWN           = 957,
 };
 
 struct BonkStringText

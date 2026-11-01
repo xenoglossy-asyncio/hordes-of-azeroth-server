@@ -106,8 +106,7 @@ namespace
     float const BONK_VETERAN_SIZE          = 1.2f;
     uint32 const BONK_STRESS_SPAWN_PER_TICK = 40;
     float const BONK_BOSS_CROWD            = 0.5f;
-    float const BONK_COOP_SPAWN_PER_PLAYER = 0.15f;
-    float const BONK_COOP_HEALTH_PER_PLAYER = 0.15f;
+    float const BONK_COOP_CROWD[] = { 1.0f, 1.0f, 1.5f, 1.75f, 2.0f };
     float const BONK_COOP_BOSS_HEALTH_PER_PLAYER = 0.75f;
     uint32 const BONK_MOB_SWING_MS         = 2000;
     uint32 const BONK_BEAT_WARN_SECONDS    = 10;
@@ -1567,6 +1566,7 @@ void BonkRun::StartStage()
         m_player->GetName(), m_stage, GetRunMinutes(), m_stage, m_map.key.c_str(), m_tier.key.c_str(), uint32(m_player->GetClass()),
         m_player->GetLevel() + m_overcapLevel, m_kills, m_damageTaken);
     m_state = STATE_RUNNING;
+    m_missedBoss = false;
     m_elapsedMs = 0;
     m_nextEvent = 0;
     m_menuOpen = false;
@@ -1822,7 +1822,8 @@ void BonkRun::UpdateRunning(uint32 diff)
         UpdateSpawns(diff);
         if (m_state != STATE_RUNNING)
             return;
-        UpdateStragglers(diff);
+        if (m_player->IsAlive())
+            UpdateStragglers(diff);
     }
     if (m_state != STATE_RUNNING)
         return;
@@ -2806,7 +2807,7 @@ uint32 BonkRun::GetSpawnTarget() const
     float target = std::min(GetCurveMinAlive(), float(m_tier.maxAlive));
     if (m_bossSpawned)
         target *= BONK_BOSS_CROWD;
-    target *= 1.0f + BONK_COOP_SPAWN_PER_PLAYER * float(m_coopPlayers - 1);
+    target *= GetCoopSpawnShare();
     return uint32(target + 0.5f);
 }
 
@@ -2820,7 +2821,10 @@ uint32 BonkRun::GetEliteIntervalMs() const
     uint32 const interval = GetWave().eliteIntervalSeconds;
     if (!interval)
         return 0;
-    return uint32(interval * IN_MILLISECONDS / GetEliteScale());
+    float const share = GetCoopSpawnShare();
+    if (share <= 0.0f)
+        return 0;
+    return uint32(interval * IN_MILLISECONDS / GetEliteScale() / share);
 }
 
 float BonkRun::GetEliteScale() const
@@ -3924,8 +3928,25 @@ bool BonkRun::OnStageBossKilled(Creature* mob)
 
 float BonkRun::GetCoopHealthScale(BonkSpawnKind kind) const
 {
-    float const perPlayer = kind == BONK_SPAWN_BOSS ? BONK_COOP_BOSS_HEALTH_PER_PLAYER : BONK_COOP_HEALTH_PER_PLAYER;
-    return 1.0f + perPlayer * float(m_coopPlayers - 1);
+    if (kind == BONK_SPAWN_BOSS)
+        return 1.0f + BONK_COOP_BOSS_HEALTH_PER_PLAYER * float(m_coopPlayers - 1);
+    return float(m_coopPlayers) / GetCoopCrowd();
+}
+
+float BonkRun::GetCoopSpawnShare() const
+{
+    if (m_coopPlayers <= 1)
+        return 1.0f;
+    if (!BonkCoop::InGroupRun(m_player))
+        return GetCoopCrowd() / float(m_coopPlayers);
+    if (!m_player->IsAlive())
+        return 0.0f;
+    return GetCoopCrowd() / float(BonkCoop::StandingCount(m_player));
+}
+
+float BonkRun::GetCoopCrowd() const
+{
+    return BONK_COOP_CROWD[std::min(m_coopPlayers, 4u)];
 }
 
 void BonkRun::SetCoopPlayers(uint32 players, bool sharedPause, bool sharedXp)
@@ -5339,6 +5360,11 @@ void BonkRun::UseChest(GameObject* chest)
             }
     if (!owner)
         return;
+    if (m_missedBoss)
+    {
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_COOP_CHESTS_CLOSED_AFTER_DOWN);
+        return;
+    }
 
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     if (chest->GetEntry() != BONK_GO_CHEST_FREE)
@@ -10751,9 +10777,11 @@ void BonkRun::GiveStartLevels()
 void BonkRun::GiveCollectedExperience(uint32 xp)
 {
     uint32 const next = GetNextLevelXp();
-    GiveExperience(xp);
+    bool const shared = BonkCoop::InGroupRun(m_player) && BonkCoop::SharesXp(m_player);
+    uint32 const kept = shared ? uint32(std::ceil(float(xp) / GetCoopCrowd())) : xp;
+    GiveExperience(kept);
     if (next)
-        BonkCoop::ShareExperience(m_player, float(xp) / float(next));
+        BonkCoop::ShareExperience(m_player, float(kept) / float(next));
 }
 
 void BonkRun::ShareExperience(float levelFraction)

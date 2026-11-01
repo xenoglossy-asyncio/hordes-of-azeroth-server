@@ -3,6 +3,8 @@
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
 #include "BonkRun.h"
+#include "BonkTelegraph.h"
+#include "Camera.h"
 #include "Group.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
@@ -71,12 +73,26 @@ namespace
     uint32 const DOWNED_SEND_MS = 250;
     float const REVIVE_RADIUS = 5.0f;
     float const REVIVE_HEALTH = 0.3f;
+    float const RAISED_AT_BOSS_HEALTH = 1.0f;
+    uint32 const BONK_SPELL_DOWNED_LOOK = 9036;
+    uint32 const HELD_FILL_SLOWDOWN = 1000;
+
+    enum ReviveFill : uint8
+    {
+        REVIVE_FILL_NONE,
+        REVIVE_FILL_GROWING,
+        REVIVE_FILL_HELD
+    };
 
     struct Downed
     {
         uint32 bleedMs = BLEEDOUT_MS;
         uint32 reviveMs = 0;
         bool spectator = false;
+        ObjectGuid watching;
+        uint32 lookKey = 0;
+        bool ringShown = false;
+        ReviveFill fill = REVIVE_FILL_NONE;
     };
 
     struct GroupRun
@@ -217,6 +233,153 @@ namespace
         return nullptr;
     }
 
+    std::string ReviveRingKey(ObjectGuid const& downed)
+    {
+        return "revive" + std::to_string(downed.GetCounter());
+    }
+
+    std::string ReviveFillKey(ObjectGuid const& downed)
+    {
+        return "revivefill" + std::to_string(downed.GetCounter());
+    }
+
+    void ShowDownedLook(Player* downedPlayer, Downed& downed, std::vector<Player*> const& members)
+    {
+        downed.lookKey = NextBonkAuraKey();
+        for (Player* member : members)
+            SendBonkAuraAt(member, downed.lookKey, BONK_SPELL_DOWNED_LOOK, downedPlayer->GetPositionX(), downedPlayer->GetPositionY(),
+                downedPlayer->GetPositionZ());
+    }
+
+    void ShowReviveRing(Player* downedPlayer, Downed& downed, bool shown, std::vector<Player*> const& members)
+    {
+        if (downed.ringShown == shown)
+            return;
+        downed.ringShown = shown;
+        std::string const key = ReviveRingKey(downedPlayer->GetObjectGuid());
+        for (Player* member : members)
+        {
+            if (shown)
+                SendBonkMark(member, key, BONK_TELEGRAPH_CIRCLE, downedPlayer->GetPositionX(), downedPlayer->GetPositionY(), downedPlayer->GetPositionZ(),
+                    0.0f, REVIVE_RADIUS, 0, true, BONK_TELEGRAPH_STYLE_NATURE, ObjectGuid(), "", 0, true);
+            else
+                SendBonkUnmark(member, key);
+        }
+    }
+
+    void ShowReviveFill(Player* downedPlayer, Downed& downed, bool growing, std::vector<Player*> const& members)
+    {
+        ReviveFill const wanted = growing ? REVIVE_FILL_GROWING : downed.reviveMs ? REVIVE_FILL_HELD : REVIVE_FILL_NONE;
+        if (downed.fill == wanted)
+            return;
+        downed.fill = wanted;
+        std::string const key = ReviveFillKey(downedPlayer->GetObjectGuid());
+        uint32 const slowdown = wanted == REVIVE_FILL_HELD ? HELD_FILL_SLOWDOWN : 1;
+        for (Player* member : members)
+        {
+            if (wanted == REVIVE_FILL_NONE)
+                SendBonkUnmark(member, key);
+            else
+                SendBonkMark(member, key, BONK_TELEGRAPH_CIRCLE, downedPlayer->GetPositionX(), downedPlayer->GetPositionY(), downedPlayer->GetPositionZ(),
+                    0.0f, REVIVE_RADIUS, REVIVE_MS * slowdown, false, BONK_TELEGRAPH_STYLE_NATURE, ObjectGuid(), "", downed.reviveMs * slowdown);
+        }
+    }
+
+    void ClearDownedLooks(ObjectGuid const& guid, Downed& downed, std::vector<Player*> const& members)
+    {
+        for (Player* member : members)
+        {
+            if (downed.lookKey)
+                SendBonkAuraGone(member, downed.lookKey);
+            if (downed.ringShown)
+                SendBonkUnmark(member, ReviveRingKey(guid));
+            if (downed.fill != REVIVE_FILL_NONE)
+                SendBonkUnmark(member, ReviveFillKey(guid));
+        }
+        downed.lookKey = 0;
+        downed.ringShown = false;
+        downed.fill = REVIVE_FILL_NONE;
+    }
+
+    void StopWatching(Player* player)
+    {
+        if (player->IsInWorld() && player->GetCamera().GetBody() != player)
+            player->GetCamera().ResetView();
+    }
+
+    bool CanBeWatched(Player* member, Player* watcher)
+    {
+        return member != watcher && member->IsAlive() && member->IsInWorld() && !BonkCoop::IsAway(member) && member->GetMapId() == watcher->GetMapId();
+    }
+
+    void WatchStanding(Player* downedPlayer, Downed& downed, std::vector<Player*> const& members)
+    {
+        if (!downedPlayer->IsInWorld() || BonkCoop::IsAway(downedPlayer))
+            return;
+        Player* current = downed.watching.IsEmpty() ? nullptr : ObjectAccessor::FindPlayerNotInWorld(downed.watching);
+        if (current && CanBeWatched(current, downedPlayer) && std::find(members.begin(), members.end(), current) != members.end())
+            return;
+        Player* nearest = nullptr;
+        float nearestDistance = 0.0f;
+        for (Player* member : members)
+        {
+            if (!CanBeWatched(member, downedPlayer))
+                continue;
+            float const distance = downedPlayer->GetDistance2d(member);
+            if (!nearest || distance < nearestDistance)
+            {
+                nearest = member;
+                nearestDistance = distance;
+            }
+        }
+        if (!nearest)
+        {
+            downed.watching.Clear();
+            StopWatching(downedPlayer);
+            return;
+        }
+        downed.watching = nearest->GetObjectGuid();
+        downedPlayer->GetCamera().SetView(nearest);
+        downedPlayer->GetBonkPlayer()->Notify(BONK_STRING_COOP_WATCHING, { nearest->GetName() });
+    }
+
+    void ReleaseDowned(ObjectGuid const& guid, Downed& downed, std::vector<Player*> const& members)
+    {
+        ClearDownedLooks(guid, downed, members);
+        if (Player* player = ObjectAccessor::FindPlayerNotInWorld(guid))
+            StopWatching(player);
+    }
+
+    void ReleaseAllDowned(GroupRun& group, std::vector<Player*> const& members)
+    {
+        for (auto& entry : group.downed)
+            ReleaseDowned(entry.first, entry.second, members);
+        group.downed.clear();
+    }
+
+    void RaiseAllDowned(GroupRun& group, std::vector<Player*> const& members, bool missedBoss)
+    {
+        std::vector<ObjectGuid> raised;
+        for (auto const& entry : group.downed)
+            raised.push_back(entry.first);
+        ReleaseAllDowned(group, members);
+        for (ObjectGuid const& guid : raised)
+        {
+            Player* player = ObjectAccessor::FindPlayerNotInWorld(guid);
+            BonkRun* run = player ? player->GetBonkPlayer()->GetRun() : nullptr;
+            if (!run || player->IsAlive())
+                continue;
+            run->ReviveFromGroup(RAISED_AT_BOSS_HEALTH);
+            sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s is raised at the end of the stage", player->GetName());
+            if (missedBoss)
+            {
+                run->SetMissedBoss();
+                player->GetBonkPlayer()->Notify(BONK_STRING_COOP_RAISED_AFTER_BOSS);
+            }
+        }
+        group.sendTimer = DOWNED_SEND_MS;
+    }
+
     void SendDowned(GroupRun const& group, std::vector<Player*> const& members)
     {
         std::string list;
@@ -228,7 +391,8 @@ namespace
             if (!list.empty())
                 list += ",";
             list += std::string(downed->GetName()) + ":" + std::to_string((entry.second.bleedMs + 999) / IN_MILLISECONDS) + ":" +
-                std::to_string(entry.second.reviveMs * 100 / REVIVE_MS) + ":" + (entry.second.spectator ? "1" : "0");
+                std::to_string(entry.second.reviveMs * 100 / REVIVE_MS) + ":" + (entry.second.spectator ? "1" : "0") + ":" +
+                (entry.second.fill == REVIVE_FILL_GROWING ? "1" : "0");
         }
         std::string const line = "coopdown~" + std::to_string(group.pool) + "~" + std::to_string(group.cap) + "~" + list;
         for (Player* member : members)
@@ -593,9 +757,11 @@ void BonkCoop::UpdateReadyChecks(uint32 diff)
 
 void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage)
 {
+    auto group = s_groups.find(host->GetObjectGuid());
+    if (group != s_groups.end() && !group->second.wiped)
+        RaiseAllDowned(group->second, GroupMembers(host), false);
     for (BonkRun* run : GuestRunsOf(host))
         run->FollowToStage(map, stage);
-    auto group = s_groups.find(host->GetObjectGuid());
     if (group != s_groups.end() && group->second.pool < group->second.cap)
     {
         ++group->second.pool;
@@ -606,6 +772,9 @@ void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage
 
 void BonkCoop::OnHostPortal(Player* host)
 {
+    auto group = s_groups.find(host->GetObjectGuid());
+    if (group != s_groups.end() && !group->second.wiped)
+        RaiseAllDowned(group->second, GroupMembers(host), true);
     for (BonkRun* run : GuestRunsOf(host))
         run->FollowToPortal();
 }
@@ -625,7 +794,10 @@ void BonkCoop::OnHostFinished(Player* host)
     for (Player* member : GroupMembers(host))
         member->GetBonkPlayer()->SendAddon("coopdown~0~0~");
     if (group != s_groups.end())
+    {
+        ReleaseAllDowned(group->second, GroupMembers(host));
         s_groups.erase(group);
+    }
     for (BonkRun* run : GuestRunsOf(host))
     {
         if (wiped)
@@ -856,6 +1028,15 @@ bool BonkCoop::IsDowned(Player const* player)
     return group != s_groups.end() && group->second.downed.count(player->GetObjectGuid());
 }
 
+uint32 BonkCoop::StandingCount(Player* player)
+{
+    uint32 standing = 0;
+    for (Player* member : RunGroupOf(player))
+        if (member->IsAlive() && !IsAway(member))
+            ++standing;
+    return std::max(1u, standing);
+}
+
 bool BonkCoop::Down(Player* player)
 {
     ObjectGuid const hostGuid = HostOf(player);
@@ -879,8 +1060,15 @@ bool BonkCoop::Down(Player* player)
             member->GetBonkPlayer()->Notify(downed.spectator ? BONK_STRING_COOP_MEMBER_DOWN_NO_REVIVES : BONK_STRING_COOP_MEMBER_DOWN, { name });
     }
     group.sendTimer = DOWNED_SEND_MS;
+    std::vector<Player*> const members = GroupMembers(host);
+    ShowDownedLook(player, downed, members);
     if (!AnyoneStanding(host))
+    {
         Wipe(host, group);
+        return true;
+    }
+    ShowReviveRing(player, downed, !downed.spectator, members);
+    WatchStanding(player, downed, members);
     return true;
 }
 
@@ -898,6 +1086,7 @@ void BonkCoop::UpdateDowned(uint32 diff)
         Player* host = ObjectAccessor::FindPlayerNotInWorld(hostGuid);
         if (!host || !host->GetBonkPlayer()->GetRun())
         {
+            ReleaseAllDowned(group, host ? GroupMembers(host) : std::vector<Player*>());
             s_groups.erase(found);
             continue;
         }
@@ -914,21 +1103,29 @@ void BonkCoop::UpdateDowned(uint32 diff)
             Player* downedPlayer = ObjectAccessor::FindPlayerNotInWorld(it->first);
             if (!downedPlayer || downedPlayer->IsAlive() || !downedPlayer->GetBonkPlayer()->GetRun())
             {
+                ReleaseDowned(it->first, it->second, members);
                 it = group.downed.erase(it);
                 continue;
             }
             Downed& downed = it->second;
+            WatchStanding(downedPlayer, downed, members);
+            ShowReviveRing(downedPlayer, downed, !downed.spectator && group.pool > 0, members);
             if (downed.spectator || paused)
             {
+                ShowReviveFill(downedPlayer, downed, false, members);
                 ++it;
                 continue;
             }
             Player* reviver = group.pool ? FindReviver(downedPlayer, members) : nullptr;
+            if ((downed.fill == REVIVE_FILL_GROWING) != (reviver != nullptr))
+                group.sendTimer = DOWNED_SEND_MS;
+            ShowReviveFill(downedPlayer, downed, reviver != nullptr, members);
             if (reviver)
             {
                 downed.reviveMs += diff;
                 if (downed.reviveMs >= REVIVE_MS)
                 {
+                    ReleaseDowned(it->first, downed, members);
                     --group.pool;
                     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s revived %s, pool %u/%u", reviver->GetName(), downedPlayer->GetName(), group.pool, group.cap);
                     downedPlayer->GetBonkPlayer()->GetRun()->ReviveFromGroup(REVIVE_HEALTH);
@@ -946,11 +1143,11 @@ void BonkCoop::UpdateDowned(uint32 diff)
             }
             else
             {
-                downed.reviveMs = 0;
                 downed.bleedMs = downed.bleedMs > diff ? downed.bleedMs - diff : 0;
                 if (downed.bleedMs == 0)
                 {
                     downed.spectator = true;
+                    downed.reviveMs = 0;
                     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s bled out", downedPlayer->GetName());
                     for (Player* member : members)
                         member->GetBonkPlayer()->Notify(BONK_STRING_COOP_BLED_OUT, { downedPlayer->GetName() });
