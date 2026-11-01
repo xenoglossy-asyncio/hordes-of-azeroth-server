@@ -917,10 +917,7 @@ float const BONK_START_POLY_REACH   = 10.0f;
         packet->castFlags = CAST_FLAG_UNKNOWN9;
         AddLookAmmo(*packet);
         packet->hitTargets.push_back(target->GetObjectGuid());
-        if (spellInfo->speed > 0.0f)
-            packet->targets.setDestination(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ() + target->GetCollisionHeight() / 2.0f);
-        else
-            packet->targets.setUnitTarget(target);
+        packet->targets.setUnitTarget(target);
         caster->SendObjectMessageToSet(std::move(packet), true);
     }
 
