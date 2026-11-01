@@ -9,8 +9,10 @@
 #include "Player.h"
 #include "Utilities/Random.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <functional>
 
 namespace
 {
@@ -20,6 +22,10 @@ namespace
     float const BONK_SHRINE_MIN_DISTANCE   = 60.0f;
     float const BONK_SHRINE_MAX_DISTANCE   = 400.0f;
     float const BONK_SHRINE_SPREAD         = 150.0f;
+    uint32 const BONK_SHRINE_FIRST_SEC     = 20;
+    uint32 const BONK_SHRINE_LAST_BEFORE_BOSS_SEC = 60;
+    uint32 const BONK_SHRINE_ENDLESS_MIN_SEC = 90;
+    uint32 const BONK_SHRINE_ENDLESS_MAX_SEC = 180;
 
     struct ShrineCount
     {
@@ -143,12 +149,10 @@ bool ParseBonkShrine(char const* name, BonkShrineType& type)
 void BonkRun::UpdateShrines(uint32 diff)
 {
     m_shrineTimer += diff;
-    if (m_shrinesToPlace && m_shrineTimer >= BONK_SHRINE_PLACE_MS)
+    if (m_shrineTimer >= BONK_SHRINE_PLACE_MS)
     {
         m_shrineTimer = 0;
-        BonkShrineType const type = !m_stonePlaced && m_shrinesToPlace <= m_stoneAt ? BONK_SHRINE_STONE : PickShrineType();
-        if (PlaceShrine(type))
-            --m_shrinesToPlace;
+        PlaceDueShrine();
     }
 
     UpdatePendingSummons(diff);
@@ -166,6 +170,19 @@ void BonkRun::UpdateShrines(uint32 diff)
         if (m_shrines.size() == count)
             ++i;
     }
+}
+
+void BonkRun::PlaceDueShrine()
+{
+    if (m_placeStone && !m_stonePlaced)
+    {
+        PlaceShrine(BONK_SHRINE_STONE);
+        return;
+    }
+    if (IsFinale() && m_shrineDueMs.empty())
+        m_shrineDueMs.push_back(m_elapsedMs + urand(BONK_SHRINE_ENDLESS_MIN_SEC, BONK_SHRINE_ENDLESS_MAX_SEC) * IN_MILLISECONDS);
+    if (!m_shrineDueMs.empty() && m_elapsedMs >= m_shrineDueMs.back() && PlaceShrine(PickShrineType()))
+        m_shrineDueMs.pop_back();
 }
 
 BonkShrineType BonkRun::PickShrineType() const
@@ -687,13 +704,23 @@ bool BonkRun::IsInMoonwell(float x, float y) const
 void BonkRun::ResetShrines()
 {
     DespawnShrines();
-    ShrineCount const& count = BONK_SHRINE_COUNT[m_map.type < MAX_BONK_MAP_TYPE ? m_map.type : BONK_MAP_OPEN];
-    m_shrinesToPlace = count.least + urand(0, count.extra);
     m_shrineTimer = 0;
     m_moonwellPlaced = false;
     m_leyLinesPlaced = 0;
     m_stonePlaced = false;
-    m_stoneAt = urand(1, std::max(1u, m_shrinesToPlace));
+    m_placeStone = m_stage < m_tier.stages;
+    if (IsFinale())
+        return;
+
+    ShrineCount const& count = BONK_SHRINE_COUNT[m_map.type < MAX_BONK_MAP_TYPE ? m_map.type : BONK_MAP_OPEN];
+    uint32 shrines = count.least + urand(0, count.extra);
+    if (m_placeStone && shrines > 1)
+        --shrines;
+    uint32 const firstSec = BONK_SHRINE_FIRST_SEC;
+    uint32 const lastSec = std::max(firstSec, m_map.durationSeconds > BONK_SHRINE_LAST_BEFORE_BOSS_SEC ? m_map.durationSeconds - BONK_SHRINE_LAST_BEFORE_BOSS_SEC : 0);
+    for (uint32 i = 0; i < shrines; ++i)
+        m_shrineDueMs.push_back(m_elapsedMs + urand(firstSec, lastSec) * IN_MILLISECONDS);
+    std::sort(m_shrineDueMs.begin(), m_shrineDueMs.end(), std::greater<uint32>());
 }
 
 void BonkRun::DespawnShrines()
@@ -710,7 +737,8 @@ void BonkRun::DespawnShrines()
     }
     m_shrines.clear();
     m_pendingSummons.clear();
-    m_shrinesToPlace = 0;
+    m_shrineDueMs.clear();
+    m_placeStone = false;
     if (m_captureShown)
     {
         m_player->GetBonkPlayer()->SendAddon("capture~" + GetString(SHRINE_LABELS[BONK_SHRINE_LEY_LINE]) + "~-1");

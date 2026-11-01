@@ -534,6 +534,7 @@ class BonkRun
         void EndMiniEvent();
         void DespawnMiniEvent();
         void UpdateShrines(uint32 diff);
+        void PlaceDueShrine();
         bool PlaceShrine(BonkShrineType type);
         BonkShrineType PickShrineType() const;
         void RemoveShrine(size_t index);
@@ -1538,12 +1539,12 @@ class BonkRun
             bool countdown);
         void UpdatePendingSummons(uint32 diff);
         bool IsAltarWaking(ObjectGuid const& altar) const;
-        uint32 m_shrinesToPlace = 0;
+        std::vector<uint32> m_shrineDueMs;
         uint32 m_shrineTimer = 0;
         bool m_moonwellPlaced = false;
         uint32 m_leyLinesPlaced = 0;
         bool m_stonePlaced = false;
-        uint32 m_stoneAt = 0;
+        bool m_placeStone = false;
         bool m_captureShown = false;
         uint32 m_captureSendMs = 0;
         uint32 m_greedStacks = 0;
