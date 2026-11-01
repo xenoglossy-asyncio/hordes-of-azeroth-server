@@ -98,7 +98,7 @@ namespace
                 case BONK_KEYWORD_DECAY:   return "decay";
                 case BONK_KEYWORD_AGONY:   return "agony";
                 case BONK_KEYWORD_MOONFIRE: return "moonfire";
-                case BONK_KEYWORD_STATIC:  return "nature";
+                case BONK_KEYWORD_STATIC:  return "static";
                 default:                   break;
             }
         }
@@ -607,12 +607,10 @@ void BonkOnDamage(Unit* attacker, Unit* victim, uint32 damage, SpellEntry const*
 
         BonkRun* run = player->GetBonkPlayer()->GetRun();
         std::vector<std::pair<uint32, uint32>> credits;
-        uint32 const meterOverride = owner ? 0 : run->GetMeterSpellOverride();
-        if (meterOverride)
-            credits.emplace_back(meterOverride, dealt);
-        else if (spellProto)
+        if (spellProto)
             run->CreditDamageOverTime(victim, spellProto->Id, dealt, credits);
         uint32 const dotSpellId = !credits.empty() ? spellProto->Id : 0;
+        uint32 const partSpellId = dotSpellId ? dotSpellId : owner ? 0 : run->GetMeterPartSpell();
         if (credits.empty())
             credits.emplace_back(spellProto ? spellProto->Id : 0, dealt);
 
@@ -660,8 +658,8 @@ void BonkOnDamage(Unit* attacker, Unit* victim, uint32 damage, SpellEntry const*
             for (auto const& credit : credits)
             {
                 stats.bySpell[credit.first].damage += BonkRun::GetTrueAmount(victim, credit.second);
-                if (dotSpellId && credit.first != dotSpellId)
-                    stats.dotBySpell[credit.first][dotSpellId].damage += BonkRun::GetTrueAmount(victim, credit.second);
+                if (partSpellId && credit.first != partSpellId)
+                    stats.dotBySpell[credit.first][partSpellId].damage += BonkRun::GetTrueAmount(victim, credit.second);
             }
             uint64 const trueHit = BonkRun::GetTrueAmount(victim, damage);
             if (trueHit > stats.biggestHit)
@@ -672,8 +670,8 @@ void BonkOnDamage(Unit* attacker, Unit* victim, uint32 damage, SpellEntry const*
             if (damage >= health)
             {
                 stats.killingSpells[victim->GetObjectGuid()] = credits.front().first;
-                if (dotSpellId && credits.front().first != dotSpellId)
-                    stats.killingDots[victim->GetObjectGuid()] = dotSpellId;
+                if (partSpellId && credits.front().first != partSpellId)
+                    stats.killingDots[victim->GetObjectGuid()] = partSpellId;
             }
         }
         if (newBiggestHit && run->IsSandbox())
