@@ -207,7 +207,7 @@ void BonkRun::DrainLife(OwnedWeapon& owned, SpellEntry const* spellInfo)
         }
     if (drained && owned.weapon.healPct > 0.0f && m_player->IsAlive())
     {
-        uint32 const heal = uint32(m_player->GetMaxHealth() * owned.weapon.healPct * drained / 100.0f);
+        uint32 const heal = std::max(1u, uint32(m_player->GetMaxHealth() * owned.weapon.healPct * drained / 100.0f));
         OnDrainOverheal(heal);
         HealHero(heal, owned.weapon.spellId);
     }
