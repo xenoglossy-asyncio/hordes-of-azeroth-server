@@ -1310,6 +1310,7 @@ class BonkRun
         BonkLevel m_levelRow;
         uint32 m_levelBestAtStart = 0;
         void ApplyInvader();
+        void ApplyDifficultyGold();
 
         void Finish(bool wentHome);
         void Exit();

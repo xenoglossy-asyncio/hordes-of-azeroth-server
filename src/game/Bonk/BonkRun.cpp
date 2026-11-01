@@ -236,7 +236,6 @@ namespace
     size_t const BONK_MAX_PASSIVE_SLOTS   = 6;
     float const BONK_DUNGEON_HEALTH = 1.3f;
     float const BONK_DUNGEON_DAMAGE = 1.2f;
-    float const BONK_DUNGEON_GOLD   = 1.5f;
     float const BONK_FINALE_GOLD_PER_MINUTE  = 0.5f;
     float const BONK_FINALE_SCRAP_PER_MINUTE = 2.0f;
     float const BONK_INVASION_GOLD  = 1.25f;
@@ -1147,6 +1146,7 @@ bool BonkRun::Begin(std::string& error)
     }
     m_map = *first;
     ApplyInvader();
+    ApplyDifficultyGold();
     BringBossEarlier();
     if (!m_sandbox)
         LogLoadout();
@@ -1203,6 +1203,28 @@ BonkMap const* BonkRun::ChooseNextMap()
     BonkMap const* map = candidates[urand(0, uint32(candidates.size() - 1))];
     m_playedMaps.insert(map->id);
     return map;
+}
+
+void BonkRun::ApplyDifficultyGold()
+{
+    if (!IsDungeon())
+        return;
+    uint32 goldPerKill = 0;
+    uint32 stageGold = 0;
+    uint32 zones = 0;
+    for (auto const& itr : sBonkMgr.GetMaps())
+    {
+        BonkMap const& zone = itr.second;
+        if (zone.tierId != m_tier.id || zone.type != BONK_MAP_OPEN)
+            continue;
+        goldPerKill += zone.goldPerKill;
+        stageGold += zone.stageGold;
+        ++zones;
+    }
+    if (!zones)
+        return;
+    m_map.goldPerKill = (goldPerKill + zones / 2) / zones;
+    m_map.stageGold = (stageGold + zones / 2) / zones;
 }
 
 void BonkRun::ApplyInvader()
@@ -5498,6 +5520,7 @@ void BonkRun::EnterNextStage()
     ++m_stage;
     m_map = *next;
     ApplyInvader();
+    ApplyDifficultyGold();
     BringBossEarlier();
     m_nextMapId = 0;
     BonkCoop::OnHostEnteredStage(m_player, m_map, m_stage);
@@ -5548,6 +5571,7 @@ void BonkRun::FollowToStage(BonkMap const& map, uint32 stage)
     m_stage = stage;
     m_map = map;
     ApplyInvader();
+    ApplyDifficultyGold();
     BringBossEarlier();
     m_nextMapId = 0;
 }
@@ -11317,9 +11341,8 @@ void BonkRun::RemovePickup(ObjectGuid const& goGuid, uint32 beamKey, uint32 spar
 
 float BonkRun::GetGoldMultiplier() const
 {
-    float const mapBonus = float(GetBonkMapRewardPercent(m_map.type)) - 100.0f;
-    return (1.0f + (GetPassiveTotal(BONK_PASSIVE_GREED) + m_bonuses.goldBonus + mapBonus + GetGreedRewardPercent()) / 100.0f) *
-        (m_invaderId ? BONK_INVASION_GOLD : IsChallenge() ? BONK_DUNGEON_GOLD : 1.0f) * m_levelRow.reward;
+    return (1.0f + (GetPassiveTotal(BONK_PASSIVE_GREED) + m_bonuses.goldBonus + GetGreedRewardPercent()) / 100.0f) *
+        (m_invaderId ? BONK_INVASION_GOLD : 1.0f) * m_levelRow.reward;
 }
 
 void BonkRun::GiveGold(uint32 copper)
