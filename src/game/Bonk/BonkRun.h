@@ -1426,6 +1426,9 @@ class BonkRun
         float GetCoopHealthScale(BonkSpawnKind kind) const;
         float m_stageX = 0.0f, m_stageY = 0.0f, m_stageZ = 0.0f;
         void ClearStageObjects();
+        uint32 GetCoopBossCount() const;
+        bool OnStageBossKilled(Creature* mob);
+        void NotifyArrived(Creature* mob) const;
         bool PlaceNearHost(float& x, float& y, float& z, float& o) const;
         uint32 m_nextMapId = 0;
         std::set<uint32> m_playedMaps;
@@ -1579,6 +1582,7 @@ class BonkRun
         ObjectGuid m_bossGuid;
         std::vector<ObjectGuid> m_mobs;
         std::vector<ObjectGuid> m_groupEnemies;
+        std::vector<ObjectGuid> m_stageBosses;
         uint32 m_lastPlateId = 0;
         float m_moveX = 0.0f, m_moveY = 0.0f;
         float m_lastX = 0.0f, m_lastY = 0.0f;

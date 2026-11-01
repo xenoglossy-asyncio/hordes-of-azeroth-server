@@ -1,4 +1,5 @@
 #include "BonkRunStats.h"
+#include "BonkCoop.h"
 #include "BonkLocale.h"
 #include "BonkMobAI.h"
 #include "BonkPlayer.h"
@@ -28,6 +29,7 @@ namespace
 {
     uint32 const BONK_BOSS_BAR_MS    = 250;
     float const BONK_BOSS_BAR_RANGE  = 150.0f;
+    size_t const BONK_BOSS_BAR_MAX   = 4;
 
     struct BossBar
     {
@@ -500,7 +502,13 @@ void BonkStats::UpdateBossBar(Player* player, uint32 diff)
         return;
     bar->timer = 0;
 
-    Creature* shown = nullptr;
+    struct ShownBoss
+    {
+        Creature* creature;
+        bool isBoss;
+        float distance;
+    };
+    std::vector<ShownBoss> shown;
     if (player->IsInWorld() && !player->IsBeingTeleported())
     {
         std::list<Creature*> creatures;
@@ -508,34 +516,39 @@ void BonkStats::UpdateBossBar(Player* player, uint32 diff)
         MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(creatures, check);
         Cell::VisitGridObjects(player, searcher, BONK_BOSS_BAR_RANGE);
 
-        float shownDistance = 0.0f;
-        bool shownIsBoss = false;
+        std::vector<Player*> const party = BonkCoop::RunGroupOf(player);
         for (Creature* creature : creatures)
         {
-            if (!creature->IsAlive() || !creature->IsTemporarySummon() ||
-                static_cast<TemporarySummon*>(creature)->GetSummonerGuid() != player->GetObjectGuid())
+            if (!creature->IsAlive() || !creature->IsTemporarySummon())
+                continue;
+            ObjectGuid const summoner = static_cast<TemporarySummon*>(creature)->GetSummonerGuid();
+            if (std::none_of(party.begin(), party.end(), [&](Player const* member) { return member->GetObjectGuid() == summoner; }))
                 continue;
             BonkMobAI const* ai = dynamic_cast<BonkMobAI const*>(creature->AI());
             if (!ai || (ai->GetKind() != BONK_SPAWN_BOSS && ai->GetKind() != BONK_SPAWN_MINIBOSS))
                 continue;
-
-            bool const isBoss = ai->GetKind() == BONK_SPAWN_BOSS;
-            float const distance = player->GetDistance(creature);
-            if (!shown || (isBoss && !shownIsBoss) || (isBoss == shownIsBoss && distance < shownDistance))
-            {
-                shown = creature;
-                shownDistance = distance;
-                shownIsBoss = isBoss;
-            }
+            shown.push_back({ creature, ai->GetKind() == BONK_SPAWN_BOSS, player->GetDistance(creature) });
         }
+        std::sort(shown.begin(), shown.end(), [](ShownBoss const& a, ShownBoss const& b)
+        {
+            return a.isBoss != b.isBoss ? a.isBoss : a.distance < b.distance;
+        });
+        if (shown.size() > BONK_BOSS_BAR_MAX)
+            shown.resize(BONK_BOSS_BAR_MAX);
     }
 
     std::string line = "boss~";
-    if (shown)
+    if (!shown.empty())
     {
-        BonkMobAI const* ai = static_cast<BonkMobAI const*>(shown->AI());
-        line += player->GetBonkPlayer()->GetLocalName(shown) + "~" + std::to_string(ai->GetTrueHealth(shown->GetHealth())) + "~" + std::to_string(ai->GetTrueHealth(shown->GetMaxHealth())) + "~" +
-            (ai->GetKind() == BONK_SPAWN_BOSS ? "boss" : "mini") + "~" + ai->GetAffixNames(player->GetBonkPlayer()->GetLocale()) + "~" + KeywordStacksText(player, shown) + "~" + BonkMobAI::GetUnitGuidText(shown);
+        line += std::to_string(shown.size());
+        for (ShownBoss const& entry : shown)
+        {
+            Creature* creature = entry.creature;
+            BonkMobAI const* ai = static_cast<BonkMobAI const*>(creature->AI());
+            line += "~" + player->GetBonkPlayer()->GetLocalName(creature) + "~" + std::to_string(ai->GetTrueHealth(creature->GetHealth())) + "~" +
+                std::to_string(ai->GetTrueHealth(creature->GetMaxHealth())) + "~" + (entry.isBoss ? "boss" : "mini") + "~" +
+                ai->GetAffixNames(player->GetBonkPlayer()->GetLocale()) + "~" + KeywordStacksText(player, creature) + "~" + BonkMobAI::GetUnitGuidText(creature);
+        }
     }
     if (line == bar->lastLine)
         return;

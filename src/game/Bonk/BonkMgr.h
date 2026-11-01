@@ -878,6 +878,7 @@ float const BONK_MAX_AREA           = 60.0f;
 float const BONK_MIN_CURVED_GAIN    = 1.0f;
 float const BONK_MAX_MOVE_SPEED     = 50.0f;
 float const BONK_BASE_MOVE_SPEED    = 10.0f;
+float const BONK_MYTHIC_BASE_MOVE_SPEED = 5.0f;
 float const BONK_MAX_HASTE          = 75.0f;
 float CurveStat(float raw, float ceiling);
 float CurveHaste(float raw);

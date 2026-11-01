@@ -1590,6 +1590,7 @@ void BonkRun::StartStage()
     m_stoneBoss = false;
     m_bossGuid.Clear();
     m_powerupSpawnTimer = m_map.powerupIntervalSeconds * IN_MILLISECONDS / 2;
+    m_stageBosses.clear();
     m_nativeTimer = BONK_NATIVE_SWEEP_MS;
     if (m_stage > 1)
         m_rerolls += uint32(GetGlyphValue(BONK_GLYPH_FORESIGHT, 0));
@@ -2143,8 +2144,10 @@ void BonkRun::RunEvent(BonkMapEvent const& event)
     {
         case BONK_EVENT_MINIBOSS:
         {
-            std::string name;
-            uint32 const count = event.count + (event.count ? uint32(GetGlyphValue(BONK_GLYPH_AMBITION, 0)) : 0);
+            if (IsCoopGuest())
+                break;
+            Creature* arrived = nullptr;
+            uint32 const count = (event.count + (event.count ? uint32(GetGlyphValue(BONK_GLYPH_AMBITION, 0)) : 0)) * GetCoopBossCount();
             for (uint32 i = 0; i < count; ++i)
             {
                 BonkMapCreature const* creature = PickCreature(BONK_SPAWN_MINIBOSS);
@@ -2152,10 +2155,10 @@ void BonkRun::RunEvent(BonkMapEvent const& event)
                     creature = PickCreature(BONK_SPAWN_ELITE);
                 if (creature)
                     if (Creature* mob = SpawnMob(*creature))
-                        name = bonk->GetLocalName(mob);
+                        arrived = mob;
             }
-            if (!name.empty())
-                bonk->Notify(BONK_STRING_ARRIVED, { name });
+            if (arrived)
+                NotifyArrived(arrived);
             break;
         }
         case BONK_EVENT_ELITES:
@@ -2251,16 +2254,23 @@ void BonkRun::UpdateSpawns(uint32 diff)
 {
     uint32 const elapsedSeconds = m_elapsedMs / IN_MILLISECONDS;
 
-    if (m_bossSpawned)
+    if (m_bossSpawned && !IsCoopGuest())
     {
-        Creature* boss = m_player->GetMap()->GetCreature(m_bossGuid);
-        if (!boss || (boss->IsAlive() && boss->HasCreatureState(CSTATE_DESPAWNING)))
+        m_stageBosses.erase(std::remove_if(m_stageBosses.begin(), m_stageBosses.end(), [this](ObjectGuid const& guid)
+        {
+            Creature* boss = m_player->GetMap()->GetCreature(guid);
+            return !boss || (boss->IsAlive() && boss->HasCreatureState(CSTATE_DESPAWNING));
+        }), m_stageBosses.end());
+        if (m_stageBosses.empty())
         {
             m_bossSpawned = false;
             SendBossMusic(false);
         }
+            m_bossGuid.Clear();
     }
 
+        else if (std::find(m_stageBosses.begin(), m_stageBosses.end(), m_bossGuid) == m_stageBosses.end())
+            m_bossGuid = m_stageBosses.front();
     UpdateWaves();
     if (m_state != STATE_RUNNING)
         return;
@@ -2282,10 +2292,16 @@ void BonkRun::UpdateSpawns(uint32 diff)
             return;
         }
 
-        if (Creature* mob = SpawnMob(*boss))
+        for (uint32 i = 0; i < GetCoopBossCount(); ++i)
         {
-            m_bossSpawned = true;
-            m_player->GetBonkPlayer()->Notify(BONK_STRING_ARRIVED, { m_player->GetBonkPlayer()->GetLocalName(mob) });
+            BonkMapCreature const* pick = i == 0 ? boss : PickCreature(BONK_SPAWN_BOSS);
+            if (!pick)
+                pick = boss;
+            if (Creature* mob = SpawnMob(*pick))
+            {
+                m_bossSpawned = true;
+                NotifyArrived(mob);
+            }
         }
     }
 
@@ -2448,8 +2464,8 @@ void BonkRun::EnterWave(size_t index)
     if (m_bossSpawned || m_stress.on)
         return;
 
-    std::string name;
-    uint32 const minibosses = wave.minibosses + (wave.minibosses ? uint32(GetGlyphValue(BONK_GLYPH_AMBITION, 0)) : 0);
+    Creature* arrived = nullptr;
+    uint32 const minibosses = IsCoopGuest() ? 0 : (wave.minibosses + (wave.minibosses ? uint32(GetGlyphValue(BONK_GLYPH_AMBITION, 0)) : 0)) * GetCoopBossCount();
     for (uint32 i = 0; i < minibosses; ++i)
     {
         BonkMapCreature const* creature = PickCreature(BONK_SPAWN_MINIBOSS);
@@ -2457,10 +2473,10 @@ void BonkRun::EnterWave(size_t index)
             creature = PickCreature(BONK_SPAWN_ELITE);
         if (creature)
             if (Creature* mob = SpawnMob(*creature))
-                name = bonk->GetLocalName(mob);
+                arrived = mob;
     }
-    if (!name.empty())
-        bonk->Notify(BONK_STRING_ARRIVED, { name });
+    if (arrived)
+        NotifyArrived(arrived);
 
     bool elites = false;
     uint32 const eliteCount = uint32(wave.elites * GetEliteScale() + 0.5f);
@@ -3877,6 +3893,35 @@ float BonkRun::GetSpawnHealthUncapped(BonkSpawnKind kind, BonkArchetype archetyp
 
 float BonkRun::GetCoopHealthScale(BonkSpawnKind kind) const
 {
+void BonkRun::NotifyArrived(Creature* mob) const
+{
+    for (Player* member : BonkCoop::RunGroupOf(m_player))
+        if (BonkPlayer* bonk = member->GetBonkPlayer())
+            bonk->Notify(BONK_STRING_ARRIVED, { bonk->GetLocalName(mob) });
+}
+
+uint32 BonkRun::GetCoopBossCount() const
+{
+    uint32 const counts[] = { 1, 1, 2, 2, 3 };
+    return counts[std::min(m_coopPlayers, 4u)];
+}
+
+bool BonkRun::OnStageBossKilled(Creature* mob)
+{
+    auto const found = std::find(m_stageBosses.begin(), m_stageBosses.end(), mob->GetObjectGuid());
+    if (found == m_stageBosses.end())
+        return false;
+    m_stageBosses.erase(found);
+    for (ObjectGuid const& guid : m_stageBosses)
+        if (Creature* other = m_player->GetMap()->GetCreature(guid))
+            if (other->IsAlive())
+            {
+                m_bossGuid = guid;
+                return false;
+            }
+    return true;
+}
+
     float const perPlayer = kind == BONK_SPAWN_BOSS ? BONK_COOP_BOSS_HEALTH_PER_PLAYER : BONK_COOP_HEALTH_PER_PLAYER;
     return 1.0f + perPlayer * float(m_coopPlayers - 1);
 }
@@ -4803,7 +4848,9 @@ Creature* BonkRun::SpawnMobAt(BonkMapCreature const& creature, float x, float y,
     }
     if (creature.kind == BONK_SPAWN_BOSS)
     {
-        m_bossGuid = mob->GetObjectGuid();
+        if (m_stageBosses.empty())
+            m_bossGuid = mob->GetObjectGuid();
+        m_stageBosses.push_back(mob->GetObjectGuid());
         SendBossMusic(true);
     }
     return mob;
@@ -5385,6 +5432,7 @@ bool BonkRun::CloseStage()
     m_bossGuid.Clear();
     m_telegraphs.Clear(m_player);
     RemoveHeroLooks();
+    m_stageBosses.clear();
     GiveGold(m_map.stageGold * m_stage);
     sBonkQuests.OnProgress(m_player, BONK_QUEST_DARK_FORTUNES, 0, m_player->GetBonkPlayer()->CountDarkFortunes(), true);
     CollectAllOrbs();
@@ -5713,7 +5761,7 @@ float BonkRun::GetPassiveTotal(BonkPassiveEffect effect) const
     if (effect == BONK_PASSIVE_HASTE)
         total += GetEnrageHaste() + GetDruidHaste();
     if (effect == BONK_PASSIVE_MOVE_SPEED)
-        total += GetTalentMoveSpeed() + BONK_BASE_MOVE_SPEED;
+        total += GetTalentMoveSpeed() + (IsMythic() ? BONK_MYTHIC_BASE_MOVE_SPEED : BONK_BASE_MOVE_SPEED);
     total += m_stress.bonuses[effect];
     total += m_cardStats[effect];
     total += m_shrineBonuses[effect];
@@ -11401,7 +11449,7 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
         m_objectives.RemoveFollowing(m_player, mob->GetObjectGuid());
         SpeakBossLine(mob, BONK_BOSS_LINE_DEATH);
     }
-    if (mob->GetObjectGuid() == m_bossGuid)
+    if (stageBossDown)
         SendBossMusic(false);
 
     bool const eventGroup = m_miniEventActive &&
@@ -11445,7 +11493,8 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
     if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && ++m_glyphMiniBosses == 1)
         DropGlyph(mob);
 
-    if (mob->GetObjectGuid() == m_bossGuid)
+    bool const stageBossDown = OnStageBossKilled(mob);
+    if (stageBossDown)
     {
         if (m_stoneBoss)
             GiveExperience(GetNextLevelXp());
