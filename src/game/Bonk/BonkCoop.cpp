@@ -16,6 +16,7 @@
 #include "Player.h"
 #include "WorldSession.h"
 
+#include <fstream>
 #include <map>
 #include <mutex>
 #include <set>
@@ -25,7 +26,7 @@ namespace
 {
     char const* const GUEST_ACCOUNT_PREFIX = "HOAC";
     char const* const GUEST_ACCOUNT_TABLES[] = {
-        "bonk_account", "bonk_account_bank", "bonk_account_disabled", "bonk_account_level", "bonk_account_level_best", "bonk_account_mastery",
+        "bonk_account", "bonk_account_bank", "bonk_account_disabled", "bonk_account_kept_talents", "bonk_account_level", "bonk_account_level_best", "bonk_account_mastery",
         "bonk_account_mastery_node", "bonk_account_mastery_preset", "bonk_account_mastery_preset_active", "bonk_account_quest",
         "bonk_account_starter", "bonk_account_talent", "bonk_account_unlock", "bonk_account_upgrade",
     };
@@ -69,8 +70,16 @@ namespace
         }, REMOVE_DELAY_MS);
     }
 
+    bool SameClassAllowed()
+    {
+        std::ifstream marker("coop/same-class.txt", std::ios::binary);
+        return marker.good();
+    }
+
     bool ClassTaken(Group const* group, Player const* guest)
     {
+        if (SameClassAllowed())
+            return false;
         for (Group::MemberSlot const& slot : group->GetMemberSlots())
         {
             if (slot.guid == guest->GetObjectGuid())
