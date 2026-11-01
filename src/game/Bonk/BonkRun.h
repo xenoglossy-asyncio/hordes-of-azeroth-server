@@ -12,6 +12,8 @@
 #include "ObjectGuid.h"
 #include "nonstd/optional.hpp"
 
+#include <functional>
+
 #include <deque>
 #include <map>
 #include <set>
@@ -2314,6 +2316,20 @@ class BonkRun
         void ShowStrikeImpact(SpellEntry const* spellInfo, Creature* target);
         void ShowAreaImpact(SpellEntry const* spellInfo, float radius);
         void ShowStrike(Unit* caster, SpellEntry const* spellInfo, Unit* target) const;
+        void LaunchBolt(Unit* caster, SpellEntry const* look, Creature* target, float damage, std::function<void(Creature*)> land);
+        void LandDueBolts();
+        void ReleaseBoltIncoming(ObjectGuid const& target, float incoming);
+        bool SurvivesBoltsInFlight(Creature const* mob) const;
+        Creature* PickBoltTarget(Unit const* from, Creature* wanted, float range) const;
+        struct FlyingBolt
+        {
+            ObjectGuid target;
+            uint32 dueMs = 0;
+            float incoming = 0.0f;
+            std::function<void(Creature*)> land;
+        };
+        std::vector<FlyingBolt> m_flyingBolts;
+        std::map<ObjectGuid, float> m_boltIncoming;
         void ShowSwing(SpellEntry const* look, Unit* target) const;
         void ResolveMageCast(OwnedWeapon& owned, SpellEntry const* spellInfo, PendingCast const& cast);
         bool HurlPyroblasts(OwnedWeapon& owned, SpellEntry const* spellInfo, std::vector<Creature*> mobs);

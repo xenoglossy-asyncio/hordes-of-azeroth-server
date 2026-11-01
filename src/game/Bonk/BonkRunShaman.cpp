@@ -172,7 +172,7 @@ void BonkRun::StrikeSearingTotemSecondTarget(OwnedWeapon& owned, BonkPetFamily c
         return;
     for (Creature* mob : GetMobsNear(pet->GetPositionX(), pet->GetPositionY(), ability.value))
     {
-        if (mob == prey || !pet->IsWithinLOSInMap(mob))
+        if (mob == prey || !SurvivesBoltsInFlight(mob) || !pet->IsWithinLOSInMap(mob))
             continue;
         PetStrike(owned, pet, mob, ability);
         return;

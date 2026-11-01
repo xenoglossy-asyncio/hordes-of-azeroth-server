@@ -651,6 +651,7 @@ float const BONK_START_POLY_REACH   = 10.0f;
 
     thread_local uint32 s_nextHelperLevel = 0;
     thread_local ObjectGuid t_missileLookSource;
+    uint32 const BONK_BOLT_LANDING_LAG_MS = 50;
 
     void ApplyHelperLevel(Creature* creature)
     {
@@ -1832,6 +1833,7 @@ void BonkRun::UpdateRunning(uint32 diff)
     if (m_state != STATE_RUNNING)
         return;
     UpdatePendingCasts(diff);
+    LandDueBolts();
     UpdateArrowStorms(diff);
     UpdateKeywordClouds(diff);
     UpdateWarrior(diff);
@@ -6223,6 +6225,66 @@ ObjectGuid BonkRun::GetMissileLookSource()
     return t_missileLookSource;
 }
 
+void BonkRun::LaunchBolt(Unit* caster, SpellEntry const* look, Creature* target, float damage, std::function<void(Creature*)> land)
+{
+    if (!look || !caster || !target)
+        return;
+    ShowStrike(caster, look, target);
+    if (look->speed <= 0.0f || caster == target)
+    {
+        land(target);
+        return;
+    }
+    float const incoming = damage * GetDamageMultiplier(look, target) * GetHealthScale(target);
+    uint32 const flightMs = uint32(caster->GetDistance3dToCenter(target) / look->speed * IN_MILLISECONDS);
+    m_flyingBolts.push_back({ target->GetObjectGuid(), m_totalMs + flightMs + BONK_BOLT_LANDING_LAG_MS, incoming, std::move(land) });
+    m_boltIncoming[target->GetObjectGuid()] += incoming;
+}
+
+void BonkRun::LandDueBolts()
+{
+    std::vector<FlyingBolt> due;
+    for (auto itr = m_flyingBolts.begin(); itr != m_flyingBolts.end();)
+    {
+        if (int32(m_totalMs - itr->dueMs) < 0)
+        {
+            ++itr;
+            continue;
+        }
+        ReleaseBoltIncoming(itr->target, itr->incoming);
+        due.push_back(std::move(*itr));
+        itr = m_flyingBolts.erase(itr);
+    }
+    Map* map = m_player->GetMap();
+    for (FlyingBolt& bolt : due)
+        if (Creature* target = map->GetCreature(bolt.target))
+            if (target->IsAlive())
+                bolt.land(target);
+}
+
+void BonkRun::ReleaseBoltIncoming(ObjectGuid const& target, float incoming)
+{
+    auto itr = m_boltIncoming.find(target);
+    if (itr != m_boltIncoming.end() && (itr->second -= incoming) <= 0.5f)
+        m_boltIncoming.erase(itr);
+}
+
+bool BonkRun::SurvivesBoltsInFlight(Creature const* mob) const
+{
+    auto const itr = m_boltIncoming.find(mob->GetObjectGuid());
+    return itr == m_boltIncoming.end() || itr->second < float(mob->GetHealth());
+}
+
+Creature* BonkRun::PickBoltTarget(Unit const* from, Creature* wanted, float range) const
+{
+    if (wanted && wanted->IsAlive() && SurvivesBoltsInFlight(wanted))
+        return wanted;
+    for (Creature* mob : GetMobsNear(from->GetPositionX(), from->GetPositionY(), range))
+        if (mob != wanted && SurvivesBoltsInFlight(mob) && from->IsWithinLOSInMap(mob))
+            return mob;
+    return nullptr;
+}
+
 int32 BonkRun::GetBounceDelay(SpellCaster const* from, Unit const* target, float speed)
 {
     return std::max(0, int32(GetMissileDelay(from, target, speed)) - BONK_RICOCHET_LEAD_MS);
@@ -9664,7 +9726,12 @@ void BonkRun::UsePetAbilities(OwnedWeapon& owned, Creature* pet, Creature* prey)
         bool const strikeReach = ability.value > 0.0f ? pet->IsWithinDistInMap(prey, ability.value) && pet->IsWithinLOSInMap(prey) : inReach;
         if (ability.kind == BONK_PET_ABILITY_STRIKE && strikeReach)
         {
-            PetStrike(owned, pet, PickHydraHeadTarget(*family, pet, prey, i, ability.value), ability);
+            Creature* struck = PickHydraHeadTarget(*family, pet, prey, i, ability.value);
+            if (owned.weapon.HasFlag(BONK_WEAPON_FLAG_TOTEM))
+                struck = PickBoltTarget(pet, struck, ability.value);
+            if (!struck)
+                return;
+            PetStrike(owned, pet, struck, ability);
             StrikeSearingTotemSecondTarget(owned, *family, pet, prey, ability);
             state.readyAtMs[i] = now + uint32(ability.cooldownMs * pace * GetClawRate(owned));
             OnWarlockPetStrike(owned, pet, prey, uint32(i));
@@ -9703,8 +9770,12 @@ void BonkRun::PetStrike(OwnedWeapon& owned, Creature* pet, Creature* prey, BonkP
     SpellEntry const* abilityInfo = sSpellMgr.GetSpellEntry(abilitySpell);
     if (owned.weapon.HasFlag(BONK_WEAPON_FLAG_TOTEM) && abilityInfo)
     {
-        ShowStrike(pet, abilityInfo, prey);
-        DealSpellHit(abilityInfo, prey, float(damage), pet);
+        ObjectGuid const petGuid = pet->GetObjectGuid();
+        LaunchBolt(pet, abilityInfo, prey, float(damage), [this, abilityInfo, damage, petGuid](Creature* struck)
+        {
+            Unit* source = struck->GetMap()->GetCreature(petGuid);
+            DealSpellHit(abilityInfo, struck, float(damage), source ? source : static_cast<Unit*>(m_player));
+        });
     }
     else
         pet->CastCustomSpell(prey, abilitySpell, damage, {}, {}, true);

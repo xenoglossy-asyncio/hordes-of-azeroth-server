@@ -277,7 +277,7 @@ std::vector<Creature*> BonkRun::GetDruidTargets(float range) const
 {
     std::vector<Creature*> mobs;
     for (Creature* mob : GetMobsInRange(range))
-        if (m_player->IsWithinLOSInMap(mob))
+        if (SurvivesBoltsInFlight(mob) && m_player->IsWithinLOSInMap(mob))
             mobs.push_back(mob);
     return mobs;
 }
@@ -414,16 +414,29 @@ void BonkRun::FireFormAttack(OwnedWeapon& owned)
     std::set<ObjectGuid> splashed;
     for (Creature* mob : mobs)
         splashed.insert(mob->GetObjectGuid());
-    for (Creature* mob : mobs)
+    uint32 const weaponId = owned.weapon.id;
+    auto land = [this, weaponId, look, attack, damage](Creature* mob, std::set<ObjectGuid>& splashed)
     {
-        ShowDruidStrike(look, mob);
-        HitAsDruid(owned, look, mob, damage, attack.creditSpellId);
+        OwnedWeapon* landing = FindOwned(weaponId);
+        if (!landing)
+            return;
+        HitAsDruid(*landing, look, mob, damage, attack.creditSpellId);
         if (attack.splashShare > 0.0f)
-            for (Creature* neighbor : GetMobsInRange(BONK_FORM_SPLASH_RADIUS * GetWeaponArea(owned), mob))
+            for (Creature* neighbor : GetMobsInRange(BONK_FORM_SPLASH_RADIUS * GetWeaponArea(*landing), mob))
                 if (splashed.insert(neighbor->GetObjectGuid()).second)
                     DealShamanHit(look, attack.creditSpellId, neighbor, damage * attack.splashShare);
         if (attack.bleedStacks && mob->IsAlive())
-            ApplyWeaponKeyword(owned, mob, BONK_KEYWORD_BLEED, attack.bleedStacks);
+            ApplyWeaponKeyword(*landing, mob, BONK_KEYWORD_BLEED, attack.bleedStacks);
+    };
+    for (Creature* mob : mobs)
+    {
+        if (look->speed > 0.0f)
+        {
+            LaunchBolt(m_player, look, mob, damage, [land, splashed](Creature* struck) mutable { land(struck, splashed); });
+            continue;
+        }
+        ShowDruidStrike(look, mob);
+        land(mob, splashed);
     }
     if (attack.healPerHit > 0.0f)
         HealDruid(owned, attack.healPerHit * mobs.size());
@@ -529,23 +542,27 @@ void BonkRun::StrikeAsSpirit(OwnedWeapon const& shapeshift, Creature* spirit, Bo
     if (!look)
         return;
     std::vector<Creature*> mobs = GetMobsInRange(attack.range * GetWeaponArea(shapeshift), spirit);
-    mobs.erase(std::remove_if(mobs.begin(), mobs.end(), [spirit](Creature* mob) { return !spirit->IsWithinLOSInMap(mob); }), mobs.end());
+    mobs.erase(std::remove_if(mobs.begin(), mobs.end(), [this, spirit](Creature* mob) { return !SurvivesBoltsInFlight(mob) || !spirit->IsWithinLOSInMap(mob); }), mobs.end());
     mobs.resize(std::min<size_t>(mobs.size(), attack.targets + GetSpellCount(shapeshift)));
     float const damage = GetWeaponDamage(shapeshift) * attack.share * BONK_SPIRIT_SHARE;
     std::set<ObjectGuid> splashed;
     for (Creature* mob : mobs)
         splashed.insert(mob->GetObjectGuid());
+    uint32 const weaponId = shapeshift.weapon.id;
     for (Creature* mob : mobs)
-    {
-        ShowStrike(spirit, look, mob);
-        DealShamanHit(look, attack.creditSpellId, mob, damage);
-        if (attack.splashShare > 0.0f)
-            for (Creature* neighbor : GetMobsInRange(BONK_FORM_SPLASH_RADIUS * GetWeaponArea(shapeshift), mob))
-                if (splashed.insert(neighbor->GetObjectGuid()).second)
-                    DealShamanHit(look, attack.creditSpellId, neighbor, damage * attack.splashShare);
-        if (attack.bleedStacks && mob->IsAlive())
-            ApplyWeaponKeyword(shapeshift, mob, BONK_KEYWORD_BLEED, attack.bleedStacks);
-    }
+        LaunchBolt(spirit, look, mob, damage, [this, weaponId, look, attack, damage, splashed](Creature* struck) mutable
+        {
+            OwnedWeapon* landing = FindOwned(weaponId);
+            if (!landing)
+                return;
+            DealShamanHit(look, attack.creditSpellId, struck, damage);
+            if (attack.splashShare > 0.0f)
+                for (Creature* neighbor : GetMobsInRange(BONK_FORM_SPLASH_RADIUS * GetWeaponArea(*landing), struck))
+                    if (splashed.insert(neighbor->GetObjectGuid()).second)
+                        DealShamanHit(look, attack.creditSpellId, neighbor, damage * attack.splashShare);
+            if (attack.bleedStacks && struck->IsAlive())
+                ApplyWeaponKeyword(*landing, struck, BONK_KEYWORD_BLEED, attack.bleedStacks);
+        });
 }
 
 void BonkRun::RoarAsBear()
