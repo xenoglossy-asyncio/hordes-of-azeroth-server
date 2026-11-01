@@ -1056,7 +1056,7 @@ void BonkRun::UseVault()
 
 uint32 BonkRun::GetVaultSlots() const
 {
-    return 1 + uint32(GetUtility(BONK_UTILITY_PACK_MULE));
+    return std::max(1u, m_stage) + uint32(GetUtility(BONK_UTILITY_PACK_MULE));
 }
 
 uint32 BonkRun::GetGearGold(uint8 quality) const
