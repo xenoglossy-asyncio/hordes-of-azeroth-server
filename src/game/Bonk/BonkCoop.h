@@ -1,6 +1,7 @@
 #ifndef BONK_COOP_H
 #define BONK_COOP_H
 
+#include "BonkPlayer.h"
 #include "ObjectGuid.h"
 #include "Common.h"
 
@@ -66,6 +67,8 @@ namespace BonkCoop
     void ForgetGuest(Player const* guest);
     void RecordMail(Player const* guest, uint32 entry, std::string const& subject, std::string const& body, BonkFoundGear const* found);
     void RecordLevel(Player const* guest, uint32 classId, uint32 bestLevel, uint32 bestMs, uint32 finale);
+    void RecordLevelBest(Player const* guest, uint32 classId, BonkPlayer::LevelRun const& run);
+    void RecordFinaleBest(Player const* guest, uint32 classId, uint32 level, uint32 score, uint32 seconds);
 }
 
 #endif

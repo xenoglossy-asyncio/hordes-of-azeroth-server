@@ -292,6 +292,43 @@ namespace
         return "";
     }
 
+    std::string HomeCharacterName(HomeTarget const& home)
+    {
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT `name` FROM `characters` WHERE `guid` = %u", home.characterGuid));
+        return result ? result->Fetch()[0].GetCppString() : std::string();
+    }
+
+    std::string ApplyLevelBest(HomeTarget const& home, std::vector<std::string> const& fields)
+    {
+        uint32 classId = 0;
+        BonkPlayer::LevelRun run;
+        if (fields.size() < 9 || !ReadCount(fields, 2, classId) || !ReadCount(fields, 3, run.level) || !ReadCount(fields, 4, run.ms) ||
+            !ReadCount(fields, 5, run.kills) || !ReadCount(fields, 7, run.gold) || !ReadCount(fields, 8, run.valor))
+            return "broken levelbest entry";
+        run.damage = std::strtoull(fields[6].c_str(), nullptr, 10);
+        if (!classId || classId >= MAX_CLASSES)
+            return "unknown class " + std::to_string(classId);
+        if (!home.characterGuid)
+            return "no home character";
+        run.name = HomeCharacterName(home);
+        BonkPlayer::ApplyLevelBest(home.accountId, uint8(classId), run);
+        return "";
+    }
+
+    std::string ApplyFinaleBest(HomeTarget const& home, std::vector<std::string> const& fields)
+    {
+        uint32 classId = 0;
+        uint32 level = 0;
+        uint32 score = 0;
+        uint32 seconds = 0;
+        if (!ReadCount(fields, 2, classId) || !ReadCount(fields, 3, level) || !ReadCount(fields, 4, score) || !ReadCount(fields, 5, seconds))
+            return "broken finalebest entry";
+        if (!classId || classId >= MAX_CLASSES)
+            return "unknown class " + std::to_string(classId);
+        BonkPlayer::ApplyFinaleBest(home.accountId, uint8(classId), level, score, seconds);
+        return "";
+    }
+
     std::string ApplyRunStats(HomeTarget const& home, std::vector<std::string> const& fields)
     {
         uint32 values[5] = {};
@@ -723,6 +760,10 @@ namespace
             return ApplyRunStats(home, fields);
         if (kind == "level")
             return ApplyLevel(home, fields);
+        if (kind == "levelbest")
+            return ApplyLevelBest(home, fields);
+        if (kind == "finalebest")
+            return ApplyFinaleBest(home, fields);
         return "unknown entry " + kind;
     }
 
@@ -951,6 +992,17 @@ void BonkCoop::RecordMail(Player const* guest, uint32 entry, std::string const& 
 void BonkCoop::RecordLevel(Player const* guest, uint32 classId, uint32 bestLevel, uint32 bestMs, uint32 finale)
 {
     Record(guest, "level	" + std::to_string(classId) + "	" + std::to_string(bestLevel) + "	" + std::to_string(bestMs) + "	" + std::to_string(finale));
+}
+
+void BonkCoop::RecordLevelBest(Player const* guest, uint32 classId, BonkPlayer::LevelRun const& run)
+{
+    Record(guest, "levelbest	" + std::to_string(classId) + "	" + std::to_string(run.level) + "	" + std::to_string(run.ms) + "	" +
+        std::to_string(run.kills) + "	" + std::to_string(run.damage) + "	" + std::to_string(run.gold) + "	" + std::to_string(run.valor));
+}
+
+void BonkCoop::RecordFinaleBest(Player const* guest, uint32 classId, uint32 level, uint32 score, uint32 seconds)
+{
+    Record(guest, "finalebest	" + std::to_string(classId) + "	" + std::to_string(level) + "	" + std::to_string(score) + "	" + std::to_string(seconds));
 }
 
 bool BonkCoop::IsPlayingElsewhere(std::string const& username)
