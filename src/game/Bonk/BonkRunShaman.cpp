@@ -53,7 +53,7 @@ namespace
     uint32 const BONK_SPELL_DOOM_WINDS_LOOK   = 8233;
     uint32 const BONK_SPELL_FIRE_SPIRIT_LOOK  = 134;
     uint32 const BONK_SPELL_FROST_SPIRIT_LOOK = 168;
-    uint32 const BONK_KIT_TOTEM_REPLANT       = 3394;
+    uint32 const BONK_KIT_TOTEM_DROP          = 352;
     uint32 const BONK_KIT_FIRE_NOVA           = 6310;
 
     uint32 const BONK_WINDFURY_EVERY          = 3;
@@ -811,12 +811,12 @@ void BonkRun::ReplantTotems()
         return;
     Map* map = m_player->GetMap();
     uint32 slot = 0;
-    for (OwnedWeapon const& owned : m_weapons)
+    for (OwnedWeapon& owned : m_weapons)
     {
         if (!owned.weapon.HasFlag(BONK_WEAPON_FLAG_TOTEM))
             continue;
         bool const magma = GetRootWeapon(owned.weapon) == BONK_WEAPON_MAGMA_TOTEM;
-        for (ObjectGuid const& guid : owned.pets)
+        for (ObjectGuid& guid : owned.pets)
         {
             uint32 const ownSlot = slot++;
             Creature* totem = map->GetCreature(guid);
@@ -829,14 +829,14 @@ void BonkRun::ReplantTotems()
                 uint32 const idleMs = reached ? 0 : (idle == m_magmaIdleMs.end() ? BONK_MAGMA_IDLE_MS : idle->second + BONK_SHAMAN_TICK_MS);
                 m_magmaIdleMs[guid] = idleMs;
                 if (idleMs >= BONK_MAGMA_IDLE_MS || !totem->IsWithinDistInMap(m_player, BONK_MAGMA_LEASH))
-                    HurlMagmaTotem(owned, totem);
+                    HurlMagmaTotem(owned, guid, totem);
                 continue;
             }
             if (totem->IsWithinDistInMap(m_player, BONK_TOTEM_REPLANT_RANGE))
                 continue;
             float x, y, z;
             GetTotemSlot(ownSlot, x, y, z);
-            PlantTotemAt(totem, x, y, z);
+            PlantTotemAt(owned, guid, totem, x, y, z);
         }
     }
 }
@@ -859,10 +859,17 @@ void BonkRun::GetTotemSlot(uint32 slot, float& x, float& y, float& z) const
     m_player->GetMap()->GetWalkHitPosition(nullptr, m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), x, y, z);
 }
 
-void BonkRun::PlantTotemAt(Creature* totem, float x, float y, float z)
+void BonkRun::PlantTotemAt(OwnedWeapon& owned, ObjectGuid& guid, Creature* totem, float x, float y, float z)
 {
-    totem->NearTeleportTo(x, y, z, m_player->GetOrientation());
-    totem->SendPlaySpellVisualKit(BONK_KIT_TOTEM_REPLANT);
+    Creature* planted = SummonPet(owned, totem->GetEntry(), x, y, z, m_player->GetOrientation());
+    if (!planted)
+        return;
+    m_petStates.erase(guid);
+    m_magmaIdleMs.erase(guid);
+    totem->DespawnOrUnsummon();
+    guid = planted->GetObjectGuid();
+    m_magmaIdleMs[guid] = 0;
+    m_player->SendPlaySpellVisualKit(BONK_KIT_TOTEM_DROP);
 }
 
 float BonkRun::GetMagmaPulseRadius(OwnedWeapon const& owned) const
@@ -898,9 +905,9 @@ Creature* BonkRun::FindMagmaPack(float radius) const
     return best;
 }
 
-void BonkRun::HurlMagmaTotem(OwnedWeapon const& owned, Creature* totem)
+void BonkRun::HurlMagmaTotem(OwnedWeapon& owned, ObjectGuid& guid, Creature* totem)
 {
-    m_magmaIdleMs[totem->GetObjectGuid()] = 0;
+    m_magmaIdleMs[guid] = 0;
     float x, y, z;
     if (Creature* pack = FindMagmaPack(GetMagmaPulseRadius(owned)))
     {
@@ -911,18 +918,18 @@ void BonkRun::HurlMagmaTotem(OwnedWeapon const& owned, Creature* totem)
         return;
     else
         GetTotemSlot(0, x, y, z);
-    PlantTotemAt(totem, x, y, z);
+    PlantTotemAt(owned, guid, totem, x, y, z);
 }
 
 void BonkRun::BurstFireNovaTotems()
 {
-    OwnedWeapon const* nova = FindOwned(BONK_WEAPON_FIRE_NOVA_TOTEM);
+    OwnedWeapon* nova = FindOwned(BONK_WEAPON_FIRE_NOVA_TOTEM);
     SpellEntry const* fire = sSpellMgr.GetSpellEntry(BONK_SPELL_FIRE_NOVA);
     if (!nova || !fire || !m_player->IsAlive())
         return;
     Map* map = m_player->GetMap();
     float const radius = GetWeaponRadius(*nova);
-    for (ObjectGuid const& guid : nova->pets)
+    for (ObjectGuid& guid : nova->pets)
     {
         Creature* totem = map->GetCreature(guid);
         if (!totem || !totem->IsAlive())
@@ -933,8 +940,7 @@ void BonkRun::BurstFireNovaTotems()
             DealSpellHit(fire, mob, GetWeaponDamage(*nova) * BONK_FIRE_NOVA_SHARE, totem);
             ApplyShamanKeyword(*nova, mob, BONK_KEYWORD_BURNING, BONK_FIRE_NOVA_STACKS);
         }
-        totem->NearTeleportTo(m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), m_player->GetOrientation());
-        totem->SendPlaySpellVisualKit(BONK_KIT_TOTEM_REPLANT);
+        PlantTotemAt(*nova, guid, totem, m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ());
     }
 }
 

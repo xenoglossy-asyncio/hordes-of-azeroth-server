@@ -2422,10 +2422,10 @@ class BonkRun
         void ReplantTotems();
         uint32 CountOwnedTotems() const;
         void GetTotemSlot(uint32 slot, float& x, float& y, float& z) const;
-        void PlantTotemAt(Creature* totem, float x, float y, float z);
+        void PlantTotemAt(OwnedWeapon& owned, ObjectGuid& guid, Creature* totem, float x, float y, float z);
         float GetMagmaPulseRadius(OwnedWeapon const& owned) const;
         Creature* FindMagmaPack(float radius) const;
-        void HurlMagmaTotem(OwnedWeapon const& owned, Creature* totem);
+        void HurlMagmaTotem(OwnedWeapon& owned, ObjectGuid& guid, Creature* totem);
         void FlowHealingStreams();
         void ResetPriestState();
         void UpdatePriest(uint32 diff);
