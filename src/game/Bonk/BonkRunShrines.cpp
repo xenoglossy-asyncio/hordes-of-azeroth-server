@@ -157,6 +157,9 @@ void BonkRun::UpdateShrines(uint32 diff)
 
     UpdatePendingSummons(diff);
 
+    if (m_missedBoss)
+        return;
+
     for (size_t i = 0; i < m_shrines.size(); )
     {
         size_t const count = m_shrines.size();
@@ -464,6 +467,12 @@ void BonkRun::UseShrine(GameObject* go)
 {
     if (m_state != STATE_RUNNING || m_paused)
         return;
+
+    if (m_missedBoss)
+    {
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_COOP_CHESTS_CLOSED_AFTER_DOWN);
+        return;
+    }
 
     for (size_t i = 0; i < m_shrines.size(); ++i)
     {
