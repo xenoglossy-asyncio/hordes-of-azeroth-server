@@ -86,13 +86,13 @@ namespace
         int64 perMinute;
     };
 
-    Allowance const GOLD_ALLOWANCE = { 50000, 50000 };
-    Allowance const SHARDS_ALLOWANCE = { 100, 20 };
-    Allowance const SCRAP_ALLOWANCE = { 1000, 300 };
-    Allowance const MASTERY_ALLOWANCE = { 1000, 200 };
-    Allowance const KILLS_ALLOWANCE = { 500, 3000 };
-    Allowance const RUNS_ALLOWANCE = { 2, 1 };
-    Allowance const MAIL_ALLOWANCE = { 3, 1 };
+    Allowance const GOLD_ALLOWANCE = { 20000000, 2000000 };
+    Allowance const SHARDS_ALLOWANCE = { 500, 100 };
+    Allowance const SCRAP_ALLOWANCE = { 20000, 2000 };
+    Allowance const MASTERY_ALLOWANCE = { 5000, 1000 };
+    Allowance const KILLS_ALLOWANCE = { 2000, 10000 };
+    Allowance const RUNS_ALLOWANCE = { 3, 1 };
+    Allowance const MAIL_ALLOWANCE = { 10, 2 };
     uint32 const REGULAR_TIER_CAP = 10;
     uint32 const UNCAPPED_TIER_CAP = 40;
 
