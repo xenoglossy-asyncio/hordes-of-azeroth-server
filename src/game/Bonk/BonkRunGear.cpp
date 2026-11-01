@@ -102,6 +102,7 @@ namespace
     float const BONK_TIER_DROP_MINIBOSS    = 25.0f;
     float const BONK_TIER_DROP_MINIBOSS_AHEAD = 50.0f;
     float const BONK_INVASION_UPGRADE_CHANCE = 50.0f;
+    float const BONK_DUNGEON_MINIBOSS_DROP_FACTOR = 2.0f;
     uint32 const BONK_SCRAP_ELITE_BASE = 1;
     uint32 const BONK_SCRAP_ELITE_LEVELS_PER_POINT = 4;
 
@@ -183,7 +184,7 @@ uint8 BonkRun::RollGearQuality() const
         }
         roll -= odds.second;
     }
-    if (IsChallenge() && quality < ITEM_QUALITY_EPIC && (!IsInvasion() || roll_chance_f(BONK_INVASION_UPGRADE_CHANCE)))
+    if (IsInvasion() && quality < ITEM_QUALITY_EPIC && roll_chance_f(BONK_INVASION_UPGRADE_CHANCE))
         ++quality;
     return quality;
 }
@@ -193,7 +194,7 @@ void BonkRun::DropTierPiece(Creature const* mob, BonkSpawnKind kind)
     if (m_sandbox || m_gearDrops.size() >= BONK_MAX_GEAR_DROPS)
         return;
     bool const ahead = GetDropTier() >= m_player->GetBonkPlayer()->GetStockTier();
-    float const miniBoss = ahead ? BONK_TIER_DROP_MINIBOSS_AHEAD : BONK_TIER_DROP_MINIBOSS;
+    float const miniBoss = (ahead ? BONK_TIER_DROP_MINIBOSS_AHEAD : BONK_TIER_DROP_MINIBOSS) * (IsDungeon() ? BONK_DUNGEON_MINIBOSS_DROP_FACTOR : 1.0f);
     float const chance = kind == BONK_SPAWN_BOSS ? BONK_TIER_DROP_BOSS : kind == BONK_SPAWN_MINIBOSS ? miniBoss : 0.0f;
     if (!roll_chance_f(chance))
         return;
