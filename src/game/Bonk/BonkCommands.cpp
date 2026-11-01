@@ -563,6 +563,16 @@ bool ChatHandler::HandleBonkGearCommand(char* args)
             m_session->GetPlayer()->GetBonkPlayer()->Notify(error);
         return true;
     }
+    if (tab == "testshop" && GetAccessLevel() >= SEC_GAMEMASTER)
+    {
+        Player* player = m_session->GetPlayer();
+        uint32 const quartermasterEntry = 900002;
+        if (Creature* quartermaster = player->FindNearestCreature(quartermasterEntry, 10.0f))
+            player->GetBonkPlayer()->OpenShop(BONK_SHOP_UPGRADES, quartermaster);
+        else
+            SendSysMessage("No Quartermaster within 10 yards.");
+        return true;
+    }
     if (tab == "testhearth" && GetAccessLevel() >= SEC_GAMEMASTER)
     {
         Player* player = m_session->GetPlayer();
