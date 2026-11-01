@@ -5,6 +5,7 @@
 #include "BonkMgr.h"
 #include "BonkPlayer.h"
 #include "BonkQuests.h"
+#include "Bag.h"
 #include "Item.h"
 #include "Mail.h"
 #include "ObjectMgr.h"
@@ -14,6 +15,7 @@
 #include "Player.h"
 #include "WorldSession.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -31,6 +33,25 @@ namespace
     uint32 const GUEST_SYNC_MS = 5000;
     uint32 const HOME_MAIL_SENDER = 900009;
 
+    struct MirroredTable
+    {
+        char const* name;
+        bool perCharacter;
+        uint32 columns;
+    };
+
+    MirroredTable const MIRRORED_TABLES[] = {
+        { "bonk_account_upgrade", false, 3 },
+        { "bonk_account_talent", false, 4 },
+        { "bonk_account_mastery_node", false, 3 },
+        { "bonk_account_mastery_preset", false, 5 },
+        { "bonk_account_mastery_preset_active", false, 3 },
+        { "bonk_account_starter", false, 3 },
+        { "bonk_account_disabled", false, 3 },
+        { "bonk_character_title", true, 2 },
+        { "bonk_character_mode", true, 2 },
+    };
+
     struct GuestTotals
     {
         uint32 gold = 0;
@@ -44,6 +65,9 @@ namespace
         uint32 kills = 0;
         uint32 goldEarned = 0;
         std::map<uint32, std::pair<uint32, bool>> quests;
+        std::map<std::string, std::string> tables;
+        std::string inventory;
+        bool inRun = false;
     };
 
     struct HomeTarget
@@ -263,9 +287,278 @@ namespace
         return "";
     }
 
+    MirroredTable const* FindMirroredTable(std::string const& name)
+    {
+        for (MirroredTable const& table : MIRRORED_TABLES)
+            if (name == table.name)
+                return &table;
+        return nullptr;
+    }
+
+    std::vector<std::string> SplitOn(std::string const& text, char separator)
+    {
+        std::vector<std::string> parts;
+        std::string part;
+        for (char c : text)
+        {
+            if (c == separator)
+            {
+                parts.push_back(part);
+                part.clear();
+            }
+            else
+                part += c;
+        }
+        parts.push_back(part);
+        return parts;
+    }
+
+    std::string ApplyRows(HomeTarget const& home, std::vector<std::string> const& fields)
+    {
+        if (fields.size() < 4)
+            return "broken rows entry";
+        MirroredTable const* table = FindMirroredTable(fields[2]);
+        if (!table)
+            return "unknown table " + fields[2];
+        uint32 const owner = table->perCharacter ? home.characterGuid : home.accountId;
+        if (!owner)
+            return "no home character";
+        std::vector<std::string> statements;
+        if (!fields[3].empty())
+        {
+            for (std::string const& row : SplitOn(fields[3], ';'))
+            {
+                std::vector<std::string> const values = SplitOn(row, ',');
+                if (values.size() + 1 != table->columns)
+                    return std::string("broken row for ") + table->name;
+                std::string list = std::to_string(owner);
+                for (std::string const& value : values)
+                {
+                    if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos)
+                        return std::string("broken value for ") + table->name;
+                    list += "," + value;
+                }
+                statements.push_back(std::string("INSERT INTO `") + table->name + "` VALUES (" + list + ")");
+            }
+        }
+        CharacterDatabase.PExecute("DELETE FROM `%s` WHERE `%s` = %u", table->name, table->perCharacter ? "guid" : "account", owner);
+        for (std::string const& statement : statements)
+            CharacterDatabase.Execute(statement.c_str());
+        return "";
+    }
+
+    std::string ReadTableRows(MirroredTable const& table, uint32 owner)
+    {
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT * FROM `%s` WHERE `%s` = %u",
+            table.name, table.perCharacter ? "guid" : "account", owner));
+        std::vector<std::string> rows;
+        if (result)
+        {
+            do
+            {
+                Field* values = result->Fetch();
+                std::string row;
+                for (uint32 i = 1; i < result->GetFieldCount(); ++i)
+                    row += (i > 1 ? "," : "") + std::to_string(values[i].GetUInt32());
+                rows.push_back(row);
+            } while (result->NextRow());
+        }
+        std::sort(rows.begin(), rows.end());
+        std::string text;
+        for (size_t i = 0; i < rows.size(); ++i)
+            text += (i ? ";" : "") + rows[i];
+        return text;
+    }
+
+    std::string DescribeItem(Item const* item, uint32 parent, uint32 slot)
+    {
+        std::ostringstream charges;
+        for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+            charges << item->GetSpellCharges(i) << ' ';
+        std::ostringstream enchants;
+        for (uint8 i = 0; i < MAX_ENCHANTMENT_SLOT; ++i)
+            enchants << item->GetEnchantmentId(EnchantmentSlot(i)) << ' ' << item->GetEnchantmentDuration(EnchantmentSlot(i)) << ' '
+                << item->GetEnchantmentCharges(EnchantmentSlot(i)) << ' ';
+        BonkFoundGear found;
+        bool const isFound = sBonkFound.Get(item->GetGUIDLow(), found);
+        std::ostringstream out;
+        out << item->GetGUIDLow() << '|' << parent << '|' << slot << '|' << item->GetEntry() << '|' << item->GetCount() << '|'
+            << item->GetUInt32Value(ITEM_FIELD_DURABILITY) << '|' << item->GetUInt32Value(ITEM_FIELD_FLAGS) << '|' << charges.str() << '|'
+            << enchants.str() << '|' << item->GetItemRandomPropertyId() << '|' << (isFound ? WriteFound(found) : std::string("-"));
+        return out.str();
+    }
+
+    std::string DescribeInventory(Player const* player)
+    {
+        std::vector<std::string> items;
+        auto add = [&](uint8 slot)
+        {
+            Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+            if (!item)
+                return;
+            items.push_back(DescribeItem(item, 0, slot));
+            if (Bag const* bag = item->IsBag() ? static_cast<Bag const*>(item) : nullptr)
+                for (uint32 inside = 0; inside < bag->GetBagSize(); ++inside)
+                    if (Item* content = bag->GetItemByPos(uint8(inside)))
+                        items.push_back(DescribeItem(content, item->GetGUIDLow(), inside));
+        };
+        for (uint8 slot = EQUIPMENT_SLOT_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+            add(slot);
+        for (uint8 slot = KEYRING_SLOT_START; slot < KEYRING_SLOT_END; ++slot)
+            add(slot);
+        std::string text;
+        for (size_t i = 0; i < items.size(); ++i)
+            text += (i ? ";" : "") + items[i];
+        return text;
+    }
+
+    std::vector<uint32> HomeCarriedItems(uint32 characterGuid)
+    {
+        std::vector<uint32> items;
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery(
+            "SELECT ci.`item_guid` FROM `character_inventory` ci WHERE ci.`guid` = %u "
+            "AND NOT (ci.`bag` = 0 AND ci.`slot` >= %u AND ci.`slot` < %u) "
+            "AND ci.`bag` NOT IN (SELECT b.`item_guid` FROM `character_inventory` b WHERE b.`guid` = %u AND b.`bag` = 0 AND b.`slot` >= %u AND b.`slot` < %u)",
+            characterGuid, uint32(BANK_SLOT_ITEM_START), uint32(BANK_SLOT_BAG_END), characterGuid, uint32(BANK_SLOT_BAG_START), uint32(BANK_SLOT_BAG_END)));
+        if (result)
+        {
+            do
+                items.push_back(result->Fetch()[0].GetUInt32());
+            while (result->NextRow());
+        }
+        return items;
+    }
+
+    struct CarriedItem
+    {
+        uint32 local = 0;
+        uint32 parent = 0;
+        uint32 slot = 0;
+        uint32 entry = 0;
+        uint32 count = 1;
+        uint32 durability = 0;
+        uint32 flags = 0;
+        std::string charges;
+        std::string enchants;
+        int32 randomProperty = 0;
+        std::string found;
+    };
+
+    bool ReadCarriedItem(std::string const& text, CarriedItem& item)
+    {
+        std::vector<std::string> const parts = SplitOn(text, '|');
+        if (parts.size() != 11)
+            return false;
+        for (size_t i : { 0, 1, 2, 3, 4, 5, 6 })
+            if (parts[i].empty() || parts[i].find_first_not_of("0123456789") != std::string::npos)
+                return false;
+        item.local = uint32(std::strtoul(parts[0].c_str(), nullptr, 10));
+        item.parent = uint32(std::strtoul(parts[1].c_str(), nullptr, 10));
+        item.slot = uint32(std::strtoul(parts[2].c_str(), nullptr, 10));
+        item.entry = uint32(std::strtoul(parts[3].c_str(), nullptr, 10));
+        item.count = uint32(std::strtoul(parts[4].c_str(), nullptr, 10));
+        item.durability = uint32(std::strtoul(parts[5].c_str(), nullptr, 10));
+        item.flags = uint32(std::strtoul(parts[6].c_str(), nullptr, 10));
+        item.charges = parts[7];
+        item.enchants = parts[8];
+        item.randomProperty = int32(std::strtol(parts[9].c_str(), nullptr, 10));
+        item.found = parts[10];
+        return sObjectMgr.GetItemPrototype(item.entry) != nullptr;
+    }
+
+    void FillCarriedItem(Item* made, CarriedItem const& carried)
+    {
+        made->SetCount(std::max(1u, carried.count));
+        made->SetUInt32Value(ITEM_FIELD_DURABILITY, carried.durability);
+        made->SetUInt32Value(ITEM_FIELD_FLAGS, carried.flags);
+        std::istringstream charges(carried.charges);
+        for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+        {
+            int32 value = 0;
+            if (charges >> value)
+                made->SetSpellCharges(i, value);
+        }
+        std::istringstream enchants(carried.enchants);
+        for (uint8 i = 0; i < MAX_ENCHANTMENT_SLOT; ++i)
+        {
+            uint32 id = 0, duration = 0, count = 0;
+            if (enchants >> id >> duration >> count)
+                made->SetEnchantment(EnchantmentSlot(i), id, duration, count);
+        }
+        if (carried.randomProperty)
+            made->SetItemRandomProperties(carried.randomProperty);
+    }
+
+    std::string ApplyInventory(HomeTarget const& home, std::vector<std::string> const& fields)
+    {
+        if (fields.size() < 3)
+            return "broken inventory entry";
+        if (!home.characterGuid)
+            return "no home character";
+        std::vector<CarriedItem> carried;
+        if (!fields[2].empty())
+        {
+            for (std::string const& text : SplitOn(fields[2], ';'))
+            {
+                CarriedItem item;
+                if (!ReadCarriedItem(text, item))
+                    return "broken item " + text.substr(0, 40);
+                carried.push_back(item);
+            }
+        }
+        std::vector<uint32> const old = HomeCarriedItems(home.characterGuid);
+        if (!old.empty())
+        {
+            std::string list;
+            for (uint32 guid : old)
+            {
+                list += (list.empty() ? "" : ",") + std::to_string(guid);
+                sBonkFound.Forget(guid);
+            }
+            CharacterDatabase.PExecute("DELETE FROM `item_instance` WHERE `guid` IN (%s)", list.c_str());
+            CharacterDatabase.PExecute("DELETE FROM `character_inventory` WHERE `item_guid` IN (%s)", list.c_str());
+        }
+        ObjectGuid const owner(HIGHGUID_PLAYER, home.characterGuid);
+        std::map<uint32, uint32> made;
+        for (CarriedItem const& item : carried)
+        {
+            Item* created = Item::CreateItem(item.entry, 1, owner);
+            if (!created)
+                continue;
+            FillCarriedItem(created, item);
+            created->SaveToDB();
+            made[item.local] = created->GetGUIDLow();
+            BonkFoundGear found;
+            if (item.found != "-" && ReadFound(item.found, found))
+                sBonkFound.Set(created->GetGUIDLow(), found);
+            delete created;
+        }
+        for (CarriedItem const& item : carried)
+        {
+            auto const self = made.find(item.local);
+            if (self == made.end())
+                continue;
+            uint32 bag = 0;
+            if (item.parent)
+            {
+                auto const parent = made.find(item.parent);
+                if (parent == made.end())
+                    continue;
+                bag = parent->second;
+            }
+            CharacterDatabase.PExecute("INSERT INTO `character_inventory` (`guid`, `bag`, `slot`, `item_guid`, `item_id`) VALUES (%u, %u, %u, %u, %u)",
+                home.characterGuid, bag, item.slot, self->second, item.entry);
+        }
+        return "";
+    }
+
     std::string ApplyEntry(HomeTarget const& home, std::vector<std::string> const& fields)
     {
         std::string const& kind = fields[1];
+        if (kind == "inventory")
+            return ApplyInventory(home, fields);
+        if (kind == "rows")
+            return ApplyRows(home, fields);
         if (kind == "gold")
             return ApplyAccountColumn(home, fields, "gold", 0xFFFFFFFFll);
         if (kind == "shards")
@@ -296,6 +589,11 @@ namespace
         totals.masteryXp = bonk->GetMasteryXp();
         bonk->GetRunRecord(totals.runs, totals.bestLevel, totals.bestSeconds, totals.kills, totals.goldEarned);
         totals.quests = sBonkQuests.GetAllProgress(bonk->GetProgressAccount());
+        for (MirroredTable const& table : MIRRORED_TABLES)
+            totals.tables[table.name] = ReadTableRows(table, table.perCharacter ? guest->GetGUIDLow() : bonk->GetProgressAccount());
+        totals.inRun = bonk->GetRun() != nullptr;
+        if (!totals.inRun)
+            totals.inventory = DescribeInventory(guest);
         return totals;
     }
 
@@ -317,6 +615,14 @@ namespace
             BonkCoop::Record(guest, "runstats\t" + std::to_string(now.runs - std::min(now.runs, before.runs)) + "\t" + std::to_string(now.bestLevel) + "\t" +
                 std::to_string(now.bestSeconds) + "\t" + std::to_string(now.kills - std::min(now.kills, before.kills)) + "\t" +
                 std::to_string(now.goldEarned - std::min(now.goldEarned, before.goldEarned)));
+        if (!now.inRun && now.inventory != before.inventory)
+            BonkCoop::Record(guest, "inventory\t" + now.inventory);
+        for (auto const& table : now.tables)
+        {
+            auto const old = before.tables.find(table.first);
+            if (old == before.tables.end() || old->second != table.second)
+                BonkCoop::Record(guest, "rows\t" + table.first + "\t" + table.second);
+        }
         for (auto const& quest : now.quests)
         {
             auto const old = before.quests.find(quest.first);
@@ -464,6 +770,8 @@ void BonkCoop::SyncGuest(Player* guest)
         }
         before = found->second;
         found->second = now;
+        if (now.inRun)
+            found->second.inventory = before.inventory;
     }
     RecordChanges(guest, before, now);
 }
