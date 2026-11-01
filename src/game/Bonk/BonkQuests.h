@@ -142,6 +142,7 @@ class BonkQuests
         bool IsCompleted(uint32 account, uint32 questId) const;
         uint32 GetProgress(uint32 account, BonkQuest const& quest) const;
         uint32 GetCompletedCount(uint32 account) const { return CountCompleted(account); }
+        std::map<uint32, std::pair<uint32, bool>> GetAllProgress(uint32 account) const;
 
         void OnKill(Player* player, BonkSpawnKind kind, uint32 killingSpell, uint32 creatureType, uint32 entry, bool standing);
         void OnBossFight(Player* player, BonkSpawnKind kind, uint32 seconds, bool unhurt, uint32 healthPercent);

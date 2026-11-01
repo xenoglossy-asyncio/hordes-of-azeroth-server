@@ -304,6 +304,7 @@ void BonkRun::MailKeptPiece(uint32 entry, std::string const& body, BonkFoundGear
     MailDraft(GetString(BONK_STRING_MAIL_EXTRACTED_SUBJECT, { m_player->GetBonkPlayer()->GetItemName(proto) }), body)
         .AddItem(keep)
         .SendMailTo(MailReceiver(m_player), MailSender(MAIL_CREATURE, BONK_BANKER_ENTRY));
+    BonkCoop::RecordMail(m_player, entry, GetString(BONK_STRING_MAIL_EXTRACTED_SUBJECT, { m_player->GetBonkPlayer()->GetItemName(proto) }), body, found);
 }
 
 float BonkRun::GetScrapMultiplier() const

@@ -96,6 +96,16 @@ class BonkPlayer
         std::vector<uint32> GetShopStock() const;
         static uint32 GetShopFirstTier(uint8 quality);
         uint32 GetScrap() const { return m_scrap; }
+        uint8 GetDeterminationStacks() const { return m_determination; }
+        bool IsGoldLoaded() const { return m_goldLoaded; }
+        void GetRunRecord(uint32& runs, uint32& bestLevel, uint32& bestSeconds, uint32& kills, uint32& goldEarned) const
+        {
+            runs = m_record.runs;
+            bestLevel = m_record.bestLevel;
+            bestSeconds = m_record.bestSeconds;
+            kills = m_record.kills;
+            goldEarned = m_record.goldEarned;
+        }
         void AddScrap(uint32 points);
         void SendQuartermaster() const;
         uint32 GetUpgradeCeiling() const;

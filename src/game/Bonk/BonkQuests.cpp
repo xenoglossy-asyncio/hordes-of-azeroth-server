@@ -189,6 +189,18 @@ void BonkQuests::OnLogin(Player* player)
     OnProgress(player, BONK_QUEST_QUESTS_DONE, 0, CountCompleted(account), true);
 }
 
+std::map<uint32, std::pair<uint32, bool>> BonkQuests::GetAllProgress(uint32 account) const
+{
+    std::map<uint32, std::pair<uint32, bool>> all;
+    std::lock_guard<std::mutex> guard(m_lock);
+    auto itr = m_accounts.find(account);
+    if (itr == m_accounts.end())
+        return all;
+    for (auto const& progress : itr->second)
+        all[progress.first] = { progress.second.value, progress.second.completed };
+    return all;
+}
+
 void BonkQuests::Save(uint32 account)
 {
     std::vector<std::pair<uint32, uint32>> rows;
