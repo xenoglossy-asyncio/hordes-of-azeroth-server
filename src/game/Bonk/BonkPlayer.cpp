@@ -39,7 +39,7 @@
 namespace
 {
     char const* const BONK_ACCOUNT_TABLES[] = { "bonk_account", "bonk_account_mastery", "bonk_account_mastery_node", "bonk_account_quest",
-        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_upgrade",
+        "bonk_account_starter", "bonk_account_talent", "bonk_account_level", "bonk_account_level_best", "bonk_account_upgrade",
         "bonk_account_mastery_preset", "bonk_account_mastery_preset_active" };
     uint8 const BONK_MASTERY_PRESET_SLOTS = 3;
     char const* const BONK_PROGRESS_ONLY_TABLES[] = { "bonk_account_disabled", "bonk_account_unlock" };
@@ -170,6 +170,8 @@ void BonkPlayer::OnLogin()
             record.finale = fields[3].GetUInt32();
         } while (result->NextRow());
     }
+
+    LoadLevelBests(accountId);
 
     m_record = Record();
     result = CharacterDatabase.PQuery("SELECT `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned` FROM `bonk_character_stats` WHERE `guid` = %u",
@@ -2686,6 +2688,144 @@ void BonkPlayer::RecordFinale(uint32 score)
     BonkCoop::RecordLevel(m_player, m_player->GetClass(), record.best, record.bestMs, record.finale);
 }
 
+namespace
+{
+    char const* const LEVEL_BEST_COLUMNS = "`clears`, `first_clear`, `best_ms`, `best_ms_by`, `damage_per_second`, `damage_by`, `kills`, `kills_by`, "
+        "`gold_per_minute`, `gold_by`, `valor_per_minute`, `valor_by`, `finale`, `finale_seconds`";
+
+    BonkPlayer::LevelBest ReadLevelBest(Field* fields)
+    {
+        BonkPlayer::LevelBest best;
+        best.clears = fields[0].GetUInt32();
+        best.firstClear = fields[1].GetUInt32();
+        best.bestMs = fields[2].GetUInt32();
+        best.bestMsBy = fields[3].GetCppString();
+        best.damagePerSecond = fields[4].GetUInt32();
+        best.damageBy = fields[5].GetCppString();
+        best.kills = fields[6].GetUInt32();
+        best.killsBy = fields[7].GetCppString();
+        best.goldPerMinute = fields[8].GetUInt32();
+        best.goldBy = fields[9].GetCppString();
+        best.valorPerMinute = fields[10].GetUInt32();
+        best.valorBy = fields[11].GetCppString();
+        best.finale = fields[12].GetUInt32();
+        best.finaleSeconds = fields[13].GetUInt32();
+        return best;
+    }
+}
+
+void BonkPlayer::LoadLevelBests(uint32 accountId)
+{
+    m_levelBests.clear();
+    std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT `class`, `level`, %s FROM `bonk_account_level_best` WHERE `account` = %u",
+        LEVEL_BEST_COLUMNS, accountId));
+    if (!result)
+        return;
+    do
+    {
+        Field* fields = result->Fetch();
+        m_levelBests[{ fields[0].GetUInt8(), fields[1].GetUInt32() }] = ReadLevelBest(fields + 2);
+    } while (result->NextRow());
+}
+
+BonkPlayer::LevelBest BonkPlayer::LoadLevelBest(uint32 account, uint8 classId, uint32 level)
+{
+    std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT %s FROM `bonk_account_level_best` WHERE `account` = %u AND `class` = %u AND `level` = %u",
+        LEVEL_BEST_COLUMNS, account, uint32(classId), level));
+    return result ? ReadLevelBest(result->Fetch()) : LevelBest();
+}
+
+void BonkPlayer::SaveLevelBest(uint32 account, uint8 classId, uint32 level, LevelBest const& best)
+{
+    std::string names[] = { best.bestMsBy, best.damageBy, best.killsBy, best.goldBy, best.valorBy };
+    for (std::string& name : names)
+        CharacterDatabase.escape_string(name);
+    CharacterDatabase.PExecute("REPLACE INTO `bonk_account_level_best` (`account`, `class`, `level`, %s) "
+        "VALUES (%u, %u, %u, %u, %u, %u, '%s', %u, '%s', %u, '%s', %u, '%s', %u, '%s', %u, %u)", LEVEL_BEST_COLUMNS,
+        account, uint32(classId), level, best.clears, best.firstClear, best.bestMs, names[0].c_str(), best.damagePerSecond, names[1].c_str(),
+        best.kills, names[2].c_str(), best.goldPerMinute, names[3].c_str(), best.valorPerMinute, names[4].c_str(), best.finale, best.finaleSeconds);
+}
+
+void BonkPlayer::MergeLevelBest(LevelBest& best, LevelRun const& run)
+{
+    float const seconds = std::max(1.0f, run.ms / float(IN_MILLISECONDS));
+    float const minutes = seconds / float(MINUTE);
+    uint32 const damagePerSecond = uint32(run.damage / seconds);
+    uint32 const goldPerMinute = uint32(run.gold / minutes);
+    uint32 const valorPerMinute = uint32(run.valor / minutes);
+    if (!best.clears)
+        best.firstClear = uint32(time(nullptr));
+    ++best.clears;
+    if (!best.bestMs || run.ms < best.bestMs)
+    {
+        best.bestMs = run.ms;
+        best.bestMsBy = run.name;
+    }
+    if (damagePerSecond > best.damagePerSecond)
+    {
+        best.damagePerSecond = damagePerSecond;
+        best.damageBy = run.name;
+    }
+    if (run.kills > best.kills)
+    {
+        best.kills = run.kills;
+        best.killsBy = run.name;
+    }
+    if (goldPerMinute > best.goldPerMinute)
+    {
+        best.goldPerMinute = goldPerMinute;
+        best.goldBy = run.name;
+    }
+    if (valorPerMinute > best.valorPerMinute)
+    {
+        best.valorPerMinute = valorPerMinute;
+        best.valorBy = run.name;
+    }
+}
+
+bool BonkPlayer::MergeFinaleBest(LevelBest& best, uint32 score, uint32 seconds)
+{
+    if (score <= best.finale)
+        return false;
+    best.finale = score;
+    best.finaleSeconds = seconds;
+    return true;
+}
+
+void BonkPlayer::ApplyLevelBest(uint32 account, uint8 classId, LevelRun const& run)
+{
+    if (!run.level || !run.ms)
+        return;
+    LevelBest best = LoadLevelBest(account, classId, run.level);
+    MergeLevelBest(best, run);
+    SaveLevelBest(account, classId, run.level, best);
+}
+
+void BonkPlayer::ApplyFinaleBest(uint32 account, uint8 classId, uint32 level, uint32 score, uint32 seconds)
+{
+    LevelBest best = LoadLevelBest(account, classId, level);
+    if (MergeFinaleBest(best, score, seconds))
+        SaveLevelBest(account, classId, level, best);
+}
+
+void BonkPlayer::RecordLevelBest(LevelRun const& run)
+{
+    if (!run.level || !run.ms)
+        return;
+    uint8 const classId = m_player->GetClass();
+    LevelBest& best = m_levelBests[{ classId, run.level }];
+    MergeLevelBest(best, run);
+    SaveLevelBest(GetProgressAccount(), classId, run.level, best);
+}
+
+void BonkPlayer::RecordFinaleBest(uint32 level, uint32 score, uint32 seconds)
+{
+    uint8 const classId = m_player->GetClass();
+    LevelBest& best = m_levelBests[{ classId, level }];
+    if (MergeFinaleBest(best, score, seconds))
+        SaveLevelBest(GetProgressAccount(), classId, level, best);
+}
+
 void BonkPlayer::SendAddon(std::string const& line) const
 {
     if (!m_addonReady)
@@ -3015,6 +3155,15 @@ void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bo
             Percent((damage - 1.0f) * 100.0f) + "~" + Percent(veterans) + "~" + std::to_string(affixes) + "~" + Percent((level.reward - 1.0f) * 100.0f) + "~" +
             Chance(legendary) + "~" + Chance(epic) + "~" + Chance(blue) + "~" + Chance(green) + "~" + Chance(std::max(0.0f, 100.0f - legendary - epic - blue - green)) +
             "~" + (band <= best ? "1" : "0") + "~" + std::to_string(BonkRun::GetLevelDropTier(tier, band)));
+        auto const record = m_levelBests.find({ uint8(m_player->GetClass()), tier.firstLevel + band - 1 });
+        if (record == m_levelBests.end())
+            continue;
+        LevelBest const& levelBest = record->second;
+        SendAddon("levelbest~" + std::to_string(tier.id) + "~" + std::to_string(band) + "~" + std::to_string(levelBest.clears) + "~" +
+            std::to_string(levelBest.firstClear) + "~" + std::to_string(levelBest.bestMs) + "~" + levelBest.bestMsBy + "~" +
+            std::to_string(levelBest.damagePerSecond) + "~" + levelBest.damageBy + "~" + std::to_string(levelBest.kills) + "~" + levelBest.killsBy + "~" +
+            std::to_string(levelBest.goldPerMinute) + "~" + levelBest.goldBy + "~" + std::to_string(levelBest.valorPerMinute) + "~" + levelBest.valorBy + "~" +
+            std::to_string(levelBest.finale) + "~" + std::to_string(levelBest.finaleSeconds));
     }
 }
 

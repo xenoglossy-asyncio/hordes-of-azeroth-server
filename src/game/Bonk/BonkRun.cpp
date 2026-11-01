@@ -5292,6 +5292,19 @@ void BonkRun::RewardLevelClear()
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     uint8 const trainingCap = bonk->GetTrainingRankCap();
     LogLevelClear();
+    if (!m_sandbox && !IsCoopGuest())
+    {
+        BonkPlayer::LevelRun run;
+        run.level = m_difficultyLevel;
+        run.ms = m_totalMs;
+        run.kills = m_kills;
+        for (OwnedWeapon const& owned : m_weapons)
+            run.damage += GetOwnedSpellTotals(owned).first;
+        run.gold = m_goldEarned;
+        run.valor = m_valorEarned;
+        run.name = m_player->GetName();
+        bonk->RecordLevelBest(run);
+    }
     if (!bonk->RecordLevelClear(m_difficultyLevel, m_totalMs))
         return;
 
@@ -5321,6 +5334,7 @@ void BonkRun::PayFinale()
     uint32 const score = uint32(GetBandLevel() * minutes);
     LogFinale(minutes, score);
     bonk->RecordFinale(score);
+    bonk->RecordFinaleBest(m_difficultyLevel, score, m_elapsedMs / IN_MILLISECONDS);
 }
 
 BonkMap const* BonkRun::GetNextMap() const

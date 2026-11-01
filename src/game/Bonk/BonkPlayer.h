@@ -77,6 +77,41 @@ class BonkPlayer
         bool IsTierCleared(char const* tierKey) const;
         bool RecordLevelClear(uint32 level, uint32 clearMs);
         void RecordFinale(uint32 score);
+        struct LevelRun
+        {
+            uint32 level = 0;
+            uint32 ms = 0;
+            uint32 kills = 0;
+            uint64 damage = 0;
+            uint32 gold = 0;
+            uint32 valor = 0;
+            std::string name;
+        };
+        struct LevelBest
+        {
+            uint32 clears = 0;
+            uint32 firstClear = 0;
+            uint32 bestMs = 0;
+            std::string bestMsBy;
+            uint32 damagePerSecond = 0;
+            std::string damageBy;
+            uint32 kills = 0;
+            std::string killsBy;
+            uint32 goldPerMinute = 0;
+            std::string goldBy;
+            uint32 valorPerMinute = 0;
+            std::string valorBy;
+            uint32 finale = 0;
+            uint32 finaleSeconds = 0;
+        };
+        static void MergeLevelBest(LevelBest& best, LevelRun const& run);
+        static bool MergeFinaleBest(LevelBest& best, uint32 score, uint32 seconds);
+        static LevelBest LoadLevelBest(uint32 account, uint8 classId, uint32 level);
+        static void SaveLevelBest(uint32 account, uint8 classId, uint32 level, LevelBest const& best);
+        static void ApplyLevelBest(uint32 account, uint8 classId, LevelRun const& run);
+        static void ApplyFinaleBest(uint32 account, uint8 classId, uint32 level, uint32 score, uint32 seconds);
+        void RecordLevelBest(LevelRun const& run);
+        void RecordFinaleBest(uint32 level, uint32 score, uint32 seconds);
         uint8 GetTrainingRankCap() const;
         std::string GetTrainingCapHint() const;
         uint8 GetDetermination() const;
@@ -424,6 +459,8 @@ class BonkPlayer
             uint32 finale = 0;
         };
         std::map<uint8, LevelRecord> m_levels;
+        std::map<std::pair<uint8, uint32>, LevelBest> m_levelBests;
+        void LoadLevelBests(uint32 accountId);
         Record m_record;
         std::map<uint32, uint8> m_upgradeRanks;
         std::map<uint32, uint8> m_talentRanks;
