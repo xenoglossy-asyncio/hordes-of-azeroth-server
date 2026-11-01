@@ -22,6 +22,7 @@
 #include <fstream>
 #include <map>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -76,7 +77,62 @@ namespace
     {
         uint32 accountId = 0;
         uint32 characterGuid = 0;
+        std::string game;
     };
+
+    struct Allowance
+    {
+        int64 base;
+        int64 perMinute;
+    };
+
+    Allowance const GOLD_ALLOWANCE = { 50000, 50000 };
+    Allowance const SHARDS_ALLOWANCE = { 100, 20 };
+    Allowance const SCRAP_ALLOWANCE = { 1000, 300 };
+    Allowance const MASTERY_ALLOWANCE = { 1000, 200 };
+    Allowance const KILLS_ALLOWANCE = { 500, 3000 };
+    Allowance const RUNS_ALLOWANCE = { 2, 1 };
+    Allowance const MAIL_ALLOWANCE = { 3, 1 };
+    uint32 const REGULAR_TIER_CAP = 10;
+    uint32 const UNCAPPED_TIER_CAP = 40;
+
+    struct GameBudget
+    {
+        time_t started = 0;
+        std::map<std::string, int64> used;
+    };
+
+    std::mutex s_budgetLock;
+    std::map<std::string, GameBudget> s_budgets;
+
+    bool Spend(HomeTarget const& home, std::string const& kind, Allowance const& allowance, int64 amount)
+    {
+        if (amount <= 0)
+            return true;
+        std::lock_guard<std::mutex> guard(s_budgetLock);
+        GameBudget& budget = s_budgets[std::to_string(home.accountId) + ":" + home.game];
+        time_t const now = time(nullptr);
+        if (!budget.started)
+            budget.started = now;
+        int64 const minutes = int64(now - budget.started) / 60 + 1;
+        int64& used = budget.used[kind];
+        if (used + amount > allowance.base + allowance.perMinute * minutes)
+            return false;
+        used += amount;
+        return true;
+    }
+
+    std::string OverLimit(std::string const& kind)
+    {
+        return "more " + kind + " than a session can earn";
+    }
+
+    uint32 TierCap(HomeTarget const& home)
+    {
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT `mode` FROM `bonk_character_mode` WHERE `guid` = %u", home.characterGuid));
+        uint32 const mode = result ? result->Fetch()[0].GetUInt32() : 0;
+        return mode == 2 ? UNCAPPED_TIER_CAP : REGULAR_TIER_CAP;
+    }
 
     std::mutex s_guestLock;
     std::map<ObjectGuid, GuestTotals> s_guests;
@@ -176,11 +232,13 @@ namespace
         return out;
     }
 
-    std::string ApplyAccountColumn(HomeTarget const& home, std::vector<std::string> const& fields, char const* column, int64 cap)
+    std::string ApplyAccountColumn(HomeTarget const& home, std::vector<std::string> const& fields, char const* column, int64 cap, Allowance const* allowance)
     {
         int64 delta = 0;
         if (!ReadSigned(fields, 2, delta))
             return std::string("broken ") + column + " entry";
+        if (allowance && !Spend(home, column, *allowance, delta))
+            return OverLimit(column);
         CharacterDatabase.PExecute("INSERT INTO `bonk_account` (`account`, `%s`) VALUES (%u, %u) "
             "ON DUPLICATE KEY UPDATE `%s` = LEAST(%lld, GREATEST(0, CAST(`%s` AS SIGNED) + %lld))",
             column, home.accountId, uint32(std::max<int64>(0, std::min<int64>(cap, delta))), column, (long long)cap, column, (long long)delta);
@@ -193,6 +251,8 @@ namespace
         int64 delta = 0;
         if (!ReadCount(fields, 2, classId) || !ReadSigned(fields, 3, delta))
             return "broken mastery entry";
+        if (!Spend(home, "mastery", MASTERY_ALLOWANCE, delta))
+            return OverLimit("mastery");
         CharacterDatabase.PExecute("INSERT INTO `bonk_account_mastery` (`account`, `class`, `xp`) VALUES (%u, %u, %u) "
             "ON DUPLICATE KEY UPDATE `xp` = GREATEST(0, CAST(`xp` AS SIGNED) + %lld)",
             home.accountId, classId, uint32(std::max<int64>(0, delta)), (long long)delta);
@@ -206,6 +266,11 @@ namespace
         uint32 completed = 0;
         if (!ReadCount(fields, 2, quest) || !ReadCount(fields, 3, progress) || !ReadCount(fields, 4, completed))
             return "broken quest entry";
+        BonkQuest const* known = sBonkQuests.FindQuest(quest);
+        if (!known)
+            return "unknown quest " + std::to_string(quest);
+        if (!known->CountsBits())
+            progress = std::min(progress, known->amount);
         CharacterDatabase.PExecute("INSERT INTO `bonk_account_quest` (`account`, `quest`, `progress`, `completed`) VALUES (%u, %u, %u, %u) "
             "ON DUPLICATE KEY UPDATE `progress` = GREATEST(`progress`, VALUES(`progress`)), `completed` = GREATEST(`completed`, VALUES(`completed`))",
             home.accountId, quest, progress, completed ? 1u : 0u);
@@ -220,6 +285,9 @@ namespace
                 return "broken runstats entry";
         if (!home.characterGuid)
             return "no home character";
+        if (!Spend(home, "runs", RUNS_ALLOWANCE, values[0]) || !Spend(home, "kills", KILLS_ALLOWANCE, values[3]) ||
+            !Spend(home, "gold earned", GOLD_ALLOWANCE, values[4]))
+            return OverLimit("run stats");
         CharacterDatabase.PExecute("INSERT INTO `bonk_character_stats` (`guid`, `runs`, `best_level`, `best_time_sec`, `kills`, `gold_earned`) "
             "VALUES (%u, %u, %u, %u, %u, %u) ON DUPLICATE KEY UPDATE `runs` = `runs` + VALUES(`runs`), `best_level` = GREATEST(`best_level`, VALUES(`best_level`)), "
             "`best_time_sec` = GREATEST(`best_time_sec`, VALUES(`best_time_sec`)), `kills` = `kills` + VALUES(`kills`), `gold_earned` = `gold_earned` + VALUES(`gold_earned`)",
@@ -275,6 +343,10 @@ namespace
             return "no home character";
         if (!sObjectMgr.GetItemPrototype(entry))
             return "unknown item " + std::to_string(entry);
+        if (!BonkMgr::GetGearTier(entry))
+            return "item " + std::to_string(entry) + " isn't run gear";
+        if (!Spend(home, "mail", MAIL_ALLOWANCE, 1))
+            return OverLimit("mail");
         ObjectGuid const receiver(HIGHGUID_PLAYER, home.characterGuid);
         Item* item = Item::CreateItem(entry, 1, receiver);
         if (!item)
@@ -282,7 +354,10 @@ namespace
         item->SaveToDB();
         BonkFoundGear found;
         if (fields[5] != "-" && ReadFound(fields[5], found))
+        {
+            found.tier = std::min(found.tier, TierCap(home));
             BonkFound::Remember(item, found);
+        }
         MailDraft(Unescape(fields[3]), Unescape(fields[4]))
             .AddItem(item)
             .SendMailTo(MailReceiver(receiver), MailSender(MAIL_CREATURE, HOME_MAIL_SENDER));
@@ -315,6 +390,23 @@ namespace
         return parts;
     }
 
+    bool RowRankAllowed(std::string const& table, std::vector<std::string> const& values)
+    {
+        uint32 const id = uint32(std::strtoul(values[0].c_str(), nullptr, 10));
+        uint32 const rank = uint32(std::strtoul(values[1].c_str(), nullptr, 10));
+        if (table == "bonk_account_upgrade")
+        {
+            BonkUpgrade const* upgrade = sBonkMgr.GetUpgrade(id);
+            return upgrade && rank <= upgrade->maxRank;
+        }
+        if (table == "bonk_account_talent")
+        {
+            BonkTalent const* talent = sBonkMgr.GetTalent(id);
+            return talent && rank <= talent->maxRank;
+        }
+        return true;
+    }
+
     std::string ApplyRows(HomeTarget const& home, std::vector<std::string> const& fields)
     {
         if (fields.size() < 4)
@@ -340,6 +432,8 @@ namespace
                         return std::string("broken value for ") + table->name;
                     list += "," + value;
                 }
+                if (!RowRankAllowed(table->name, values))
+                    return std::string("a rank above the maximum in ") + table->name;
                 statements.push_back(std::string("INSERT INTO `") + table->name + "` VALUES (" + list + ")");
             }
         }
@@ -431,6 +525,20 @@ namespace
         return items;
     }
 
+    std::set<uint32> HomeCarriedEntries(uint32 characterGuid)
+    {
+        std::set<uint32> entries;
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery(
+            "SELECT DISTINCT `item_id` FROM `character_inventory` WHERE `guid` = %u", characterGuid));
+        if (result)
+        {
+            do
+                entries.insert(result->Fetch()[0].GetUInt32());
+            while (result->NextRow());
+        }
+        return entries;
+    }
+
     struct CarriedItem
     {
         uint32 local = 0;
@@ -508,6 +616,23 @@ namespace
                 carried.push_back(item);
             }
         }
+        std::set<uint32> const owned = HomeCarriedEntries(home.characterGuid);
+        uint32 const tierCap = TierCap(home);
+        std::vector<CarriedItem> allowed;
+        for (CarriedItem const& item : carried)
+        {
+            ItemPrototype const* proto = sObjectMgr.GetItemPrototype(item.entry);
+            BonkFoundGear found;
+            bool const familiar = owned.count(item.entry) || BonkMgr::GetGearTier(item.entry) || proto->Class == ITEM_CLASS_CONTAINER;
+            bool const tooMany = item.count > std::max(1u, proto->Stackable);
+            bool const tooHigh = item.found != "-" && ReadFound(item.found, found) && found.tier > tierCap;
+            if (familiar && !tooMany && !tooHigh)
+                allowed.push_back(item);
+            else
+                sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op ledger: account %u left out item %u (%s)", home.accountId, item.entry,
+                    !familiar ? "can't come from a co-op game" : tooMany ? "too many" : "above the tier cap");
+        }
+        carried.swap(allowed);
         std::vector<uint32> const old = HomeCarriedItems(home.characterGuid);
         if (!old.empty())
         {
@@ -562,13 +687,13 @@ namespace
         if (kind == "rows")
             return ApplyRows(home, fields);
         if (kind == "gold")
-            return ApplyAccountColumn(home, fields, "gold", 0xFFFFFFFFll);
+            return ApplyAccountColumn(home, fields, "gold", 0xFFFFFFFFll, &GOLD_ALLOWANCE);
         if (kind == "shards")
-            return ApplyAccountColumn(home, fields, "shards", 0xFFFFFFFFll);
+            return ApplyAccountColumn(home, fields, "shards", 0xFFFFFFFFll, &SHARDS_ALLOWANCE);
         if (kind == "scrap")
-            return ApplyAccountColumn(home, fields, "scrap", 0xFFFFFFFFll);
+            return ApplyAccountColumn(home, fields, "scrap", 0xFFFFFFFFll, &SCRAP_ALLOWANCE);
         if (kind == "determination")
-            return ApplyAccountColumn(home, fields, "determination", BONK_DETERMINATION_MAX_STACKS);
+            return ApplyAccountColumn(home, fields, "determination", BONK_DETERMINATION_MAX_STACKS, nullptr);
         if (kind == "mastery")
             return ApplyMastery(home, fields);
         if (kind == "quest")
@@ -719,7 +844,8 @@ namespace
         std::vector<std::string> const from = SplitTabs(header);
         if (from.size() < 3 || from[0] != "from" || !IsSafeGame(from[2]))
             return "error broken ledger\n";
-        HomeTarget const home = FindHome(from[1], from.size() >= 4 ? from[3] : "");
+        HomeTarget home = FindHome(from[1], from.size() >= 4 ? from[3] : "");
+        home.game = from[2];
         if (!home.accountId)
             return "error There is no account called " + from[1] + ".\n";
         std::string answers;
