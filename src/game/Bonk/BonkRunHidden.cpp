@@ -88,7 +88,6 @@ void BonkRun::TriggerHidden()
     if (mob)
     {
         m_hidden.boss = mob->GetObjectGuid();
-        m_objectives.RemoveFollowing(m_player, mob->GetObjectGuid());
         if (!hidden->yell.empty())
             mob->MonsterYell(Localize(BONK_FIELD_HIDDEN_YELL, hidden->id, hidden->yell).c_str());
     }

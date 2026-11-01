@@ -11406,9 +11406,8 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
             SendMobDead(mob, false);
     }
 
-    ObjectGuid const hiddenBoss = m_hidden.boss;
     OnHiddenKilled(mob);
-    if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && mob->GetObjectGuid() != hiddenBoss && ++m_glyphMiniBosses == 1)
+    if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && ++m_glyphMiniBosses == 1)
         DropGlyph(mob);
 
     if (mob->GetObjectGuid() == m_bossGuid)
