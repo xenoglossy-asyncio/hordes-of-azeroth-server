@@ -870,6 +870,7 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_GEAR_MODE_USAGE,                         "Type .bonk mode regular or .bonk mode uncapped." },
         { BONK_STRING_GEAR_TIER_IS_HIGHEST,                    "Tier {1} is the highest tier." },
         { BONK_STRING_COOP_WAITING_FOR_LOADING,                "Waiting for {1} to finish loading. The run starts when they're in." },
+        { BONK_STRING_COOP_VAULT_NOT_YOURS,                    "That Extraction Vault is {1}'s. Yours is the one marked Yours." },
         { BONK_STRING_COOP_STARTS_WITHOUT_LOADING,             "{1} is still loading, so the run starts without them." },
         { BONK_STRING_GEAR_MODE_ALL_UNCAPPED,                  "Your characters are Uncapped. Mythic levels keep raising the tier of their gear." },
         { BONK_STRING_GEAR_MODE_IN_OWN_GAME,                   "Choose your gear mode in your own game, not while joined to someone else's." },

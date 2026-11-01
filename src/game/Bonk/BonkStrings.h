@@ -877,6 +877,7 @@ enum BonkString : uint32
     BONK_STRING_GEAR_MODE_IN_OWN_GAME                   = 934,
     BONK_STRING_COOP_WAITING_FOR_LOADING                = 950,
     BONK_STRING_COOP_STARTS_WITHOUT_LOADING             = 951,
+    BONK_STRING_COOP_VAULT_NOT_YOURS                    = 952,
 };
 
 struct BonkStringText

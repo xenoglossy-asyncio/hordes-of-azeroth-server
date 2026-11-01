@@ -55,6 +55,7 @@ namespace
     uint32 const BONK_KIT_ASTRAL_RECALL         = 365;
     float const BONK_VAULT_RING_OFFSET   = 2.5f;
     float const BONK_VAULT_REACH         = 8.0f;
+    float const BONK_VAULT_LABEL_HEIGHT  = 2.6f;
 
     std::vector<uint8> GetEquipSlotsFor(uint32 inventoryType)
     {
@@ -543,8 +544,7 @@ bool BonkRun::PlaceDropLooksNow(std::string& error)
 
 void BonkRun::DropGear(Creature const* mob, BonkSpawnKind kind)
 {
-    if (!BonkCoop::InGroupRun(m_player))
-        MaybeDropHearthstone(kind);
+    MaybeDropHearthstone(kind);
     if (kind == BONK_SPAWN_ELITE)
         AddEliteScrap();
     else if (kind != BONK_SPAWN_NORMAL)
@@ -1062,12 +1062,36 @@ void BonkRun::PlaceVault(float x, float y, float baseZ)
         z = m_player->GetPositionZ();
     }
     if (GameObject* vault = PlaceObject(BONK_GO_VAULT, x, y, z, BONK_LOOT_LIFETIME_SEC))
+    {
         m_vaultGuid = vault->GetObjectGuid();
+        if (BonkCoop::InGroupRun(m_player))
+            PlaceVaultLabel(vault);
+    }
+}
+
+void BonkRun::PlaceVaultLabel(GameObject const* vault)
+{
+    Creature* label = m_player->SummonCreature(BONK_VAULT_LABEL, vault->GetPositionX(), vault->GetPositionY(), vault->GetPositionZ() + BONK_VAULT_LABEL_HEIGHT,
+        0.0f, TEMPSUMMON_TIMED_DESPAWN, BONK_LOOT_LIFETIME_SEC * IN_MILLISECONDS);
+    if (!label)
+        return;
+    label->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_ATTACKABLE_1);
+    m_vaultLabelGuid = label->GetObjectGuid();
+    BonkCoop::ShowOnlyTo(m_vaultLabelGuid, m_player->GetObjectGuid());
+    label->UpdateVisibilityAndView();
 }
 
 void BonkRun::DespawnVault()
 {
     m_hearthVaultReady = false;
+    if (!m_vaultLabelGuid.IsEmpty())
+    {
+        if (Map* map = m_player->FindMap())
+            if (Creature* label = map->GetCreature(m_vaultLabelGuid))
+                label->ForcedDespawn();
+        BonkCoop::ForgetShownOnly(m_vaultLabelGuid);
+        m_vaultLabelGuid.Clear();
+    }
     if (m_vaultGuid.IsEmpty())
         return;
     if (Map* map = m_player->FindMap())

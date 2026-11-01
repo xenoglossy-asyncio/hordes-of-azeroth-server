@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <mutex>
 #include <set>
 #include <vector>
 
@@ -430,6 +431,58 @@ namespace
                 host->GetBonkPlayer()->Notify(error);
         }
     }
+}
+
+namespace
+{
+    float const GROUP_VAULT_RADIUS = 6.0f;
+    float const GROUP_VAULT_STEP = 1.0f;
+
+    std::mutex s_shownOnlyLock;
+    std::map<ObjectGuid, ObjectGuid> s_shownOnly;
+}
+
+void BonkCoop::ShowOnlyTo(ObjectGuid object, ObjectGuid player)
+{
+    std::lock_guard<std::mutex> guard(s_shownOnlyLock);
+    s_shownOnly[object] = player;
+}
+
+void BonkCoop::ForgetShownOnly(ObjectGuid object)
+{
+    std::lock_guard<std::mutex> guard(s_shownOnlyLock);
+    s_shownOnly.erase(object);
+}
+
+bool BonkCoop::IsShownOnlyToOther(ObjectGuid object, ObjectGuid viewer)
+{
+    std::lock_guard<std::mutex> guard(s_shownOnlyLock);
+    auto const found = s_shownOnly.find(object);
+    return found != s_shownOnly.end() && found->second != viewer;
+}
+
+void BonkCoop::PlaceGroupVaults(Player* host, GameObject const* portal, float side)
+{
+    std::vector<BonkRun*> runs;
+    runs.push_back(host->GetBonkPlayer()->GetRun());
+    for (BonkRun* run : GuestRunsOf(host))
+        runs.push_back(run);
+    float const first = side - GROUP_VAULT_STEP * float(runs.size() - 1) / 2.0f;
+    for (size_t i = 0; i < runs.size(); ++i)
+    {
+        float const angle = first + GROUP_VAULT_STEP * float(i);
+        runs[i]->PlaceVault(portal->GetPositionX() + GROUP_VAULT_RADIUS * std::cos(angle),
+            portal->GetPositionY() + GROUP_VAULT_RADIUS * std::sin(angle), portal->GetPositionZ());
+    }
+}
+
+Player* BonkCoop::VaultOwner(Player* viewer, GameObject const* vault)
+{
+    for (Player* member : RunGroupOf(viewer))
+        if (BonkRun* run = member->GetBonkPlayer()->GetRun())
+            if (run->IsOwnVault(vault))
+                return member;
+    return nullptr;
 }
 
 bool BonkCoop::RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoice const& choice)

@@ -8,6 +8,7 @@
 #include <vector>
 
 class Player;
+class GameObject;
 struct BonkFoundGear;
 class WorldObject;
 struct BonkMap;
@@ -53,6 +54,11 @@ namespace BonkCoop
     void HideObjectFor(ObjectGuid object, ObjectGuid player);
     bool IsObjectHiddenFor(ObjectGuid object, ObjectGuid player);
     void ForgetHiddenObject(ObjectGuid object);
+    void ShowOnlyTo(ObjectGuid object, ObjectGuid player);
+    void ForgetShownOnly(ObjectGuid object);
+    bool IsShownOnlyToOther(ObjectGuid object, ObjectGuid viewer);
+    void PlaceGroupVaults(Player* host, GameObject const* portal, float side);
+    Player* VaultOwner(Player* viewer, GameObject const* vault);
     void Record(Player const* guest, std::string const& entry);
     void UpdateLedger();
     bool IsPlayingElsewhere(std::string const& username);

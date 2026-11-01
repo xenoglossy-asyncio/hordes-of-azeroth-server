@@ -59,6 +59,7 @@
 #include "MovementPacketSender.h"
 #include "Errors.h"
 #include "Utilities/Random.h"
+#include "Bonk/BonkCoop.h"
 #include "Bonk/BonkMobAI.h"
 #include "Bonk/BonkPlayer.h"
 #include "Bonk/BonkRun.h"
@@ -7755,6 +7756,8 @@ bool Unit::IsVisibleForInState(WorldObject const* pDetector, WorldObject const* 
         if (BonkPlayer const* bonk = static_cast<Player const*>(pDetector)->GetBonkPlayer())
             if (!bonk->CanSeeTownObject(GetEntry(), false))
                 return false;
+    if (IsCreature() && GetEntry() == BONK_VAULT_LABEL && BonkCoop::IsShownOnlyToOther(GetObjectGuid(), pDetector->GetObjectGuid()))
+        return false;
     return IsVisibleForOrDetect(pDetector, viewPoint, false, inVisibleList);
 }
 

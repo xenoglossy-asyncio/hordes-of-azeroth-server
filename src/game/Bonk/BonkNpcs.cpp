@@ -331,7 +331,12 @@ bool GOHello_go_bonk_vault(Player* player, GameObject* go)
 {
     BonkRun* run = player->GetBonkPlayer()->GetRun();
     if (!run || !run->IsOwnVault(go))
+    {
+        if (Player* owner = BonkCoop::VaultOwner(player, go))
+            if (owner != player)
+                player->GetBonkPlayer()->Notify(BONK_STRING_COOP_VAULT_NOT_YOURS, { owner->GetName() });
         return true;
+    }
 
     if (player->GetBonkPlayer()->IsAddonReady())
     {

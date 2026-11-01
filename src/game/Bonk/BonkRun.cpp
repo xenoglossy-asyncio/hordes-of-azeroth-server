@@ -5369,8 +5369,11 @@ void BonkRun::OpenPortal(Creature* boss)
     if (GameObject const* portal = m_player->GetMap()->GetGameObject(m_portalGuid))
     {
         float const side = m_player->GetAngle(portal) + M_PI_F / 2.0f;
-        PlaceVault(portal->GetPositionX() + BONK_VAULT_SIDE * std::cos(side), portal->GetPositionY() + BONK_VAULT_SIDE * std::sin(side),
-            portal->GetPositionZ());
+        if (BonkCoop::InGroupRun(m_player))
+            BonkCoop::PlaceGroupVaults(m_player, portal, side);
+        else
+            PlaceVault(portal->GetPositionX() + BONK_VAULT_SIDE * std::cos(side), portal->GetPositionY() + BONK_VAULT_SIDE * std::sin(side),
+                portal->GetPositionZ());
         if ((IsMythic() || m_tier.key == "heroic") && (!last || m_tier.finale))
             PlaceEnchanter(portal->GetPositionX() - BONK_VAULT_SIDE * std::cos(side), portal->GetPositionY() - BONK_VAULT_SIDE * std::sin(side),
                 portal->GetPositionZ(), m_player->GetAngle(portal) + M_PI_F);

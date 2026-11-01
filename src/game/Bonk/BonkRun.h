@@ -1231,7 +1231,10 @@ class BonkRun
         void TrackRunGear(ObjectGuid const& guid);
         void UntrackRunGear(ObjectGuid const& guid);
         void ResolveRunGear(bool extract);
+    public:
         void PlaceVault(float x, float y, float baseZ);
+    private:
+        void PlaceVaultLabel(GameObject const* vault);
         void DespawnVault();
         void SendVault() const;
         bool CheckVaultReach(std::string& error) const;
@@ -1248,6 +1251,7 @@ class BonkRun
         bool IsInVault(ObjectGuid const& guid) const;
         uint32 GetGearGold(uint8 quality) const;
         ObjectGuid m_vaultGuid;
+        ObjectGuid m_vaultLabelGuid;
         std::vector<ObjectGuid> m_vault;
         std::vector<GearDrop> m_gearDrops;
         std::vector<PendingGear> m_pendingGear;
