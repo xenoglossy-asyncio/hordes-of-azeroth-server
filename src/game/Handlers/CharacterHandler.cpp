@@ -410,6 +410,13 @@ void WorldSession::HandlePlayerLoginOpcode(WorldPackets::Character::PlayerLogin 
         SendPacket(std::move(loginFailedPacket));
         return;
     }
+    if (uint8 const refusal = BonkCoop::GuestLoginRefusal(GetUsername(), GetAccountId(), packet.guid))
+    {
+        auto loginFailedPacket = std::make_unique<WorldPackets::Character::CharacterLoginFailed>();
+        loginFailedPacket->result = refusal;
+        SendPacket(std::move(loginFailedPacket));
+        return;
+    }
     if (BonkCoop::IsPlayingElsewhere(GetUsername()))
     {
         auto loginFailedPacket = std::make_unique<WorldPackets::Character::CharacterLoginFailed>();

@@ -22,6 +22,7 @@ namespace BonkCoop
     uint32 CampSeat(Player const* player);
     void JoinHostGroup(Player* guest);
     void OnUninvited(ObjectGuid guid);
+    uint8 GuestLoginRefusal(std::string const& username, uint32 accountId, ObjectGuid character);
     void OnLogout(Player* player);
     bool KeepsAfterDisconnect(Player const* player);
     uint32 RejoinWaitMs();
