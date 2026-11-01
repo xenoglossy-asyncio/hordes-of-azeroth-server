@@ -130,6 +130,7 @@ class BonkRun
         bool IsChallenge() const { return m_dungeonId != 0 || m_invaderId != 0; }
         bool IsInvasion() const { return m_invaderId != 0; }
         std::string DescribeForLobby() const;
+        void FollowToPortal();
 
         bool Begin(std::string& error);
         void FollowHost(ObjectGuid host) { m_coopHost = host; }
@@ -600,6 +601,7 @@ class BonkRun
         void DespawnPools();
         void RunEvent(BonkMapEvent const& event);
         void OpenPortal(Creature* boss);
+        bool CloseStage();
         void RewardLevelClear();
         void PayFinale();
         bool IsMythic() const { return m_tier.key == "mythic"; }

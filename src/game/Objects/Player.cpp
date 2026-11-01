@@ -6246,7 +6246,7 @@ uint32 Player::GetFactionForRace(uint8 race)
 void Player::SetFactionForRace(uint8 race)
 {
     m_team = TeamForRace(race);
-    SetFactionTemplateId(GetFactionForRace(race));
+    SetFactionTemplateId(BONK_PLAYER_FACTION);
 }
 
 ReputationRank Player::GetReputationRank(uint32 faction) const

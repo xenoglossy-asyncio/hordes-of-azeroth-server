@@ -604,6 +604,12 @@ void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage
     }
 }
 
+void BonkCoop::OnHostPortal(Player* host)
+{
+    for (BonkRun* run : GuestRunsOf(host))
+        run->FollowToPortal();
+}
+
 void BonkCoop::NoteHostRun(Player const* host, std::string const& playing)
 {
     if (IsGuestAccount(host))

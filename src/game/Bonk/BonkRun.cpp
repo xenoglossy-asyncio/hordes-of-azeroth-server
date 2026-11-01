@@ -1540,7 +1540,7 @@ void BonkRun::Update(uint32 diff)
                 m_stateTimer = 0;
                 SendState();
 
-                if (!m_player->GetMap()->GetGameObject(m_portalGuid) && !m_player->IsBeingTeleported())
+                if (!IsCoopGuest() && !m_player->GetMap()->GetGameObject(m_portalGuid) && !m_player->IsBeingTeleported())
                 {
                     float const angle = m_player->GetOrientation();
                     PlacePortal(m_player->GetPositionX() + BONK_PORTAL_DISTANCE * std::cos(angle),
@@ -5379,7 +5379,7 @@ BonkMap const* BonkRun::GetNextMap() const
     return sBonkMgr.GetMap(m_nextMapId);
 }
 
-void BonkRun::OpenPortal(Creature* boss)
+bool BonkRun::CloseStage()
 {
     m_state = STATE_PORTAL;
     m_bossGuid.Clear();
@@ -5394,7 +5394,6 @@ void BonkRun::OpenPortal(Creature* boss)
     DespawnPaidChests();
     ClearHidden();
 
-    BonkPlayer* bonk = m_player->GetBonkPlayer();
     bool const last = m_stage >= m_tier.stages;
     if (last)
     {
@@ -5402,6 +5401,27 @@ void BonkRun::OpenPortal(Creature* boss)
         if (!m_sandbox)
             RewardLevelClear();
     }
+    return last;
+}
+
+void BonkRun::FollowToPortal()
+{
+    if (m_state != STATE_RUNNING)
+        return;
+    bool const last = CloseStage();
+    BonkPlayer* bonk = m_player->GetBonkPlayer();
+    if (!last)
+        bonk->Notify(BONK_STRING_CLEARED_STAGE_TAKE_PORTAL, { std::to_string(m_stage) });
+    else
+        bonk->Notify(m_tier.finale ? BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL_HOME : BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL,
+            { bonk->GetLevelName(m_difficultyLevel) });
+    SendState();
+}
+
+void BonkRun::OpenPortal(Creature* boss)
+{
+    bool const last = CloseStage();
+    BonkPlayer* bonk = m_player->GetBonkPlayer();
     BonkMap const* next = !last || m_tier.finale ? ChooseNextMap() : nullptr;
     m_nextMapId = next ? next->id : 0;
 
@@ -5437,6 +5457,8 @@ void BonkRun::OpenPortal(Creature* boss)
         bonk->Notify(m_tier.finale ? BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL_HOME : BONK_STRING_VICTORY_YOU_CLEARED_TAKE_PORTAL,
             { bonk->GetLevelName(m_difficultyLevel) });
     SendState();
+    if (!IsCoopGuest() && BonkCoop::InGroupRun(m_player))
+        BonkCoop::OnHostPortal(m_player);
 }
 
 void BonkRun::PlacePortal(float x, float y, float baseZ)

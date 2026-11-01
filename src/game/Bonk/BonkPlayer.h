@@ -37,6 +37,8 @@ struct BonkRunChoice;
 struct BonkTier;
 struct BonkWeapon;
 
+uint32 const BONK_PLAYER_FACTION = 1;
+
 class BonkPlayer
 {
     public:
