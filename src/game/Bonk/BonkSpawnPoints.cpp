@@ -2,6 +2,7 @@
 
 #include "GridMap.h"
 #include "Map.h"
+#include "MoveMap.h"
 #include "PathFinder.h"
 #include "Player.h"
 #include "Utilities/Random.h"
@@ -116,6 +117,8 @@ bool BonkSpawnPoints::TryCandidate(Player* hero, uint32 zoneId)
     PathFinder path(hero);
     path.ExcludeSteepSlopes();
     path.calculate(x, y, z);
+    if ((path.getPathType() & PATHFIND_NOT_USING_PATH) && MMAP::MMapFactory::createOrGetMMapManager()->GetNavMesh(hero->GetMapId()))
+        return false;
     if (!(path.getPathType() & PATHFIND_NOT_USING_PATH))
     {
         if (!(path.getPathType() & PATHFIND_NORMAL) || (path.getPathType() & PATHFIND_INCOMPLETE) ||
