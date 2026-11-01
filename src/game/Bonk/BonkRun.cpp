@@ -13938,7 +13938,7 @@ void BonkRun::Abort()
 
     if (m_state == STATE_RUNNING || m_state == STATE_PORTAL || (m_state == STATE_ENTERING && m_stage > 1))
     {
-        m_player->GetBonkPlayer()->RecordRun(m_stage, m_totalMs / IN_MILLISECONDS, m_kills, m_goldEarned);
+        m_player->GetBonkPlayer()->RecordRun(0, m_totalMs / IN_MILLISECONDS, m_kills, m_goldEarned);
         AwardMastery();
     }
 

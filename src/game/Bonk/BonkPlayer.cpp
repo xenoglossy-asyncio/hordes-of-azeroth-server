@@ -2241,7 +2241,7 @@ bool BonkPlayer::IsShopVendor(Creature const* vendor) const
 
 uint32 BonkPlayer::GetStockTier() const
 {
-    uint32 const cleared = GetBestLevel();
+    uint32 const cleared = m_record.bestLevel;
     uint32 const lagged = cleared > BONK_STOCK_TIER_LAG ? cleared - BONK_STOCK_TIER_LAG : 1u;
     return std::min(BONK_STOCK_TIER_MAX, std::max(1u, lagged));
 }
@@ -2288,7 +2288,7 @@ void BonkPlayer::SendQuartermaster() const
 
 uint32 BonkPlayer::GetUpgradeCeiling() const
 {
-    return std::max(1u, GetBestLevel());
+    return std::max(1u, m_record.bestLevel);
 }
 
 std::vector<Item*> BonkPlayer::GetUpgradableGear() const
