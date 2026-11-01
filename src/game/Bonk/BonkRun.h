@@ -142,6 +142,7 @@ class BonkRun
         BonkMap const& GetStageMap() const { return m_map; }
         void GetStageStart(float& x, float& y, float& z) const { x = m_stageX; y = m_stageY; z = m_stageZ; }
         void FollowToStage(BonkMap const& map, uint32 stage);
+        void FollowIntoEndless(uint32 stage);
         void SetAway(bool away);
         bool IsAway() const { return m_away; }
         void EndWithHost();
@@ -383,6 +384,7 @@ class BonkRun
         bool IsOwnPortal(GameObject const* portal) const;
         BonkMap const* GetNextMap() const;
         void EnterNextStage();
+        void ContinueEndless();
         void GoHome();
 
         void SendFullState() const;
@@ -495,6 +497,8 @@ class BonkRun
         bool TeleportToStage(BonkMap const& map, std::string& error);
         void LearnStarts(std::vector<BonkSpot> const& spots);
         void StartStage();
+        void StartEndless();
+        uint32 GetEndlessMs() const { return m_elapsedMs - m_endlessStartMs; }
         void UpdateRunning(uint32 diff);
         void UpdateOffers();
         void DropOffers();
@@ -631,10 +635,17 @@ class BonkRun
         float GetCrowdOverflow() const;
         void UpdateWaves();
         void EnterWave(size_t index);
+        bool SpawnBosses();
+        void SpawnMinibosses(uint32 count);
+        void UpdateEndlessBosses();
+        static uint32 GetEndlessInterval(uint32 firstMs, uint32 shortestMs, uint32 spawned);
         uint32 GetFirstMinibossSecond() const;
         std::string DescribeTimelineMarks() const;
         void UpdateOvertime(uint32 diff);
         BonkScalingPoint GetScalingNow() const;
+        BonkScalingPoint GetScalingAt(float minute) const;
+        BonkScalingPoint GetEndlessScaling() const;
+        static float GetGrowthOver(float from, float to, float cycles);
         float GetHeroBaseHealth() const;
         float GetArmorReduction() const;
         float GetArmorOverflowHealth() const;
@@ -1591,6 +1602,12 @@ class BonkRun
         uint32 m_miniEventSlots = 0;
         uint32 m_overtimeWaves = 0;
         int32 m_overtimeTimer = 0;
+        uint32 m_endlessStartMs = 0;
+        uint32 m_endlessStartTotalMs = 0;
+        uint32 m_endlessBossDueMs = 0;
+        uint32 m_endlessMinibossDueMs = 0;
+        uint32 m_endlessBosses = 0;
+        uint32 m_endlessMinibosses = 0;
         float m_spawnDamageScale = 1.0f;
         uint32 m_boundaryTimer = 0;
         uint32 m_nativeTimer = 0;

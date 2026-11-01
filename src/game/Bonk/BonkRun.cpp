@@ -115,6 +115,11 @@ namespace
     uint32 const BONK_OVERTIME_RING        = 12;
     uint32 const BONK_OVERTIME_RING_STEP   = 4;
     float const BONK_OVERTIME_DAMAGE_STEP  = 0.25f;
+    uint32 const BONK_ENDLESS_BOSS_MS      = 540000;
+    uint32 const BONK_ENDLESS_MINIBOSS_MS  = 270000;
+    uint32 const BONK_ENDLESS_MIN_BOSS_MS  = 180000;
+    uint32 const BONK_ENDLESS_MIN_MINIBOSS_MS = 90000;
+    float const BONK_ENDLESS_INTERVAL_SHRINK = 0.9f;
     uint32 const BONK_QUIET_SECONDS        = 30;
     uint32 const BONK_ELITE_RETRY_MS       = 5000;
     float const BONK_BRUISER_SIZE          = 1.3f;
@@ -1577,7 +1582,8 @@ void BonkRun::StartStage()
         m_player->GetLevel() + m_overcapLevel, m_kills, m_damageTaken);
     m_state = STATE_RUNNING;
     m_missedBoss = false;
-    m_elapsedMs = 0;
+    if (!IsFinale())
+        m_elapsedMs = 0;
     m_nextEvent = 0;
     m_menuOpen = false;
     m_miniEventActive = false;
@@ -1593,6 +1599,8 @@ void BonkRun::StartStage()
     m_overtimeTimer = 0;
     m_spawnDamageScale = 1.0f;
     m_overtimeReported = 0;
+    if (IsFinale())
+        StartEndless();
     m_bossArrivals.clear();
     m_heldEvents.clear();
     RollHidden();
@@ -1717,7 +1725,7 @@ void BonkRun::StartStage()
     SendFullState();
     if (IsFinale())
     {
-        m_player->GetBonkPlayer()->Notify(BONK_STRING_FINALE_BEGINS, { Localize(BONK_FIELD_MAP_NAME, m_map.id, m_map.name) });
+        m_player->GetBonkPlayer()->Notify(BONK_STRING_FINALE_BEGINS);
         return;
     }
     uint32 const minutes = m_map.durationSeconds / 60;
@@ -2085,7 +2093,7 @@ void BonkRun::ReportQuestCounts()
             sBonkQuests.OnProgress(m_player, BONK_QUEST_UNHURT_TIME, 0, unhurt, true);
     }
     uint32 const overtimeStartMs = (m_map.durationSeconds + BONK_OVERTIME_AFTER_SEC) * IN_MILLISECONDS;
-    uint32 const overtime = m_bossSpawned && m_elapsedMs > overtimeStartMs ? (m_elapsedMs - overtimeStartMs) / IN_MILLISECONDS / 10 * 10 : 0;
+    uint32 const overtime = m_bossSpawned && !IsFinale() && m_elapsedMs > overtimeStartMs ? (m_elapsedMs - overtimeStartMs) / IN_MILLISECONDS / 10 * 10 : 0;
     if (overtime > m_overtimeReported)
     {
         m_overtimeReported = overtime;
@@ -2304,27 +2312,12 @@ void BonkRun::UpdateSpawns(uint32 diff)
     bool const bossDue = !IsFinale() && !m_bossSpawned && elapsedSeconds >= m_map.durationSeconds;
     if (bossDue && IsCoopGuest())
         m_bossSpawned = true;
-    else if (bossDue)
+    else if (bossDue && !SpawnBosses())
     {
-        BonkMapCreature const* boss = PickCreature(BONK_SPAWN_BOSS);
-        if (!boss)
-        {
-            OpenPortal(nullptr);
-            return;
-        }
-
-        for (uint32 i = 0; i < GetCoopBossCount(); ++i)
-        {
-            BonkMapCreature const* pick = i == 0 ? boss : PickCreature(BONK_SPAWN_BOSS);
-            if (!pick)
-                pick = boss;
-            if (Creature* mob = SpawnMob(*pick))
-            {
-                m_bossSpawned = true;
-                NotifyArrived(mob);
-            }
-        }
+        OpenPortal(nullptr);
+        return;
     }
+    UpdateEndlessBosses();
 
     m_spawnTimer -= int32(diff);
     m_eliteTimer -= int32(diff);
@@ -2485,19 +2478,7 @@ void BonkRun::EnterWave(size_t index)
     if (m_bossSpawned || m_stress.on)
         return;
 
-    Creature* arrived = nullptr;
-    uint32 const minibosses = IsCoopGuest() ? 0 : (wave.minibosses + (wave.minibosses ? uint32(GetGlyphValue(BONK_GLYPH_AMBITION, 0)) : 0)) * GetCoopBossCount();
-    for (uint32 i = 0; i < minibosses; ++i)
-    {
-        BonkMapCreature const* creature = PickCreature(BONK_SPAWN_MINIBOSS);
-        if (!creature)
-            creature = PickCreature(BONK_SPAWN_ELITE);
-        if (creature)
-            if (Creature* mob = SpawnMob(*creature))
-                arrived = mob;
-    }
-    if (arrived)
-        NotifyArrived(arrived);
+    SpawnMinibosses(wave.minibosses);
 
     bool elites = false;
     uint32 const eliteCount = uint32(wave.elites * GetEliteScale() + 0.5f);
@@ -2511,6 +2492,78 @@ void BonkRun::EnterWave(size_t index)
         bonk->Notify(BONK_STRING_ELITES_ARE_CLOSING_IN);
     if (wave.beat == BONK_BEAT_WALL || wave.beat == BONK_BEAT_MINIBOSS)
         bonk->SendAddon("beat~" + Localize(BONK_FIELD_WAVE_NAME, wave.startSecond, wave.name) + "~" + std::to_string(wave.beat) + "~0");
+}
+
+bool BonkRun::SpawnBosses()
+{
+    BonkMapCreature const* boss = PickCreature(BONK_SPAWN_BOSS);
+    if (!boss)
+        return false;
+    for (uint32 i = 0; i < GetCoopBossCount(); ++i)
+    {
+        BonkMapCreature const* pick = i == 0 ? boss : PickCreature(BONK_SPAWN_BOSS);
+        if (!pick)
+            pick = boss;
+        if (Creature* mob = SpawnMob(*pick))
+        {
+            m_bossSpawned = true;
+            NotifyArrived(mob);
+        }
+    }
+    return true;
+}
+
+void BonkRun::SpawnMinibosses(uint32 count)
+{
+    if (IsCoopGuest() || !count)
+        return;
+    Creature* arrived = nullptr;
+    uint32 const minibosses = (count + uint32(GetGlyphValue(BONK_GLYPH_AMBITION, 0))) * GetCoopBossCount();
+    for (uint32 i = 0; i < minibosses; ++i)
+    {
+        BonkMapCreature const* creature = PickCreature(BONK_SPAWN_MINIBOSS);
+        if (!creature)
+            creature = PickCreature(BONK_SPAWN_ELITE);
+        if (creature)
+            if (Creature* mob = SpawnMob(*creature))
+                arrived = mob;
+    }
+    if (arrived)
+        NotifyArrived(arrived);
+}
+
+void BonkRun::StartEndless()
+{
+    m_endlessStartMs = m_elapsedMs;
+    m_endlessStartTotalMs = m_totalMs;
+    m_endlessBosses = 0;
+    m_endlessMinibosses = 0;
+    m_endlessBossDueMs = m_elapsedMs + BONK_ENDLESS_BOSS_MS;
+    m_endlessMinibossDueMs = m_elapsedMs + BONK_ENDLESS_MINIBOSS_MS;
+    m_waveWarned = sBonkMgr.GetWaves().size();
+    while (m_nextEvent < m_map.events.size() && m_map.events[m_nextEvent].second * IN_MILLISECONDS < m_elapsedMs)
+        ++m_nextEvent;
+}
+
+void BonkRun::UpdateEndlessBosses()
+{
+    if (!IsFinale() || IsCoopGuest() || m_stress.on)
+        return;
+    if (m_elapsedMs >= m_endlessBossDueMs)
+    {
+        SpawnBosses();
+        m_endlessBossDueMs = m_elapsedMs + GetEndlessInterval(BONK_ENDLESS_BOSS_MS, BONK_ENDLESS_MIN_BOSS_MS, ++m_endlessBosses);
+    }
+    if (m_elapsedMs >= m_endlessMinibossDueMs)
+    {
+        SpawnMinibosses(1);
+        m_endlessMinibossDueMs = m_elapsedMs + GetEndlessInterval(BONK_ENDLESS_MINIBOSS_MS, BONK_ENDLESS_MIN_MINIBOSS_MS, ++m_endlessMinibosses);
+    }
+}
+
+uint32 BonkRun::GetEndlessInterval(uint32 firstMs, uint32 shortestMs, uint32 spawned)
+{
+    return std::max(shortestMs, uint32(firstMs * std::pow(BONK_ENDLESS_INTERVAL_SHRINK, float(spawned))));
 }
 
 std::string BonkRun::DescribeTimelineMarks() const
@@ -2760,7 +2813,7 @@ void BonkRun::UpdateOvertime(uint32 diff)
     ring.second = m_elapsedMs / IN_MILLISECONDS;
     ring.type = BONK_EVENT_RING;
     ring.count = BONK_OVERTIME_RING + BONK_OVERTIME_RING_STEP * m_overtimeWaves;
-    m_spawnDamageScale = 1.0f + BONK_OVERTIME_DAMAGE_STEP * (m_overtimeWaves + 1);
+    m_spawnDamageScale = IsFinale() ? 1.0f : 1.0f + BONK_OVERTIME_DAMAGE_STEP * (m_overtimeWaves + 1);
     uint32 const spawned = SpawnFormation(ring);
     m_spawnDamageScale = 1.0f;
     if (!spawned)
@@ -2772,9 +2825,36 @@ void BonkRun::UpdateOvertime(uint32 diff)
 
 BonkScalingPoint BonkRun::GetScalingNow() const
 {
+    if (IsFinale() && !m_sandbox && m_scalingMinuteOverride < 0.0f)
+        return GetEndlessScaling();
+    return GetScalingAt(m_scalingMinuteOverride >= 0.0f ? m_scalingMinuteOverride :
+        m_sandbox && m_sandboxMinute >= 0.0f ? m_sandboxMinute : GetRunMinutes());
+}
+
+BonkScalingPoint BonkRun::GetEndlessScaling() const
+{
     std::vector<BonkScalingPoint> const& points = sBonkMgr.GetScaling();
-    float const minute = m_scalingMinuteOverride >= 0.0f ? m_scalingMinuteOverride :
-        m_sandbox && m_sandboxMinute >= 0.0f ? m_sandboxMinute : GetRunMinutes();
+    BonkScalingPoint now = GetScalingAt(m_endlessStartTotalMs / float(MINUTE * IN_MILLISECONDS));
+    BonkScalingPoint const& first = points.front();
+    BonkScalingPoint const& last = points.back();
+    float const span = last.minute - first.minute;
+    if (span <= 0.0f)
+        return now;
+    float const cycles = (m_totalMs - m_endlessStartTotalMs) / float(MINUTE * IN_MILLISECONDS) / span;
+    now.hitShare *= GetGrowthOver(first.hitShare, last.hitShare, cycles);
+    now.health *= m_tier.key == "normal" ? GetGrowthOver(first.healthNormal, last.healthNormal, cycles) : GetGrowthOver(first.health, last.health, cycles);
+    now.minute = GetRunMinutes();
+    return now;
+}
+
+float BonkRun::GetGrowthOver(float from, float to, float cycles)
+{
+    return from > 0.0f ? std::pow(to / from, cycles) : 1.0f;
+}
+
+BonkScalingPoint BonkRun::GetScalingAt(float minute) const
+{
+    std::vector<BonkScalingPoint> const& points = sBonkMgr.GetScaling();
     size_t index = 0;
     while (index + 1 < points.size() && points[index + 1].minute <= minute)
         ++index;
@@ -4053,12 +4133,12 @@ float BonkRun::StageDamageScale(BonkTier const& tier, BonkLevel const& level, ui
 
 float BonkRun::GetStageHealthMultiplier() const
 {
-    return StageHealthScale(m_tier, m_levelRow, m_stage) * (1.0f + m_bonuses.enemyHealth / 100.0f) * (IsChallenge() ? BONK_DUNGEON_HEALTH : 1.0f);
+    return StageHealthScale(m_tier, m_levelRow, std::min(m_stage, m_tier.stages)) * (1.0f + m_bonuses.enemyHealth / 100.0f) * (IsChallenge() ? BONK_DUNGEON_HEALTH : 1.0f);
 }
 
 float BonkRun::GetStageDamageMultiplier() const
 {
-    return StageDamageScale(m_tier, m_levelRow, m_stage) * (1.0f + m_bonuses.enemyDamage / 100.0f) * (IsChallenge() ? BONK_DUNGEON_DAMAGE : 1.0f);
+    return StageDamageScale(m_tier, m_levelRow, std::min(m_stage, m_tier.stages)) * (1.0f + m_bonuses.enemyDamage / 100.0f) * (IsChallenge() ? BONK_DUNGEON_DAMAGE : 1.0f);
 }
 
 void BonkRun::UpdateGear()
@@ -5460,20 +5540,20 @@ void BonkRun::PayFinale()
     if (!IsFinale() || m_sandbox)
         return;
 
-    float const minutes = m_elapsedMs / float(MINUTE * IN_MILLISECONDS);
+    float const minutes = GetEndlessMs() / float(MINUTE * IN_MILLISECONDS);
     uint32 const gold = uint32(m_map.stageGold * BONK_FINALE_GOLD_PER_MINUTE * minutes * m_levelRow.reward);
     uint32 const scrap = uint32(BONK_FINALE_SCRAP_PER_MINUTE * minutes * m_levelRow.reward);
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     GiveGold(gold);
     bonk->AddScrap(scrap);
-    bonk->Notify(BONK_STRING_FINALE_PAYS, { FormatTime(m_elapsedMs / IN_MILLISECONDS), FormatBonkMoney(gold, GetLocale()), std::to_string(scrap) });
+    bonk->Notify(BONK_STRING_FINALE_PAYS, { FormatTime(GetEndlessMs() / IN_MILLISECONDS), FormatBonkMoney(gold, GetLocale()), std::to_string(scrap) });
     if (!IsMythic())
         return;
     uint32 const score = uint32(GetBandLevel() * minutes);
     LogFinale(minutes, score);
     bonk->RecordFinale(score);
-    bonk->RecordFinaleBest(m_difficultyLevel, score, m_elapsedMs / IN_MILLISECONDS);
-    BonkCoop::RecordFinaleBest(m_player, m_player->GetClass(), m_difficultyLevel, score, m_elapsedMs / IN_MILLISECONDS);
+    bonk->RecordFinaleBest(m_difficultyLevel, score, GetEndlessMs() / IN_MILLISECONDS);
+    BonkCoop::RecordFinaleBest(m_player, m_player->GetClass(), m_difficultyLevel, score, GetEndlessMs() / IN_MILLISECONDS);
 }
 
 BonkMap const* BonkRun::GetNextMap() const
@@ -5525,8 +5605,8 @@ void BonkRun::OpenPortal(Creature* boss)
 {
     bool const last = CloseStage();
     BonkPlayer* bonk = m_player->GetBonkPlayer();
-    BonkMap const* next = !last || m_tier.finale ? ChooseNextMap() : nullptr;
-    m_nextMapId = next ? next->id : 0;
+    BonkMap const* next = !last ? ChooseNextMap() : nullptr;
+    m_nextMapId = next ? next->id : last && m_tier.finale ? m_map.id : 0;
 
     if (boss)
     {
@@ -5635,6 +5715,12 @@ void BonkRun::EnterNextStage()
         return;
     }
 
+    if (m_stage >= m_tier.stages)
+    {
+        ContinueEndless();
+        return;
+    }
+
     BonkMap const* next = GetNextMap();
     if (!next)
         next = ChooseNextMap();
@@ -5662,6 +5748,32 @@ void BonkRun::EnterNextStage()
     BringBossEarlier();
     m_nextMapId = 0;
     BonkCoop::OnHostEnteredStage(m_player, m_map, m_stage);
+}
+
+void BonkRun::ContinueEndless()
+{
+    ClearStageObjects();
+    ++m_stage;
+    m_nextMapId = 0;
+    BonkCoop::OnHostEndless(m_player, m_stage);
+    StartStage();
+}
+
+void BonkRun::FollowIntoEndless(uint32 stage)
+{
+    if (IsOver() || m_sandbox)
+        return;
+    if (m_away)
+    {
+        m_followPending = true;
+        m_followMap = m_map;
+        m_followStage = stage;
+        return;
+    }
+    SetPaused(false);
+    ClearStageObjects();
+    m_stage = stage;
+    StartStage();
 }
 
 void BonkRun::ClearStageObjects()
@@ -11712,7 +11824,8 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
             GiveExperience(GetNextLevelXp());
         if (IsGlyphBossStage())
             DropGlyph(mob);
-        OpenPortal(mob);
+        if (!IsFinale())
+            OpenPortal(mob);
     }
 }
 
@@ -13444,7 +13557,7 @@ void BonkRun::Finish(bool wentHome)
         bonk->SendAddon("end~" + std::string(wentHome ? "1" : "0") + "~" + std::to_string(seconds) + "~" + std::to_string(m_kills) + "~" +
             std::to_string(m_goldEarned) + "~" + std::to_string(m_player->GetLevel()) + "~" + std::to_string(m_stage) + "~" + std::to_string(m_shardsEarned) +
             "~" + (m_victory ? "1" : "0") + "~" + (IsMythic() ? "1" : "0") + "~" + std::to_string(bonk->GetBestLevel()) + "~" +
-            std::to_string(m_levelBestAtStart) + "~" + bonk->GetLevelName(m_difficultyLevel) + "~" + std::to_string(IsFinale() ? m_elapsedMs / IN_MILLISECONDS : 0));
+            std::to_string(m_levelBestAtStart) + "~" + bonk->GetLevelName(m_difficultyLevel) + "~" + std::to_string(IsFinale() ? GetEndlessMs() / IN_MILLISECONDS : 0));
     else
         ChatHandler(m_player).PSendSysMessage("%s You reached stage %u in %s with %u kills at level %u, and earned %s and %s.",
             m_victory ? "Victory!" : wentHome ? "Run complete!" : "Defeated.",

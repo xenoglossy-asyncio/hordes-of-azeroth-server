@@ -819,6 +819,12 @@ void BonkCoop::OnHostPortal(Player* host)
         run->FollowToPortal();
 }
 
+void BonkCoop::OnHostEndless(Player* host, uint32 stage)
+{
+    for (BonkRun* run : GuestRunsOf(host))
+        run->FollowIntoEndless(stage);
+}
+
 void BonkCoop::NoteHostRun(Player const* host, std::string const& playing)
 {
     if (IsGuestAccount(host))
