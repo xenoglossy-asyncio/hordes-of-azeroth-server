@@ -18,6 +18,8 @@ namespace
     float const BONK_HIDDEN_NEAR          = 25.0f;
     float const BONK_HIDDEN_BAND_MIN      = 4.0f;
     float const BONK_HIDDEN_BAND_MAX      = 9.0f;
+    uint32 const BONK_SPELL_HIDDEN_SPARKLE = 33455;
+    float const BONK_HIDDEN_SPARKLE_SCALE = 1.5f;
 }
 
 void BonkRun::RollHidden()
@@ -47,7 +49,10 @@ void BonkRun::UpdateHidden(uint32 diff)
             return;
         m_hidden.placed = true;
         if (GameObject* go = PlaceObject(hidden->objectEntry, m_hidden.spot.x, m_hidden.spot.y, m_hidden.spot.z, BONK_HIDDEN_LIFETIME_SEC))
+        {
             m_hidden.object = go->GetObjectGuid();
+            m_hidden.sparkle = PlaceMarker(go, BONK_SPELL_HIDDEN_SPARKLE, BONK_HIDDEN_SPARKLE_SCALE);
+        }
         return;
     }
 
@@ -67,6 +72,7 @@ void BonkRun::TriggerHidden()
 {
     BonkHidden const* hidden = m_hidden.hidden;
     m_hidden.triggered = true;
+    RemoveHiddenSparkle();
     BonkSpot const& spot = m_hidden.spot;
 
     if (hidden->trigger == BONK_HIDDEN_USE_TRIGGER)
@@ -119,8 +125,17 @@ void BonkRun::OnHiddenKilled(Creature const* mob)
     m_player->GetBonkPlayer()->Notify(BONK_STRING_YOU_DEFEATED_AND_CHEST_APPEARS, { Localize(BONK_FIELD_HIDDEN_NAME, hidden->id, hidden->name) });
 }
 
+void BonkRun::RemoveHiddenSparkle()
+{
+    if (!m_hidden.sparkle)
+        return;
+    SendBonkAuraGone(m_player, m_hidden.sparkle);
+    m_hidden.sparkle = 0;
+}
+
 void BonkRun::ClearHidden()
 {
+    RemoveHiddenSparkle();
     if (Map* map = m_player->FindMap())
         if (GameObject* go = map->GetGameObject(m_hidden.object))
             go->Delete();

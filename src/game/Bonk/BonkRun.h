@@ -725,8 +725,10 @@ class BonkRun
             BonkSpot spot;
             ObjectGuid object;
             ObjectGuid boss;
+            uint32 sparkle = 0;
         };
         HiddenEncounter m_hidden;
+        void RemoveHiddenSparkle();
         void RollHidden();
         void UpdateHidden(uint32 diff);
         void TriggerHidden();
