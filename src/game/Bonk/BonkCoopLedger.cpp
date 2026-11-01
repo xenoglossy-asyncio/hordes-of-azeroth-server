@@ -325,6 +325,11 @@ namespace
                 part += c;
         }
         parts.push_back(part);
+        if (parts.size() > 3 && !parts.back().empty() && parts.back()[0] == 'u')
+        {
+            found.upgrades = std::min(uint32(std::strtoul(parts.back().c_str() + 1, nullptr, 10)), BONK_FOUND_MAX_UPGRADES);
+            parts.pop_back();
+        }
         if (parts.size() < 3)
             return false;
         found.tier = uint32(std::strtoul(parts[0].c_str(), nullptr, 10));
@@ -346,6 +351,7 @@ namespace
         out << found.tier << ',' << found.rerolls << ',' << uint32(found.rerollLine);
         for (BonkFoundLine const& line : found.lines)
             out << ',' << uint32(line.effect) << ',' << line.roll;
+        out << ",u" << found.upgrades;
         return out.str();
     }
 
