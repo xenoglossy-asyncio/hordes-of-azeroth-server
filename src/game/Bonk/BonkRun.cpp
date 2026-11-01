@@ -1589,8 +1589,8 @@ void BonkRun::StartStage()
     m_bossSpawned = false;
     m_stoneBoss = false;
     m_bossGuid.Clear();
-    m_powerupSpawnTimer = m_map.powerupIntervalSeconds * IN_MILLISECONDS / 2;
     m_stageBosses.clear();
+    m_powerupSpawnTimer = m_map.powerupIntervalSeconds * IN_MILLISECONDS / 2;
     m_nativeTimer = BONK_NATIVE_SWEEP_MS;
     if (m_stage > 1)
         m_rerolls += uint32(GetGlyphValue(BONK_GLYPH_FORESIGHT, 0));
@@ -2264,13 +2264,13 @@ void BonkRun::UpdateSpawns(uint32 diff)
         if (m_stageBosses.empty())
         {
             m_bossSpawned = false;
+            m_bossGuid.Clear();
             SendBossMusic(false);
         }
-            m_bossGuid.Clear();
-    }
-
         else if (std::find(m_stageBosses.begin(), m_stageBosses.end(), m_bossGuid) == m_stageBosses.end())
             m_bossGuid = m_stageBosses.front();
+    }
+
     UpdateWaves();
     if (m_state != STATE_RUNNING)
         return;
@@ -3891,8 +3891,6 @@ float BonkRun::GetSpawnHealthUncapped(BonkSpawnKind kind, BonkArchetype archetyp
         GetCrowdOverflow() * GetKindHealth(kind) * GetTierKindHealth(kind) * GetScalingNow().health * GetCoopHealthScale(kind));
 }
 
-float BonkRun::GetCoopHealthScale(BonkSpawnKind kind) const
-{
 void BonkRun::NotifyArrived(Creature* mob) const
 {
     for (Player* member : BonkCoop::RunGroupOf(m_player))
@@ -3922,6 +3920,8 @@ bool BonkRun::OnStageBossKilled(Creature* mob)
     return true;
 }
 
+float BonkRun::GetCoopHealthScale(BonkSpawnKind kind) const
+{
     float const perPlayer = kind == BONK_SPAWN_BOSS ? BONK_COOP_BOSS_HEALTH_PER_PLAYER : BONK_COOP_HEALTH_PER_PLAYER;
     return 1.0f + perPlayer * float(m_coopPlayers - 1);
 }
@@ -5430,9 +5430,9 @@ bool BonkRun::CloseStage()
 {
     m_state = STATE_PORTAL;
     m_bossGuid.Clear();
+    m_stageBosses.clear();
     m_telegraphs.Clear(m_player);
     RemoveHeroLooks();
-    m_stageBosses.clear();
     GiveGold(m_map.stageGold * m_stage);
     sBonkQuests.OnProgress(m_player, BONK_QUEST_DARK_FORTUNES, 0, m_player->GetBonkPlayer()->CountDarkFortunes(), true);
     CollectAllOrbs();
@@ -11449,6 +11449,7 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
         m_objectives.RemoveFollowing(m_player, mob->GetObjectGuid());
         SpeakBossLine(mob, BONK_BOSS_LINE_DEATH);
     }
+    bool const stageBossDown = OnStageBossKilled(mob);
     if (stageBossDown)
         SendBossMusic(false);
 
@@ -11493,7 +11494,6 @@ void BonkRun::OnMobKilled(Creature* mob, BonkSpawnKind kind, Unit* killer)
     if (kind == BONK_SPAWN_MINIBOSS && !m_sandbox && ++m_glyphMiniBosses == 1)
         DropGlyph(mob);
 
-    bool const stageBossDown = OnStageBossKilled(mob);
     if (stageBossDown)
     {
         if (m_stoneBoss)
