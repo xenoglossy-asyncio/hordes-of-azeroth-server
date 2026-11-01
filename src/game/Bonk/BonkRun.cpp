@@ -5871,7 +5871,7 @@ void BonkRun::StrikeWith(OwnedWeapon& owned, SpellEntry const* spellInfo, Creatu
     SpellEntry const* const shotInfo = spellInfo;
     float const shotShare = damageShare;
 
-    if (!followUp && shotInfo->speed > 0.0f)
+    if (!followUp && shotInfo->speed > 0.0f && !weapon.HasFlag(BONK_WEAPON_FLAG_AOE))
         ++m_projectilesUnreported;
 
     if (CanKill(weapon, target))
