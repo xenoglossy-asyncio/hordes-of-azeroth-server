@@ -238,7 +238,7 @@ namespace
     float const BONK_DUNGEON_DAMAGE = 1.2f;
     float const BONK_FINALE_GOLD_PER_MINUTE  = 0.5f;
     float const BONK_FINALE_SCRAP_PER_MINUTE = 2.0f;
-    float const BONK_INVASION_GOLD  = 1.25f;
+    float const BONK_CHALLENGE_GOLD = 1.25f;
     float const BONK_INVASION_CROWD = 1.15f;
 
     float const BONK_VAULT_SIDE     = 4.0f;
@@ -11342,7 +11342,7 @@ void BonkRun::RemovePickup(ObjectGuid const& goGuid, uint32 beamKey, uint32 spar
 float BonkRun::GetGoldMultiplier() const
 {
     return (1.0f + (GetPassiveTotal(BONK_PASSIVE_GREED) + m_bonuses.goldBonus + GetGreedRewardPercent()) / 100.0f) *
-        (m_invaderId ? BONK_INVASION_GOLD : 1.0f) * m_levelRow.reward;
+        (IsChallenge() ? BONK_CHALLENGE_GOLD : 1.0f) * m_levelRow.reward;
 }
 
 void BonkRun::GiveGold(uint32 copper)
