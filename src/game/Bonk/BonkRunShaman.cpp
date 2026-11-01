@@ -75,8 +75,11 @@ namespace
     uint32 const BONK_STATIC_SURGE_STACKS     = 5;
 
     uint32 const BONK_LIGHTNING_SHIELD_CHARGES = 3;
-    float const BONK_EARTH_SHIELD_STEP        = 1.0f;
-    float const BONK_EARTH_SHIELD_CAP         = 10.0f;
+    float const BONK_LIGHTNING_SHIELD_REACH   = 8.0f;
+    float const BONK_LIGHTNING_SHIELD_STEP    = 0.5f;
+    float const BONK_LIGHTNING_SHIELD_CAP     = 5.0f;
+    float const BONK_EARTH_SHIELD_STEP        = 1.5f;
+    float const BONK_EARTH_SHIELD_CAP         = 15.0f;
 
     float const BONK_STATIC_RADIUS            = 6.0f;
     uint32 const BONK_STATIC_VICTIMS          = 3;
@@ -101,6 +104,11 @@ namespace
     uint32 const BONK_DOOMHAMMER_MAELSTROM_HITS = 3;
     uint32 const BONK_TOTEMIC_MASTERY_TOTEMS  = 1;
     float const BONK_TOTEM_REPLANT_RANGE      = 20.0f;
+    float const BONK_TOTEM_SLOT_DISTANCE      = 2.5f;
+    uint32 const BONK_TOTEM_SLOTS             = 6;
+    float const BONK_MAGMA_THROW_RANGE        = 25.0f;
+    float const BONK_MAGMA_LEASH              = 30.0f;
+    uint32 const BONK_MAGMA_IDLE_MS           = 2000;
     float const BONK_HEALING_STREAM_RANGE     = 15.0f;
     uint32 const BONK_FIRE_NOVA_EVERY_TICKS   = 4;
     float const BONK_FIRE_NOVA_SHARE          = 1.0f;
@@ -118,6 +126,7 @@ void BonkRun::ResetShamanState()
 {
     m_maelstromHits = 0;
     m_lightningCharges = 0;
+    m_magmaIdleMs.clear();
     m_shamanTickMs = 0;
     m_shamanTicks = 0;
     m_doomWindsReadyMs = 0;
@@ -523,25 +532,42 @@ void BonkRun::OnShamanStruck(Creature* attacker)
 
     --m_lightningCharges;
     ShowLightningShield(m_lightningCharges);
+    ZapWithLightningShield(*shield, attacker);
+}
 
+void BonkRun::ZapNearestWithLightningShield(OwnedWeapon const& shield)
+{
+    if (!m_player->IsAlive())
+        return;
+    for (Creature* mob : GetMobsInRange(BONK_LIGHTNING_SHIELD_REACH * GetWeaponArea(shield)))
+        if (m_player->IsWithinLOSInMap(mob))
+        {
+            ZapWithLightningShield(shield, mob);
+            return;
+        }
+}
+
+void BonkRun::ZapWithLightningShield(OwnedWeapon const& shield, Creature* target)
+{
     SpellEntry const* look = sSpellMgr.GetSpellEntry(BONK_SPELL_LIGHTNING_LOOK);
     if (look)
-        ShowStrike(m_player, look, attacker);
-    std::vector<Creature*> victims = { attacker };
-    if (shield->weapon.id == BONK_WEAPON_STATIC_SHOCK)
-        victims = GetStaticShockVictims(*shield, attacker);
+        ShowStrike(m_player, look, target);
+    std::vector<Creature*> victims = { target };
+    if (shield.weapon.id == BONK_WEAPON_STATIC_SHOCK)
+        victims = GetStaticShockVictims(shield, target);
     SpellEntry const* zap = sSpellMgr.GetSpellEntry(BONK_SPELL_LIGHTNING_ZAP);
     for (Creature* mob : victims)
     {
-        DealShamanHit(zap, shield->weapon.spellId, mob, GetWeaponDamage(*shield));
-        ApplyShamanKeyword(*shield, mob, BONK_KEYWORD_STATIC, shield->weapon.applyStacks);
+        DealShamanHit(zap, shield.weapon.spellId, mob, GetWeaponDamage(shield));
+        ApplyShamanKeyword(shield, mob, BONK_KEYWORD_STATIC, shield.weapon.applyStacks);
     }
 
-    if (shield->weapon.id != BONK_WEAPON_EARTH_SHIELD || !m_player->IsAlive())
+    if (!m_player->IsAlive())
         return;
-    SupportScope scope(*this, WeaponSupport(*shield));
-    uint32 const cap = uint32(m_player->GetMaxHealth() * BONK_EARTH_SHIELD_CAP / 100.0f);
-    uint32 const step = std::max(1u, uint32(m_player->GetMaxHealth() * BONK_EARTH_SHIELD_STEP / 100.0f));
+    bool const earth = shield.weapon.id == BONK_WEAPON_EARTH_SHIELD;
+    SupportScope scope(*this, WeaponSupport(shield));
+    uint32 const cap = uint32(m_player->GetMaxHealth() * (earth ? BONK_EARTH_SHIELD_CAP : BONK_LIGHTNING_SHIELD_CAP) / 100.0f);
+    uint32 const step = std::max(1u, uint32(m_player->GetMaxHealth() * (earth ? BONK_EARTH_SHIELD_STEP : BONK_LIGHTNING_SHIELD_STEP) / 100.0f));
     if (m_spellShield < cap)
         AddSpellShield(std::min(step, cap - m_spellShield));
 }
@@ -784,18 +810,108 @@ void BonkRun::ReplantTotems()
     if (!m_player->IsAlive())
         return;
     Map* map = m_player->GetMap();
+    uint32 slot = 0;
     for (OwnedWeapon const& owned : m_weapons)
     {
         if (!owned.weapon.HasFlag(BONK_WEAPON_FLAG_TOTEM))
             continue;
+        bool const magma = GetRootWeapon(owned.weapon) == BONK_WEAPON_MAGMA_TOTEM;
         for (ObjectGuid const& guid : owned.pets)
-            if (Creature* totem = map->GetCreature(guid))
-                if (totem->IsAlive() && !totem->IsWithinDistInMap(m_player, BONK_TOTEM_REPLANT_RANGE))
-                {
-                    totem->NearTeleportTo(m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), m_player->GetOrientation());
-                    totem->SendPlaySpellVisualKit(BONK_KIT_TOTEM_REPLANT);
-                }
+        {
+            uint32 const ownSlot = slot++;
+            Creature* totem = map->GetCreature(guid);
+            if (!totem || !totem->IsAlive())
+                continue;
+            if (magma)
+            {
+                bool const reached = !GetMobsNear(totem->GetPositionX(), totem->GetPositionY(), GetMagmaPulseRadius(owned)).empty();
+                auto idle = m_magmaIdleMs.find(guid);
+                uint32 const idleMs = reached ? 0 : (idle == m_magmaIdleMs.end() ? BONK_MAGMA_IDLE_MS : idle->second + BONK_SHAMAN_TICK_MS);
+                m_magmaIdleMs[guid] = idleMs;
+                if (idleMs >= BONK_MAGMA_IDLE_MS || !totem->IsWithinDistInMap(m_player, BONK_MAGMA_LEASH))
+                    HurlMagmaTotem(owned, totem);
+                continue;
+            }
+            if (totem->IsWithinDistInMap(m_player, BONK_TOTEM_REPLANT_RANGE))
+                continue;
+            float x, y, z;
+            GetTotemSlot(ownSlot, x, y, z);
+            PlantTotemAt(totem, x, y, z);
+        }
     }
+}
+
+uint32 BonkRun::CountOwnedTotems() const
+{
+    uint32 count = 0;
+    for (OwnedWeapon const& owned : m_weapons)
+        if (owned.weapon.HasFlag(BONK_WEAPON_FLAG_TOTEM))
+            count += uint32(owned.pets.size());
+    return count;
+}
+
+void BonkRun::GetTotemSlot(uint32 slot, float& x, float& y, float& z) const
+{
+    float const angle = m_player->GetOrientation() + float(slot % BONK_TOTEM_SLOTS) * 2.0f * M_PI_F / float(BONK_TOTEM_SLOTS) + M_PI_F / float(BONK_TOTEM_SLOTS);
+    x = m_player->GetPositionX() + BONK_TOTEM_SLOT_DISTANCE * std::cos(angle);
+    y = m_player->GetPositionY() + BONK_TOTEM_SLOT_DISTANCE * std::sin(angle);
+    z = m_player->GetPositionZ();
+    m_player->GetMap()->GetWalkHitPosition(nullptr, m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), x, y, z);
+}
+
+void BonkRun::PlantTotemAt(Creature* totem, float x, float y, float z)
+{
+    totem->NearTeleportTo(x, y, z, m_player->GetOrientation());
+    totem->SendPlaySpellVisualKit(BONK_KIT_TOTEM_REPLANT);
+}
+
+float BonkRun::GetMagmaPulseRadius(OwnedWeapon const& owned) const
+{
+    BonkPetFamily const* family = GetPetFamily(owned);
+    if (!family)
+        return 0.0f;
+    for (BonkPetAbility const& ability : family->abilities)
+        if (ability.kind == BONK_PET_ABILITY_PULSE)
+            return ability.value * GetSummonReach(owned);
+    return 0.0f;
+}
+
+Creature* BonkRun::FindMagmaPack(float radius) const
+{
+    std::vector<Creature*> mobs = GetMobsInRange(BONK_MAGMA_THROW_RANGE);
+    Creature* best = nullptr;
+    size_t bestCount = 0;
+    for (Creature* center : mobs)
+    {
+        if (!m_player->IsWithinLOSInMap(center))
+            continue;
+        size_t const count = size_t(std::count_if(mobs.begin(), mobs.end(), [center, radius](Creature const* mob)
+        {
+            return mob->IsWithinDist(center, radius);
+        }));
+        if (count > bestCount)
+        {
+            best = center;
+            bestCount = count;
+        }
+    }
+    return best;
+}
+
+void BonkRun::HurlMagmaTotem(OwnedWeapon const& owned, Creature* totem)
+{
+    m_magmaIdleMs[totem->GetObjectGuid()] = 0;
+    float x, y, z;
+    if (Creature* pack = FindMagmaPack(GetMagmaPulseRadius(owned)))
+    {
+        pack->GetPosition(x, y, z);
+        m_player->GetMap()->GetWalkHitPosition(nullptr, m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), x, y, z);
+    }
+    else if (totem->IsWithinDistInMap(m_player, BONK_TOTEM_REPLANT_RANGE))
+        return;
+    else
+        GetTotemSlot(0, x, y, z);
+    PlantTotemAt(totem, x, y, z);
 }
 
 void BonkRun::BurstFireNovaTotems()

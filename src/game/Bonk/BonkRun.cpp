@@ -7436,6 +7436,7 @@ void BonkRun::FireWeapon(OwnedWeapon& owned)
     if (weapon.behavior == BONK_BEHAVIOR_LIGHTNING_SHIELD)
     {
         ChargeLightningShield();
+        ZapNearestWithLightningShield(owned);
         owned.timer = GetWeaponCooldown(owned);
         return;
     }
@@ -9474,7 +9475,10 @@ void BonkRun::UpdatePets(OwnedWeapon& owned)
         float x = m_player->GetPositionX() + 2.0f * std::cos(angle);
         float y = m_player->GetPositionY() + 2.0f * std::sin(angle);
         float z = m_player->GetPositionZ();
-        m_player->GetMap()->GetWalkHitPosition(nullptr, m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), x, y, z);
+        if (weapon.HasFlag(BONK_WEAPON_FLAG_TOTEM))
+            GetTotemSlot(CountOwnedTotems(), x, y, z);
+        else
+            m_player->GetMap()->GetWalkHitPosition(nullptr, m_player->GetPositionX(), m_player->GetPositionY(), m_player->GetPositionZ(), x, y, z);
         if (Creature* pet = SummonPet(owned, summonEntry, x, y, z, m_player->GetOrientation()))
         {
             if (shifting)

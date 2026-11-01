@@ -2381,7 +2381,15 @@ class BonkRun
         bool DealShamanHit(SpellEntry const* spellInfo, uint32 creditSpellId, Unit* target, float damage);
         void ChargeLightningShield();
         void ShowLightningShield(uint32 charges);
+        void ZapWithLightningShield(OwnedWeapon const& shield, Creature* target);
+        void ZapNearestWithLightningShield(OwnedWeapon const& shield);
         void ReplantTotems();
+        uint32 CountOwnedTotems() const;
+        void GetTotemSlot(uint32 slot, float& x, float& y, float& z) const;
+        void PlantTotemAt(Creature* totem, float x, float y, float z);
+        float GetMagmaPulseRadius(OwnedWeapon const& owned) const;
+        Creature* FindMagmaPack(float radius) const;
+        void HurlMagmaTotem(OwnedWeapon const& owned, Creature* totem);
         void FlowHealingStreams();
         void ResetPriestState();
         void UpdatePriest(uint32 diff);
@@ -2758,6 +2766,7 @@ class BonkRun
         uint32 m_voidTendrilsMs = 0;
         uint32 m_maelstromHits = 0;
         uint32 m_lightningCharges = 0;
+        std::map<ObjectGuid, uint32> m_magmaIdleMs;
         uint32 m_shamanTickMs = 0;
         uint32 m_shamanTicks = 0;
         uint32 m_doomWindsReadyMs = 0;
