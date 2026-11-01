@@ -3163,24 +3163,6 @@ namespace
     }
 }
 
-void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const
-{
-    static BonkString const CASTER_AIM[] = { BONK_STRING_CASTER_AIM_POOR, BONK_STRING_CASTER_AIM_GOOD, BONK_STRING_CASTER_AIM_PRECISE };
-    static BonkString const BOSS_ATTACKS[] = { BONK_STRING_BOSS_ATTACKS_NORMAL, BONK_STRING_BOSS_ATTACKS_MORE, BONK_STRING_BOSS_ATTACKS_RELENTLESS };
-    uint32 const step = std::min(2u, tier.eliteAffixes ? tier.eliteAffixes - 1u : 0u);
-    SendAddon("tierinfo~" + std::to_string(tier.id) + "~" + GetString(CASTER_AIM[step]) + "~" + GetString(BOSS_ATTACKS[step]) + "~" +
-        std::to_string((tier.chargeIntervalMs + 500) / 1000) + "~" + std::to_string(tier.maxAlive));
-    uint32 const best = GetTierBest(tier);
-    uint32 const shown = tier.IsEndlessLevels() ? best + 1 : tier.levels;
-    for (uint32 band = 1; band <= shown; ++band)
-    {
-        BonkLevel const level = sBonkMgr.GetLevel(tier, band);
-        float const health = tier.healthMultiplier * level.health * (1.0f + bonuses.enemyHealth / 100.0f);
-        float const damage = tier.damageMultiplier * level.damage * (1.0f + bonuses.enemyDamage / 100.0f);
-        float const veterans = tier.veteranChance > 0.0f ? tier.veteranChance + level.veteranChance : 0.0f;
-        uint32 const affixes = tier.eliteAffixes + bonuses.eliteAffixes + level.extraAffixes;
-        float const legendary = level.legendaryChance;
-        float const rest = (100.0f - legendary) / 100.0f;
 uint32 BonkPlayer::GetEpicLuckBonus() const
 {
     return m_epicLuckMisses * BONK_EPIC_LUCK_PER_MISS;
@@ -3198,9 +3180,27 @@ void BonkPlayer::SendEpicLuck() const
     SendAddon("epicluck~" + std::to_string(GetEpicLuckBonus()));
 }
 
+void BonkPlayer::SendLevelPreview(BonkTier const& tier, BonkRunBonuses const& bonuses) const
+{
+    SendEpicLuck();
+    static BonkString const CASTER_AIM[] = { BONK_STRING_CASTER_AIM_POOR, BONK_STRING_CASTER_AIM_GOOD, BONK_STRING_CASTER_AIM_PRECISE };
+    static BonkString const BOSS_ATTACKS[] = { BONK_STRING_BOSS_ATTACKS_NORMAL, BONK_STRING_BOSS_ATTACKS_MORE, BONK_STRING_BOSS_ATTACKS_RELENTLESS };
+    uint32 const step = std::min(2u, tier.eliteAffixes ? tier.eliteAffixes - 1u : 0u);
+    SendAddon("tierinfo~" + std::to_string(tier.id) + "~" + GetString(CASTER_AIM[step]) + "~" + GetString(BOSS_ATTACKS[step]) + "~" +
+        std::to_string((tier.chargeIntervalMs + 500) / 1000) + "~" + std::to_string(tier.maxAlive));
+    uint32 const best = GetTierBest(tier);
+    uint32 const shown = tier.IsEndlessLevels() ? best + 1 : tier.levels;
+    for (uint32 band = 1; band <= shown; ++band)
+    {
+        BonkLevel const level = sBonkMgr.GetLevel(tier, band);
+        float const health = tier.healthMultiplier * level.health * (1.0f + bonuses.enemyHealth / 100.0f);
+        float const damage = tier.damageMultiplier * level.damage * (1.0f + bonuses.enemyDamage / 100.0f);
+        float const veterans = tier.veteranChance > 0.0f ? tier.veteranChance + level.veteranChance : 0.0f;
+        uint32 const affixes = tier.eliteAffixes + bonuses.eliteAffixes + level.extraAffixes;
+        float const legendary = level.legendaryChance;
+        float const rest = (100.0f - legendary) / 100.0f;
         float const epic = rest * level.epicChance;
         float const blue = rest * level.blueChance;
-    SendEpicLuck();
         float const green = rest * level.greenChance;
         SendAddon("level~" + std::to_string(tier.id) + "~" + std::to_string(band) + "~" + Percent((health - 1.0f) * 100.0f) + "~" +
             Percent((damage - 1.0f) * 100.0f) + "~" + Percent(veterans) + "~" + std::to_string(affixes) + "~" + Percent((level.reward - 1.0f) * 100.0f) + "~" +
