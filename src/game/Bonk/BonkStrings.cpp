@@ -869,6 +869,8 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_GEAR_MODE_NOT_DURING_RUN,                "You can't change gear mode during a run." },
         { BONK_STRING_GEAR_MODE_USAGE,                         "Type .bonk mode regular or .bonk mode uncapped." },
         { BONK_STRING_GEAR_TIER_IS_HIGHEST,                    "Tier {1} is the highest tier." },
+        { BONK_STRING_COOP_WAITING_FOR_LOADING,                "Waiting for {1} to finish loading. The run starts when they're in." },
+        { BONK_STRING_COOP_STARTS_WITHOUT_LOADING,             "{1} is still loading, so the run starts without them." },
         { BONK_STRING_RULE_GEAR_MODES,                         "Regular characters keep every item at Tier 10 at most and go on the leaderboard. Uncapped characters get Tier 9 + N from Mythic N with no limit, and their Scrap upgrades follow their highest level cleared; they stay off the leaderboard. A Regular character can become Uncapped at any time from the character window, never the other way." },
     };
     return texts;

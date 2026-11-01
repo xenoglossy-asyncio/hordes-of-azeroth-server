@@ -9,9 +9,13 @@
 #include "Unit.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "WorldSession.h"
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
+#include <fstream>
+#include <sstream>
 #include <map>
 #include <set>
 #include <vector>
@@ -43,6 +47,20 @@ namespace
     };
 
     std::vector<ReadyCheck> s_checks;
+
+    char const* const JOINING_FILE = "coop/joining.txt";
+    time_t const JOIN_LOAD_SECONDS = 180;
+    uint32 const LOAD_WAIT_MS = 120000;
+
+    struct LoadingStart
+    {
+        ObjectGuid host;
+        BonkTier const* tier = nullptr;
+        BonkRunChoice choice;
+        uint32 waitedMs = 0;
+    };
+
+    std::vector<LoadingStart> s_loadingStarts;
 
     uint32 const BLEEDOUT_MS = 30000;
     uint32 const REJOIN_WAIT_MS = 120000;
@@ -319,8 +337,106 @@ void BonkCoop::UpdateLeash(uint32 diff)
     }
 }
 
+namespace
+{
+    bool IsGuestInWorld(std::string const& username)
+    {
+        for (auto const& entry : sObjectAccessor.GetPlayers())
+            if (Player* player = entry.second)
+                if (player->IsInWorld() && player->GetSession() && player->GetSession()->GetUsername() == username)
+                    return true;
+        return false;
+    }
+
+    std::vector<std::string> LoadingMembers(Player* host)
+    {
+        std::vector<std::string> loading;
+        for (Player* member : OtherMembers(host))
+            if (!member->IsInWorld() || member->IsBeingTeleported())
+                loading.push_back(member->GetName());
+        std::ifstream in(JOINING_FILE, std::ios::binary);
+        std::string line;
+        time_t const now = time(nullptr);
+        while (std::getline(in, line))
+        {
+            std::istringstream fields(line);
+            std::string username, name;
+            long long accepted = 0;
+            if (!std::getline(fields, username, '\t') || !std::getline(fields, name, '\t') || !(fields >> accepted))
+                continue;
+            if (now - time_t(accepted) < JOIN_LOAD_SECONDS && !IsGuestInWorld(username) &&
+                std::find(loading.begin(), loading.end(), name) == loading.end())
+                loading.push_back(name);
+        }
+        return loading;
+    }
+
+    std::string JoinNames(std::vector<std::string> const& names)
+    {
+        std::string text;
+        for (size_t i = 0; i < names.size(); ++i)
+            text += (i ? ", " : "") + names[i];
+        return text;
+    }
+
+    bool WaitsForLoading(Player* host, BonkTier const& tier, BonkRunChoice const& choice)
+    {
+        if (choice.loadWaited)
+            return false;
+        std::vector<std::string> const loading = LoadingMembers(host);
+        if (loading.empty())
+            return false;
+        bool queued = false;
+        for (LoadingStart const& start : s_loadingStarts)
+            queued = queued || start.host == host->GetObjectGuid();
+        if (!queued)
+        {
+            LoadingStart start;
+            start.host = host->GetObjectGuid();
+            start.tier = &tier;
+            start.choice = choice;
+            s_loadingStarts.push_back(start);
+        }
+        host->GetBonkPlayer()->Notify(BONK_STRING_COOP_WAITING_FOR_LOADING, { JoinNames(loading) });
+        return true;
+    }
+
+    void UpdateLoadingStarts(uint32 diff)
+    {
+        for (size_t i = 0; i < s_loadingStarts.size();)
+        {
+            LoadingStart& start = s_loadingStarts[i];
+            start.waitedMs += diff;
+            Player* host = sObjectMgr.GetPlayer(start.host);
+            if (!host || !host->IsInWorld() || host->GetBonkPlayer()->GetRun())
+            {
+                s_loadingStarts.erase(s_loadingStarts.begin() + i);
+                continue;
+            }
+            std::vector<std::string> const loading = LoadingMembers(host);
+            if (!loading.empty() && start.waitedMs < LOAD_WAIT_MS)
+            {
+                ++i;
+                continue;
+            }
+            LoadingStart const ready = start;
+            s_loadingStarts.erase(s_loadingStarts.begin() + i);
+            if (!loading.empty())
+                host->GetBonkPlayer()->Notify(BONK_STRING_COOP_STARTS_WITHOUT_LOADING, { JoinNames(loading) });
+            BonkRunChoice choice = ready.choice;
+            choice.loadWaited = true;
+            std::string error;
+            if (!host->GetBonkPlayer()->StartRun(*ready.tier, error, choice) && !error.empty())
+                host->GetBonkPlayer()->Notify(error);
+        }
+    }
+}
+
 bool BonkCoop::RequestGroupStart(Player* host, BonkTier const& tier, BonkRunChoice const& choice)
 {
+    if (WaitsForLoading(host, tier, choice))
+        return true;
+
     std::vector<Player*> guests;
     for (Player* member : OtherMembers(host))
         if (!member->GetBonkPlayer()->GetRun())
@@ -363,6 +479,7 @@ void BonkCoop::AnswerReady(Player* player, bool ready)
 
 void BonkCoop::UpdateReadyChecks(uint32 diff)
 {
+    UpdateLoadingStarts(diff);
     for (size_t i = 0; i < s_checks.size();)
     {
         ReadyCheck& check = s_checks[i];

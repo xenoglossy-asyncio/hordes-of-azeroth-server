@@ -873,6 +873,8 @@ enum BonkString : uint32
     BONK_STRING_GEAR_MODE_USAGE                         = 930,
     BONK_STRING_GEAR_TIER_IS_HIGHEST                    = 931,
     BONK_STRING_RULE_GEAR_MODES                         = 932,
+    BONK_STRING_COOP_WAITING_FOR_LOADING                = 950,
+    BONK_STRING_COOP_STARTS_WITHOUT_LOADING             = 951,
 };
 
 struct BonkStringText
