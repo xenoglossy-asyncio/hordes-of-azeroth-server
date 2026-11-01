@@ -2105,6 +2105,7 @@ void BonkPlayer::Update(uint32 diff)
             m_run.reset();
             SendStats();
             SendDash();
+            SendGearMode();
         }
         else
             BonkStats::UpdateBossBar(m_player, diff);
@@ -2270,6 +2271,11 @@ void BonkPlayer::LoadGearMode()
 void BonkPlayer::SendGearMode() const
 {
     static char const* const MODE_KEYS[] = { "unset", "regular", "uncapped" };
+    if (m_gearMode == BONK_GEAR_MODE_UNSET && GetRun())
+    {
+        SendAddon("gearmode~later");
+        return;
+    }
     std::string line = std::string("gearmode~") + MODE_KEYS[m_gearMode];
     if (m_gearMode == BONK_GEAR_MODE_UNSET)
     {
@@ -2698,6 +2704,7 @@ bool BonkPlayer::StartRun(BonkTier const& tier, std::string& error, BonkRunChoic
         m_run.reset();
         return false;
     }
+    SendGearMode();
     return true;
 }
 
@@ -2721,6 +2728,7 @@ bool BonkPlayer::StartGuestRun(BonkTier const& tier, BonkRunChoice const& choice
         m_run.reset();
         return false;
     }
+    SendGearMode();
     return true;
 }
 

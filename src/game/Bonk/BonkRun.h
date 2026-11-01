@@ -1350,6 +1350,9 @@ class BonkRun
         void LogLoadout() const;
         void LogBuild() const;
         void LogRunEnd(bool wentHome, std::string const& build) const;
+        void LogLevelClear() const;
+        void LogFinale(float minutes, uint32 score) const;
+        std::string DescribeBoardEntry() const;
         void LogBossFight(Creature const* mob, BonkSpawnKind kind, BossArrival const& arrival);
         uint32 m_nextLogMinute = 1;
         uint32 m_minuteDamage = 0;

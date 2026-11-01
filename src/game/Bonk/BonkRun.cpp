@@ -2630,6 +2630,30 @@ void BonkRun::LogRunEnd(bool wentHome, std::string const& build) const
         m_valorEarned, m_valorOnChests, m_valorInShops, m_valorOnEnchants, m_chestsBought);
 }
 
+std::string BonkRun::DescribeBoardEntry() const
+{
+    char text[96];
+    snprintf(text, sizeof(text), "gear %s, coop %u, gm %u", m_player->GetBonkPlayer()->IsUncapped() ? "uncapped" : "regular",
+        BonkCoop::IsInCoopGroup(m_player) ? 1u : 0u, m_player->GetSession()->GetSecurity() > SEC_PLAYER ? 1u : 0u);
+    return text;
+}
+
+void BonkRun::LogLevelClear() const
+{
+    sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
+        "Bonk clear: %s clears level %u at run minute %.2f in %u ms (stage %u, %s, %s, class %u): %s",
+        m_player->GetName(), m_difficultyLevel, GetRunMinutes(), m_totalMs, m_stage, m_map.key.c_str(), m_tier.key.c_str(),
+        uint32(m_player->GetClass()), DescribeBoardEntry().c_str());
+}
+
+void BonkRun::LogFinale(float minutes, uint32 score) const
+{
+    sLog.Player(m_player->GetSession(), LOG_LEVELUP, LOG_LVL_BASIC,
+        "Bonk finale: %s holds out %.2f minutes on level %u at run minute %.2f, score %u (stage %u, %s, %s, class %u): %s",
+        m_player->GetName(), minutes, m_difficultyLevel, GetRunMinutes(), score, m_stage, m_map.key.c_str(), m_tier.key.c_str(),
+        uint32(m_player->GetClass()), DescribeBoardEntry().c_str());
+}
+
 void BonkRun::LogBossFight(Creature const* mob, BonkSpawnKind kind, BossArrival const& arrival)
 {
     uint32 const taken = m_damageTaken - arrival.damageTaken;
@@ -5266,6 +5290,7 @@ void BonkRun::RewardLevelClear()
 {
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     uint8 const trainingCap = bonk->GetTrainingRankCap();
+    LogLevelClear();
     if (!bonk->RecordLevelClear(m_difficultyLevel, m_totalMs))
         return;
 
@@ -5290,8 +5315,11 @@ void BonkRun::PayFinale()
     GiveGold(gold);
     bonk->AddScrap(scrap);
     bonk->Notify(BONK_STRING_FINALE_PAYS, { FormatTime(m_elapsedMs / IN_MILLISECONDS), FormatBonkMoney(gold, GetLocale()), std::to_string(scrap) });
-    if (IsMythic())
-        bonk->RecordFinale(uint32(GetBandLevel() * minutes));
+    if (!IsMythic())
+        return;
+    uint32 const score = uint32(GetBandLevel() * minutes);
+    LogFinale(minutes, score);
+    bonk->RecordFinale(score);
 }
 
 BonkMap const* BonkRun::GetNextMap() const

@@ -2,6 +2,7 @@
 #include "BonkCoop.h"
 #include "BonkCodex.h"
 #include "BonkEnchant.h"
+#include "BonkLeaderboard.h"
 #include "BonkLocale.h"
 #include "BonkMgr.h"
 #include "BonkMobAI.h"
@@ -794,6 +795,12 @@ bool ChatHandler::HandleBonkNoticeCommand(char* args)
     if (!which || std::string(which) != "gear")
         return false;
     m_session->GetPlayer()->GetBonkPlayer()->SeeGearNotice();
+    return true;
+}
+
+bool ChatHandler::HandleBonkBoardCommand(char* /*args*/)
+{
+    BonkLeaderboard::Send(m_session->GetPlayer());
     return true;
 }
 
