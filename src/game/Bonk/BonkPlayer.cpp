@@ -2271,7 +2271,7 @@ void BonkPlayer::LoadGearMode()
 void BonkPlayer::SendGearMode() const
 {
     static char const* const MODE_KEYS[] = { "unset", "regular", "uncapped" };
-    if (m_gearMode == BONK_GEAR_MODE_UNSET && GetRun())
+    if (m_gearMode == BONK_GEAR_MODE_UNSET && (GetRun() || BonkCoop::IsGuestAccount(m_player)))
     {
         SendAddon("gearmode~later");
         return;
@@ -2282,7 +2282,7 @@ void BonkPlayer::SendGearMode() const
         uint32 pieces = 0;
         uint32 refund = 0;
         std::unique_ptr<QueryResult> result = CharacterDatabase.PQuery("SELECT f.`tier` FROM `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` "
-            "WHERE i.`owner_guid` = %u AND f.`tier` > %u", m_player->GetGUIDLow(), BONK_GEAR_TIERS);
+            "WHERE i.`owner_guid` IN (%s) AND f.`tier` > %u", GetUnchosenCharacters().c_str(), BONK_GEAR_TIERS);
         if (result)
         {
             do
@@ -2297,11 +2297,25 @@ void BonkPlayer::SendGearMode() const
     SendAddon(line);
 }
 
-uint32 BonkPlayer::ClampGearAboveCap()
+std::string BonkPlayer::GetUnchosenCharacters() const
+{
+    std::string owners = std::to_string(m_player->GetGUIDLow());
+    std::unique_ptr<QueryResult> result = CharacterDatabase.PQuery("SELECT c.`guid` FROM `characters` c JOIN `bonk_character_mode` m ON m.`guid` = c.`guid` "
+        "WHERE c.`account` = %u AND m.`mode` = %u AND c.`guid` <> %u", m_player->GetSession()->GetAccountId(), uint32(BONK_GEAR_MODE_UNSET), m_player->GetGUIDLow());
+    if (result)
+    {
+        do
+            owners += "," + std::to_string(result->Fetch()[0].GetUInt32());
+        while (result->NextRow());
+    }
+    return owners;
+}
+
+uint32 BonkPlayer::ClampGearAboveCap(std::string const& owners)
 {
     uint32 refund = 0;
     std::unique_ptr<QueryResult> result = CharacterDatabase.PQuery("SELECT f.`item_guid` FROM `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` "
-        "WHERE i.`owner_guid` = %u AND f.`tier` > %u", m_player->GetGUIDLow(), BONK_GEAR_TIERS);
+        "WHERE i.`owner_guid` IN (%s) AND f.`tier` > %u", owners.c_str(), BONK_GEAR_TIERS);
     if (!result)
         return 0;
     do
@@ -2315,8 +2329,8 @@ uint32 BonkPlayer::ClampGearAboveCap()
         found.tier = BONK_GEAR_TIERS;
         sBonkFound.Set(itemGuid, found);
     } while (result->NextRow());
-    CharacterDatabase.PExecute("UPDATE `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` SET f.`tier` = %u WHERE i.`owner_guid` = %u AND f.`tier` > %u",
-        BONK_GEAR_TIERS, m_player->GetGUIDLow(), BONK_GEAR_TIERS);
+    CharacterDatabase.PExecute("UPDATE `bonk_item_found` f JOIN `item_instance` i ON i.`guid` = f.`item_guid` SET f.`tier` = %u WHERE i.`owner_guid` IN (%s) AND f.`tier` > %u",
+        BONK_GEAR_TIERS, owners.c_str(), BONK_GEAR_TIERS);
     return refund;
 }
 
@@ -2325,6 +2339,11 @@ bool BonkPlayer::ChooseGearMode(BonkGearMode mode, bool confirmed, std::string& 
     if (GetRun())
     {
         error = GetString(BONK_STRING_GEAR_MODE_NOT_DURING_RUN);
+        return false;
+    }
+    if (BonkCoop::IsGuestAccount(m_player))
+    {
+        error = GetString(BONK_STRING_GEAR_MODE_IN_OWN_GAME);
         return false;
     }
     if (mode == m_gearMode)
@@ -2344,10 +2363,13 @@ bool BonkPlayer::ChooseGearMode(BonkGearMode mode, bool confirmed, std::string& 
     }
 
     bool const veteran = m_gearMode == BONK_GEAR_MODE_UNSET;
-    uint32 const refund = mode == BONK_GEAR_MODE_REGULAR ? ClampGearAboveCap() : 0;
+    std::string const owners = veteran ? GetUnchosenCharacters() : std::to_string(m_player->GetGUIDLow());
+    uint32 const refund = mode == BONK_GEAR_MODE_REGULAR ? ClampGearAboveCap(owners) : 0;
     m_gearMode = mode;
     CharacterDatabase.PExecute("REPLACE INTO `bonk_character_mode` (`guid`, `mode`) VALUES (%u, %u)", m_player->GetGUIDLow(), uint32(mode));
-    Notify(mode == BONK_GEAR_MODE_UNCAPPED ? BONK_STRING_GEAR_MODE_NOW_UNCAPPED : BONK_STRING_GEAR_MODE_NOW_REGULAR);
+    if (veteran)
+        CharacterDatabase.PExecute("UPDATE `bonk_character_mode` SET `mode` = %u WHERE `guid` IN (%s)", uint32(mode), owners.c_str());
+    Notify(mode == BONK_GEAR_MODE_REGULAR ? BONK_STRING_GEAR_MODE_NOW_REGULAR : veteran ? BONK_STRING_GEAR_MODE_ALL_UNCAPPED : BONK_STRING_GEAR_MODE_NOW_UNCAPPED);
     if (refund)
     {
         AddScrap(refund);

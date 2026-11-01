@@ -397,7 +397,8 @@ class BonkPlayer
         bool m_gearNoticePending = false;
         BonkGearMode m_gearMode = BONK_GEAR_MODE_REGULAR;
         void LoadGearMode();
-        uint32 ClampGearAboveCap();
+        std::string GetUnchosenCharacters() const;
+        uint32 ClampGearAboveCap(std::string const& owners);
         LocaleConstant m_locale = LOCALE_enUS;
         mutable bool m_zoneArtSent = false;
         void SendZoneArt() const;

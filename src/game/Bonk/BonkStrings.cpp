@@ -859,7 +859,7 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_USE_HEARTHSTONE_TO_SEND_HOME,            "Use a Hearthstone to send a piece home." },
         { BONK_STRING_HEARTH_VAULT_READY,                      "The ring is full. Open the vault beside it to send 1 piece home." },
         { BONK_STRING_WAIT_FOR_HEARTH_RING,                    "Wait for the ring to fill first." },
-        { BONK_STRING_GEAR_MODE_NOW_REGULAR,                   "Your character is Regular. Gear stops at Tier 10." },
+        { BONK_STRING_GEAR_MODE_NOW_REGULAR,                   "Your characters are Regular. Gear stops at Tier 10." },
         { BONK_STRING_GEAR_MODE_REGULAR_REFUND,                "Pieces above Tier 10 are now Tier 10, and {1} Scrap came back." },
         { BONK_STRING_GEAR_MODE_NOW_UNCAPPED,                  "Your character is Uncapped. Mythic levels keep raising the tier of your gear." },
         { BONK_STRING_GEAR_MODE_ALREADY_REGULAR,               "Your character is already Regular." },
@@ -871,6 +871,8 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_GEAR_TIER_IS_HIGHEST,                    "Tier {1} is the highest tier." },
         { BONK_STRING_COOP_WAITING_FOR_LOADING,                "Waiting for {1} to finish loading. The run starts when they're in." },
         { BONK_STRING_COOP_STARTS_WITHOUT_LOADING,             "{1} is still loading, so the run starts without them." },
+        { BONK_STRING_GEAR_MODE_ALL_UNCAPPED,                  "Your characters are Uncapped. Mythic levels keep raising the tier of their gear." },
+        { BONK_STRING_GEAR_MODE_IN_OWN_GAME,                   "Choose your gear mode in your own game, not while joined to someone else's." },
         { BONK_STRING_RULE_GEAR_MODES,                         "Regular characters keep every item at Tier 10 at most and go on the leaderboard. Uncapped characters get Tier 9 + N from Mythic N with no limit, and their Scrap upgrades follow their highest level cleared; they stay off the leaderboard. A Regular character can become Uncapped at any time from the character window, never the other way." },
     };
     return texts;
