@@ -2420,7 +2420,7 @@ void DungeonMap::SetResetSchedule(bool on)
     // it is assumed that the reset time will rarely (if ever) change while the reset is scheduled
     ASSERT(GetPersistanceState()->GetInstanceId() == GetInstanceId());
     ASSERT(GetPersistanceState()->GetMapId() == GetId());
-    if (!HavePlayers() && !IsRaid())
+    if (!HavePlayers())
         sMapPersistentStateMgr.GetScheduler().ScheduleReset(on, GetPersistanceState()->GetResetTime(), DungeonResetEvent(RESET_EVENT_NORMAL_DUNGEON, GetId(), GetInstanceId()));
 }
 
