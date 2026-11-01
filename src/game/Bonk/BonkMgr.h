@@ -1091,6 +1091,7 @@ struct BonkUpgrade
     uint8 maxRank = 5;
     uint32 cost = 5000;
     float costGrowth = 1.4f;
+    uint32 requiredLevel = 0;
     BonkShopNode layout;
 
     uint32 GetCost(uint8 ownedRanks) const;
@@ -1137,6 +1138,7 @@ struct BonkTalent
     float costGrowth = 1.0f;
     BonkShopNode layout;
     std::vector<uint32> rankQuests;
+    std::vector<uint32> rankLevels;
 
     bool IsToggle() const
     {

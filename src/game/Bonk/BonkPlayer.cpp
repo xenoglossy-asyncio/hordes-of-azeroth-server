@@ -1432,6 +1432,12 @@ bool BonkPlayer::BuyUpgrade(uint32 upgradeId, std::string& message)
         return false;
     }
 
+    if (GetAccountBestLevel() < upgrade->requiredLevel)
+    {
+        message = GetString(BONK_STRING_CLEAR_LEVEL_TO_UNLOCK_RANK, { GetLevelName(upgrade->requiredLevel), std::to_string(rank + 1) });
+        return false;
+    }
+
     BonkUpgrade const* required = sBonkMgr.GetUpgrade(upgrade->layout.requiredId);
     if (required && GetUpgradeRank(required->id) < upgrade->layout.requiredRank)
     {
@@ -1494,6 +1500,12 @@ bool BonkPlayer::BuyTalent(uint32 talentId, std::string& message)
             message = GetString(BONK_STRING_YOU_MUST_COMPLETE_QUESTS_TO, { std::to_string(needed), std::to_string(rank + 1), name, std::to_string(done) });
             return false;
         }
+    }
+
+    if (rank < talent->rankLevels.size() && GetAccountBestLevel() < talent->rankLevels[rank])
+    {
+        message = GetString(BONK_STRING_CLEAR_LEVEL_TO_UNLOCK_RANK, { GetLevelName(talent->rankLevels[rank]), std::to_string(rank + 1) });
+        return false;
     }
 
     if (!SpendShards(talent->GetCost(rank), message))
@@ -1995,6 +2007,8 @@ void BonkPlayer::SendShop(bool open) const
             std::string description = Localize(BONK_FIELD_UPGRADE_DESCRIPTION, upgrade.id, upgrade.description);
             if (upgrade.layout.tree == BONK_TRAINING_TREE && rank < upgrade.maxRank && rank >= GetTrainingRankCap())
                 description += " " + GetTrainingCapHint();
+            else if (rank < upgrade.maxRank && GetAccountBestLevel() < upgrade.requiredLevel)
+                description += " " + GetString(BONK_STRING_CLEAR_LEVEL_TO_UNLOCK_RANK, { GetLevelName(upgrade.requiredLevel), std::to_string(rank + 1) });
             sendNode(upgrade.id, upgrade.layout, rank, upgrade.maxRank, upgrade.GetCost(rank), rank ? upgrade.GetCost(rank - 1) : 0, false, false,
                 Localize(BONK_FIELD_UPGRADE_NAME, upgrade.id, upgrade.name), description, upgrade.valuePerRank);
         }
@@ -2009,6 +2023,8 @@ void BonkPlayer::SendShop(bool open) const
             if (rank < talent.maxRank && rank < talent.rankQuests.size() &&
                 sBonkQuests.GetCompletedCount(GetProgressAccount()) < talent.rankQuests[rank])
                 description += " " + GetString(BONK_STRING_SHOP_NEXT_RANK_QUESTS, { std::to_string(talent.rankQuests[rank]) });
+            else if (rank < talent.maxRank && rank < talent.rankLevels.size() && GetAccountBestLevel() < talent.rankLevels[rank])
+                description += " " + GetString(BONK_STRING_CLEAR_LEVEL_TO_UNLOCK_RANK, { GetLevelName(talent.rankLevels[rank]), std::to_string(rank + 1) });
             sendNode(talent.id, talent.layout, rank, talent.maxRank, talent.GetCost(rank), rank ? talent.GetCost(rank - 1) : 0, talent.IsToggle(),
                 IsTalentEnabled(talent.id), Localize(BONK_FIELD_TALENT_NAME, talent.id, talent.name), description, talent.valuePerRank);
         }
@@ -2149,7 +2165,9 @@ uint8 BonkPlayer::GetTrainingRankCap() const
 {
     if (!IsTierCleared("heroic"))
         return BONK_TRAINING_OPEN_RANKS;
-    uint32 const mythicRanks = std::min<uint32>(BONK_TRAINING_MYTHIC_RANKS, GetAccountBestLevel() / BONK_TRAINING_LEVELS_PER_RANK);
+    uint32 const best = GetAccountBestLevel();
+    uint32 const mythicCleared = best > BONK_TALENT_HEROIC_LAST_LEVEL ? best - BONK_TALENT_HEROIC_LAST_LEVEL : 0;
+    uint32 const mythicRanks = std::min<uint32>(BONK_TRAINING_MYTHIC_RANKS, mythicCleared / BONK_TRAINING_LEVELS_PER_RANK);
     return uint8(BONK_TRAINING_OPEN_RANKS + BONK_TRAINING_HEROIC_RANKS + mythicRanks);
 }
 
@@ -2158,7 +2176,7 @@ std::string BonkPlayer::GetTrainingCapHint() const
     uint8 const cap = GetTrainingRankCap();
     if (!IsTierCleared("heroic"))
         return GetString(BONK_STRING_CLEAR_HEROIC_TO_UNLOCK_RANKS, { std::to_string(cap + 1), std::to_string(cap + BONK_TRAINING_HEROIC_RANKS) });
-    uint32 const level = (cap - BONK_TRAINING_OPEN_RANKS - BONK_TRAINING_HEROIC_RANKS + 1) * BONK_TRAINING_LEVELS_PER_RANK;
+    uint32 const level = BONK_TALENT_HEROIC_LAST_LEVEL + (cap - BONK_TRAINING_OPEN_RANKS - BONK_TRAINING_HEROIC_RANKS + 1) * BONK_TRAINING_LEVELS_PER_RANK;
     return GetString(BONK_STRING_CLEAR_LEVEL_TO_UNLOCK_RANK, { GetLevelName(level), std::to_string(cap + 1) });
 }
 

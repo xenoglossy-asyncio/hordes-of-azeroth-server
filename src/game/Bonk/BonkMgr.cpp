@@ -1609,7 +1609,7 @@ void BonkMgr::LoadUpgrades()
 
     std::unique_ptr<QueryResult> result(WorldDatabase.Query(
         "SELECT `id`, `name`, `description`, `effect`, `value_per_rank`, `max_rank`, `cost`, `cost_growth`, "
-        "`icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank` FROM `bonk_upgrade`"));
+        "`icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank`, `required_level` FROM `bonk_upgrade`"));
     if (!result)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded 0 Bonk upgrades.");
@@ -1635,6 +1635,7 @@ void BonkMgr::LoadUpgrades()
         upgrade.layout.column = fields[11].GetUInt8();
         upgrade.layout.requiredId = fields[12].GetUInt32();
         upgrade.layout.requiredRank = fields[13].GetUInt8();
+        upgrade.requiredLevel = fields[14].GetUInt32();
 
         if (effect >= BONK_UPGRADE_UTILITY_BASE && effect < BONK_UPGRADE_UTILITY_BASE + MAX_BONK_UPGRADE_UTILITY)
             upgrade.utility = int8(effect - BONK_UPGRADE_UTILITY_BASE);
@@ -1659,7 +1660,7 @@ void BonkMgr::LoadTalents()
 
     std::unique_ptr<QueryResult> result(WorldDatabase.Query(
         "SELECT `id`, `name`, `description`, `effect`, `value_per_rank`, `gold_bonus`, `max_rank`, `cost`, `cost_growth`, "
-        "`icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank`, `rank_quests` FROM `bonk_talent`"));
+        "`icon`, `tree`, `tree_row`, `tree_column`, `required_id`, `required_rank`, `rank_quests`, `rank_levels` FROM `bonk_talent`"));
     if (!result)
     {
         sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, ">> Loaded 0 Bonk talents.");
@@ -1686,13 +1687,17 @@ void BonkMgr::LoadTalents()
         talent.layout.column = fields[12].GetUInt8();
         talent.layout.requiredId = fields[13].GetUInt32();
         talent.layout.requiredRank = fields[14].GetUInt8();
-        std::string const gates = fields[15].GetCppString();
-        for (size_t start = 0; start < gates.size();)
+        auto readGates = [](std::string const& gates, std::vector<uint32>& out)
         {
-            size_t const comma = gates.find(',', start);
-            talent.rankQuests.push_back(uint32(std::strtoul(gates.substr(start, comma - start).c_str(), nullptr, 10)));
-            start = comma == std::string::npos ? gates.size() : comma + 1;
-        }
+            for (size_t start = 0; start < gates.size();)
+            {
+                size_t const comma = gates.find(',', start);
+                out.push_back(uint32(std::strtoul(gates.substr(start, comma - start).c_str(), nullptr, 10)));
+                start = comma == std::string::npos ? gates.size() : comma + 1;
+            }
+        };
+        readGates(fields[15].GetCppString(), talent.rankQuests);
+        readGates(fields[16].GetCppString(), talent.rankLevels);
 
         if (effect >= MAX_BONK_TALENT_EFFECT)
         {
