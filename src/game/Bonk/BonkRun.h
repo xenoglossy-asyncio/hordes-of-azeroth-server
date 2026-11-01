@@ -1208,7 +1208,7 @@ class BonkRun
         bool DropLegendary(Creature const* mob);
         uint32 GetDropTier() const;
         bool PlaceGearDrop(Creature const* mob, PendingGear const& piece, uint8 quality);
-        std::string DescribeFoundDrop(BonkFoundGear const& found) const;
+        std::string DescribeFoundDrop(BonkFoundGear const& found, uint8 quality) const;
         void AddEliteScrap();
         bool GetGearQuality(uint32 entry, uint8& quality) const;
         void MailKeptPiece(uint32 entry, std::string const& body, BonkFoundGear const* found);

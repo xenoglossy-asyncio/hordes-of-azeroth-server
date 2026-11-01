@@ -1383,7 +1383,7 @@ class BonkMgr
         static bool ReadLegendaryEntry(uint32 entry, uint32& kind, uint32& tier);
         static std::vector<uint32> GetLegendariesFor(uint32 classMask, uint32 tier);
         static uint32 GetGearTier(uint32 entry);
-        static uint32 GetGearAtTier(uint32 entry, uint32 tier);
+        static uint32 PickGearLook(uint8 quality, uint32 tier);
 
         std::map<uint32, BonkShopTree> const& GetShopTrees() const { return m_shopTrees; }
 

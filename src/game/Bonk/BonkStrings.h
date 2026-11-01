@@ -364,8 +364,6 @@ enum BonkString : uint32
     BONK_STRING_ONLY_FOUND_GEAR_UPGRADE                 = 376,
     BONK_STRING_CLEAR_LEVEL_TO_RAISE                    = 377,
     BONK_STRING_YOU_NEED_SCRAP_YOU_HAVE                 = 378,
-    BONK_STRING_ITEM_CANT_BE_UPGRADED                   = 379,
-    BONK_STRING_NO_ROOM_TO_UPGRADE                      = 380,
     BONK_STRING_ITEM_IS_NOW                             = 381,
     BONK_STRING_TRINKETS_MOVED_TO_BAGS                  = 383,
     BONK_STRING_TALK_TO_ENCHANTER                       = 387,
@@ -806,7 +804,7 @@ enum BonkString : uint32
     BONK_STRING_TRINKET_RUMSEY_RUM_TEXT                 = 858,
     BONK_STRING_TRINKET_GOBLIN_POCKET_GOLD              = 859,
     BONK_STRING_TRINKET_GOBLIN_POCKET_GOLD_TEXT         = 860,
-    BONK_STRING_FOUND_TIER                              = 861,
+    BONK_STRING_FOUND_ITEM_LEVEL                        = 861,
     BONK_STRING_FOUND_DROP_ONE_BONUS_STAT               = 862,
     BONK_STRING_FOUND_DROP_BONUS_STATS                  = 863,
     BONK_STRING_ENCHANT_GRADE_MINOR                     = 864,
@@ -865,6 +863,7 @@ enum BonkString : uint32
     BONK_STRING_COOP_WAITING_FOR_LOADING                = 950,
     BONK_STRING_COOP_STARTS_WITHOUT_LOADING             = 951,
     BONK_STRING_COOP_VAULT_NOT_YOURS                    = 952,
+    BONK_STRING_ITEM_FULLY_UPGRADED                     = 954,
 };
 
 struct BonkStringText

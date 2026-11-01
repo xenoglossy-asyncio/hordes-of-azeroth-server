@@ -336,7 +336,6 @@ class BonkPlayer
         PacketCounts TakePacketCounts();
 
     private:
-        Item* ReplaceGearEntry(Item* item, uint32 entry);
         Item* FindUpgradableGear(uint32 guidLow) const;
         void DiscardFoundReroll();
         void ClearAuras();

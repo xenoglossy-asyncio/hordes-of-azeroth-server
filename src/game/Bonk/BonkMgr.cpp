@@ -31,6 +31,41 @@ namespace
     float const BONK_PASSIVE_RANK_DECAY = 0.85f;
     float const BONK_PASSIVE_RANK_FLOOR = 0.1f;
 
+    struct RaidLooks
+    {
+        uint32 firstLook;
+        uint32 lastLook;
+        uint32 openLevel;
+    };
+
+    RaidLooks const BONK_EPIC_RAID_LOOKS[] =
+    {
+        { 1, 4, 10 },
+        { 5, 7, 19 },
+        { 8, 9, 29 },
+        { 10, 10, 39 },
+    };
+
+    float const BONK_NEWEST_RAID_CHANCE = 60.0f;
+
+    uint32 PickLookUpTo(uint32 firstLook, uint32 lastLook, uint32 tier)
+    {
+        uint32 const last = std::min(lastLook, std::max(firstLook, tier));
+        return urand(firstLook, last);
+    }
+
+    uint32 PickEpicLook(uint32 tier)
+    {
+        std::vector<RaidLooks const*> open;
+        for (RaidLooks const& raid : BONK_EPIC_RAID_LOOKS)
+            if (tier >= raid.openLevel || open.empty())
+                open.push_back(&raid);
+        RaidLooks const* raid = open.back();
+        if (open.size() > 1 && !roll_chance_f(BONK_NEWEST_RAID_CHANCE))
+            raid = open[urand(0, uint32(open.size() - 2))];
+        return PickLookUpTo(raid->firstLook, raid->lastLook, tier);
+    }
+
     struct GearColumn
     {
         char const* name;
@@ -2227,15 +2262,11 @@ uint32 BonkMgr::GetGearTier(uint32 entry)
     return 0;
 }
 
-uint32 BonkMgr::GetGearAtTier(uint32 entry, uint32 tier)
+uint32 BonkMgr::PickGearLook(uint8 quality, uint32 tier)
 {
-    uint32 kind, oldTier;
-    uint8 quality;
-    if (ReadGearEntry(entry, kind, quality, oldTier))
-        return GetGearEntry(kind, quality, tier);
-    if (ReadLegendaryEntry(entry, kind, oldTier))
-        return GetLegendaryEntry(kind, tier);
-    return 0;
+    if (quality == ITEM_QUALITY_EPIC)
+        return PickEpicLook(tier);
+    return PickLookUpTo(1, BONK_GEAR_TIERS, tier);
 }
 
 float BonkPassive::RankWeight(uint32 rank) const

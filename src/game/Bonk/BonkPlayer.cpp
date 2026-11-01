@@ -2245,7 +2245,7 @@ void BonkPlayer::AddScrap(uint32 points)
 
 void BonkPlayer::SendQuartermaster() const
 {
-    SendAddon("quartermaster~" + std::to_string(GetStockTier()) + "~" + std::to_string(m_scrap) + "~" + std::to_string(GetUpgradeCeiling()));
+    SendAddon("quartermaster~" + std::to_string(GetStockTier()) + "~" + std::to_string(m_scrap));
 }
 
 uint32 BonkPlayer::GetUpgradeCeiling() const
@@ -2285,13 +2285,13 @@ void BonkPlayer::SendFoundUpgrades() const
             for (auto const& offer : m_rerollOffers)
                 offers.push_back({ offer.first, offer.second });
         SendAddon("qmup~" + std::to_string(item->GetGUIDLow()) + "~" + std::to_string(item->GetEntry()) + "~" + std::to_string(tier) + "~" +
-            std::to_string(cost) + "~" + (tier < ceiling ? "1" : "0") + "~" + (item->IsEquipped() ? "1" : "0") + "~" +
+            std::to_string(cost) + "~" + (tier < ceiling && found.upgrades < BONK_FOUND_MAX_UPGRADES ? "1" : "0") + "~" + (item->IsEquipped() ? "1" : "0") + "~" +
             BonkFound::DescribeLines(found, tier) + "~" + BonkFound::DescribeExtra(item, tier) + "~" +
             std::to_string(BonkFound::GetRerollCost(found.rerolls)) + "~" + std::to_string(found.rerollLine) + "~" +
             (offers.empty() ? "~" : std::to_string(m_rerollLine) + "~" + BonkFound::DescribeOffers(offers, tier)) + "~" +
-            BonkFound::DescribeRanges(tier));
+            BonkFound::DescribeRanges(tier) + "~" + std::to_string(BONK_FOUND_MAX_UPGRADES - std::min(found.upgrades, BONK_FOUND_MAX_UPGRADES)));
     }
-    SendAddon("qmupend~" + std::to_string(m_scrap) + "~" + std::to_string(ceiling));
+    SendAddon("qmupend~" + std::to_string(m_scrap));
 }
 
 Item* BonkPlayer::FindUpgradableGear(uint32 guidLow) const
@@ -2370,33 +2370,6 @@ bool BonkPlayer::PickFoundReroll(uint32 guidLow, uint8 choice, std::string& erro
     return true;
 }
 
-Item* BonkPlayer::ReplaceGearEntry(Item* item, uint32 entry)
-{
-    uint8 const bag = item->GetBagSlot();
-    uint8 const slot = item->GetSlot();
-    bool const equipped = item->IsEquipped();
-    uint32 const oldEntry = item->GetEntry();
-    auto create = [&](uint32 newEntry) -> Item*
-    {
-        if (equipped)
-        {
-            uint16 dest;
-            if (m_player->CanEquipNewItem(slot, dest, newEntry, false) != EQUIP_ERR_OK)
-                return nullptr;
-            return m_player->EquipNewItem(dest, newEntry, true);
-        }
-        ItemPosCountVec dest;
-        if (m_player->CanStoreNewItem(bag, slot, dest, newEntry, 1) != EQUIP_ERR_OK)
-            return nullptr;
-        return m_player->StoreNewItem(dest, newEntry, true);
-    };
-    m_player->DestroyItem(bag, slot, true);
-    if (Item* fresh = create(entry))
-        return fresh;
-    create(oldEntry);
-    return nullptr;
-}
-
 bool BonkPlayer::UpgradeFoundGear(uint32 guidLow, std::string& error)
 {
     if (!m_player->FindNearestCreature(BONK_GEAR_VENDOR, BONK_GEAR_VENDOR_RANGE))
@@ -2413,9 +2386,15 @@ bool BonkPlayer::UpgradeFoundGear(uint32 guidLow, std::string& error)
     }
     uint32 const tier = BonkFound::GetItemTier(item);
     uint32 const cost = BonkFound::GetUpgradeCost(tier);
+    uint8 const quality = uint8(item->GetProto()->Quality);
+    if (found.upgrades >= BONK_FOUND_MAX_UPGRADES)
+    {
+        error = GetString(BONK_STRING_ITEM_FULLY_UPGRADED, { item->GetProto()->Name1, std::to_string(BONK_FOUND_MAX_UPGRADES) });
+        return false;
+    }
     if (tier >= GetUpgradeCeiling())
     {
-        error = GetString(BONK_STRING_CLEAR_LEVEL_TO_RAISE, { GetLevelName(tier + 1), BonkFound::DescribeTier(tier + 1, m_locale) });
+        error = GetString(BONK_STRING_CLEAR_LEVEL_TO_RAISE, { GetLevelName(tier + 1), BonkFound::DescribeItemLevel(tier + 1, quality, m_locale) });
         return false;
     }
     if (m_scrap < cost)
@@ -2428,29 +2407,13 @@ bool BonkPlayer::UpgradeFoundGear(uint32 guidLow, std::string& error)
     if (guidLow == m_rerollItem)
         DiscardFoundReroll();
     found.tier = tier + 1;
-    if (found.tier <= BONK_GEAR_TIERS)
-    {
-        uint32 const entry = BonkMgr::GetGearAtTier(item->GetEntry(), found.tier);
-        if (!entry)
-        {
-            error = GetString(BONK_STRING_ITEM_CANT_BE_UPGRADED, { name });
-            return false;
-        }
-        item = ReplaceGearEntry(item, entry);
-        if (!item)
-        {
-            error = GetString(BONK_STRING_NO_ROOM_TO_UPGRADE, { name });
-            return false;
-        }
-        m_player->SendNewItem(item, 1, true, false);
-        SendAddon("qmupselect~" + std::to_string(guidLow) + "~" + std::to_string(item->GetGUIDLow()));
-    }
+    ++found.upgrades;
     BonkFound::Remember(item, found);
 
     m_scrap -= cost;
     CharacterDatabase.PExecute("INSERT INTO `bonk_account` (`account`, `scrap`) VALUES (%u, %u) ON DUPLICATE KEY UPDATE `scrap` = VALUES(`scrap`)",
         GetProgressAccount(), m_scrap);
-    Notify(BONK_STRING_ITEM_IS_NOW, { name, BonkFound::DescribeTier(found.tier, m_locale) });
+    Notify(BONK_STRING_ITEM_IS_NOW, { name, BonkFound::DescribeItemLevel(found.tier, quality, m_locale) });
     SendQuartermaster();
     SendFoundUpgrades();
     SendFoundItems();

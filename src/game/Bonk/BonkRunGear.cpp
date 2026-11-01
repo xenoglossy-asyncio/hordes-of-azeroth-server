@@ -206,9 +206,10 @@ bool BonkRun::MakeTierPiece(uint8 quality, PendingGear& piece) const
 {
     piece.gear = BonkFound::Roll(GetDropTier(), quality, m_levelRow.rollFloor);
     std::vector<uint32> choices, weapons, trinkets;
+    uint32 const look = BonkMgr::PickGearLook(quality, piece.gear.tier);
     for (uint32 kind : BonkMgr::GetGearKindsFor(m_player->GetClassMask()))
     {
-        uint32 const entry = BonkMgr::GetGearEntry(kind, quality, std::min(piece.gear.tier, BONK_GEAR_TIERS));
+        uint32 const entry = BonkMgr::GetGearEntry(kind, quality, look);
         if (!entry)
             continue;
         if (kind >= BONK_GEAR_FIRST_TRINKET)
@@ -236,13 +237,13 @@ bool BonkRun::PlaceTierPiece(Creature const* mob, uint8 quality)
     ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
     if (!proto || !PlaceGearDrop(mob, piece, proto->Quality))
         return false;
-    m_player->GetBonkPlayer()->Notify(BONK_STRING_ITEM_DROPPED_WITH_DETAILS, { m_player->GetBonkPlayer()->GetItemName(proto), DescribeFoundDrop(piece.gear) });
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_ITEM_DROPPED_WITH_DETAILS, { m_player->GetBonkPlayer()->GetItemName(proto), DescribeFoundDrop(piece.gear, proto->Quality) });
     return true;
 }
 
-std::string BonkRun::DescribeFoundDrop(BonkFoundGear const& found) const
+std::string BonkRun::DescribeFoundDrop(BonkFoundGear const& found, uint8 quality) const
 {
-    std::string const tier = BonkFound::DescribeTier(found.tier, GetLocale());
+    std::string const tier = BonkFound::DescribeItemLevel(found.tier, quality, GetLocale());
     if (found.lines.empty())
         return tier;
     if (found.lines.size() == 1)
@@ -259,7 +260,7 @@ void BonkRun::AddEliteScrap()
 bool BonkRun::MakeLegendary(PendingGear& piece) const
 {
     piece.gear = BonkFound::Roll(GetDropTier(), ITEM_QUALITY_LEGENDARY, m_levelRow.rollFloor);
-    std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), std::min(piece.gear.tier, BONK_GEAR_TIERS));
+    std::vector<uint32> const legendaries = BonkMgr::GetLegendariesFor(m_player->GetClassMask(), BonkMgr::PickGearLook(ITEM_QUALITY_LEGENDARY, piece.gear.tier));
     if (legendaries.empty())
         return false;
     piece.entry = legendaries[urand(0, uint32(legendaries.size() - 1))];
@@ -281,7 +282,7 @@ bool BonkRun::DropLegendary(Creature const* mob)
     ItemPrototype const* proto = sObjectMgr.GetItemPrototype(piece.entry);
     if (!proto || !PlaceGearDrop(mob, piece, ITEM_QUALITY_LEGENDARY))
         return true;
-    m_player->GetBonkPlayer()->Notify(BONK_STRING_ITEM_DROPPED_WITH_DETAILS, { m_player->GetBonkPlayer()->GetItemName(proto), DescribeFoundDrop(piece.gear) });
+    m_player->GetBonkPlayer()->Notify(BONK_STRING_ITEM_DROPPED_WITH_DETAILS, { m_player->GetBonkPlayer()->GetItemName(proto), DescribeFoundDrop(piece.gear, ITEM_QUALITY_LEGENDARY) });
     return true;
 }
 
