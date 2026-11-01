@@ -221,9 +221,7 @@ uint32 BonkFound::GetItemTier(Item const* item)
     if (!item)
         return 0;
     BonkFoundGear found;
-    uint32 const tier = sBonkFound.Get(item->GetGUIDLow(), found) && found.tier ? found.tier : BonkMgr::GetGearTier(item->GetEntry());
-    Player const* owner = item->GetOwner();
-    return owner ? std::min(tier, owner->GetBonkPlayer()->GetTierCap()) : tier;
+    return sBonkFound.Get(item->GetGUIDLow(), found) && found.tier ? found.tier : BonkMgr::GetGearTier(item->GetEntry());
 }
 
 uint32 BonkFound::GetUpgradeCost(uint32 tier)

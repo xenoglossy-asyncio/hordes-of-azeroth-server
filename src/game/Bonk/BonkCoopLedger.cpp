@@ -52,7 +52,6 @@ namespace
         { "bonk_account_starter", false, 3 },
         { "bonk_account_disabled", false, 3 },
         { "bonk_character_title", true, 2 },
-        { "bonk_character_mode", true, 2 },
     };
 
     struct GuestTotals
@@ -93,8 +92,6 @@ namespace
     Allowance const KILLS_ALLOWANCE = { 2000, 10000 };
     Allowance const RUNS_ALLOWANCE = { 3, 1 };
     Allowance const MAIL_ALLOWANCE = { 10, 2 };
-    uint32 const REGULAR_TIER_CAP = 10;
-    uint32 const UNCAPPED_TIER_CAP = 40;
 
     struct GameBudget
     {
@@ -129,9 +126,8 @@ namespace
 
     uint32 TierCap(HomeTarget const& home)
     {
-        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT `mode` FROM `bonk_character_mode` WHERE `guid` = %u", home.characterGuid));
-        uint32 const mode = result ? result->Fetch()[0].GetUInt32() : 0;
-        return mode == 2 ? UNCAPPED_TIER_CAP : REGULAR_TIER_CAP;
+        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT MAX(`best_level`) FROM `bonk_account_level` WHERE `account` = %u", home.accountId));
+        return std::max(1u, result ? result->Fetch()[0].GetUInt32() : 0u);
     }
 
     std::mutex s_guestLock;

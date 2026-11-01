@@ -2633,8 +2633,7 @@ void BonkRun::LogRunEnd(bool wentHome, std::string const& build) const
 std::string BonkRun::DescribeBoardEntry() const
 {
     char text[96];
-    snprintf(text, sizeof(text), "gear %s, coop %u, gm %u", m_player->GetBonkPlayer()->IsUncapped() ? "uncapped" : "regular",
-        BonkCoop::IsInCoopGroup(m_player) ? 1u : 0u, m_player->GetSession()->GetSecurity() > SEC_PLAYER ? 1u : 0u);
+    snprintf(text, sizeof(text), "coop %u, gm %u", BonkCoop::IsInCoopGroup(m_player) ? 1u : 0u, m_player->GetSession()->GetSecurity() > SEC_PLAYER ? 1u : 0u);
     return text;
 }
 

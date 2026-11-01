@@ -202,7 +202,7 @@ class BonkRun
         uint32 GetEliteAffixes() const { return m_tier.eliteAffixes + m_bonuses.eliteAffixes + m_levelRow.extraAffixes; }
         ObjectGuid const& GetBossGuid() const { return m_bossGuid; }
         static float StageHealthScale(BonkTier const& tier, BonkLevel const& level, uint32 stage);
-        static uint32 GetLevelDropTier(BonkTier const& tier, uint32 bandLevel, uint32 tierCap);
+        static uint32 GetLevelDropTier(BonkTier const& tier, uint32 bandLevel);
         static float StageDamageScale(BonkTier const& tier, BonkLevel const& level, uint32 stage);
         uint32 GetEvolveRank() const;
         void BringBossEarlier();

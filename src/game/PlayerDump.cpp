@@ -65,7 +65,6 @@ static DumpTable dumpTables[] =
     { "bonk_item_found",                  DTT_ITEM_FOUND },
     { "bonk_character_shards",            DTT_CHAR_TABLE },
     { "bonk_character_stats",             DTT_CHAR_TABLE },
-    { "bonk_character_mode",              DTT_CHAR_TABLE },
     { "bonk_character_talent",            DTT_CHAR_TABLE },
     { "bonk_character_title",             DTT_CHAR_TABLE },
     { "bonk_character_upgrade",           DTT_CHAR_TABLE },

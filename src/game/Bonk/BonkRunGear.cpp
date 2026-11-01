@@ -161,12 +161,12 @@ namespace
 
 uint32 BonkRun::GetDropTier() const
 {
-    return std::min(m_difficultyLevel, m_player->GetBonkPlayer()->GetTierCap());
+    return m_difficultyLevel;
 }
 
-uint32 BonkRun::GetLevelDropTier(BonkTier const& tier, uint32 bandLevel, uint32 tierCap)
+uint32 BonkRun::GetLevelDropTier(BonkTier const& tier, uint32 bandLevel)
 {
-    return std::min(tier.firstLevel + std::max(1u, bandLevel) - 1, tierCap);
+    return tier.firstLevel + std::max(1u, bandLevel) - 1;
 }
 
 uint8 BonkRun::RollGearQuality() const
