@@ -1,7 +1,6 @@
 #include "BonkCoop.h"
 
 #include "AccountMgr.h"
-#include "BonkPlayer.h"
 #include "Database/DatabaseEnv.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
@@ -10,6 +9,8 @@
 #include "PlayerDump.h"
 
 #include <cstdio>
+#include <cstring>
+#include <set>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -248,18 +249,72 @@ namespace
         CharacterDatabase.DirectPExecute("DELETE FROM `character_inventory` WHERE `item_guid` IN (%s)", itemList.c_str());
     }
 
-    void DiscardAccountBank(uint32 accountId)
+    std::vector<std::string> DumpValues(std::string const& line)
     {
-        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT c.`guid` FROM `characters` c WHERE c.`account` = %u "
-            "AND NOT EXISTS (SELECT 1 FROM `bonk_ironman` m WHERE m.`guid` = c.`guid`)", accountId));
-        if (result)
+        std::vector<std::string> values;
+        size_t start = line.find("VALUES (");
+        if (start == std::string::npos)
+            return values;
+        start += 8;
+        while (start < line.size() && line[start] == '\'')
         {
-            do
-                DiscardHeldBank(result->Fetch()[0].GetUInt32());
-            while (result->NextRow());
+            size_t const end = line.find('\'', start + 1);
+            if (end == std::string::npos)
+                break;
+            values.push_back(line.substr(start + 1, end - start - 1));
+            start = end + 3;
         }
-        CharacterDatabase.DirectPExecute("DELETE i FROM `item_instance` i JOIN `bonk_account_bank` b ON b.`item_guid` = i.`guid` WHERE b.`account` = %u", accountId);
-        CharacterDatabase.DirectPExecute("DELETE FROM `bonk_account_bank` WHERE `account` = %u", accountId);
+        return values;
+    }
+
+    bool IsDumpOf(std::string const& line, char const* table)
+    {
+        return line.compare(0, 13 + strlen(table) + 1, std::string("INSERT INTO `") + table + "`") == 0;
+    }
+
+    std::string StripBank(std::string const& dump)
+    {
+        std::set<std::string> bankBags;
+        std::set<std::string> bankItems;
+        std::istringstream first(dump);
+        std::string line;
+        std::vector<std::vector<std::string>> inventory;
+        while (std::getline(first, line))
+        {
+            if (!IsDumpOf(line, "character_inventory"))
+                continue;
+            std::vector<std::string> const values = DumpValues(line);
+            if (values.size() < 4 || values[1] != "0")
+                continue;
+            uint32 const slot = uint32(std::strtoul(values[2].c_str(), nullptr, 10));
+            if (slot >= BANK_SLOT_ITEM_START && slot < BANK_SLOT_BAG_END)
+                bankItems.insert(values[3]);
+            if (slot >= BANK_SLOT_BAG_START && slot < BANK_SLOT_BAG_END)
+                bankBags.insert(values[3]);
+        }
+        std::istringstream second(dump);
+        while (std::getline(second, line))
+        {
+            if (!IsDumpOf(line, "character_inventory"))
+                continue;
+            std::vector<std::string> const values = DumpValues(line);
+            if (values.size() >= 4 && bankBags.count(values[1]))
+                bankItems.insert(values[3]);
+        }
+        std::ostringstream kept;
+        std::istringstream third(dump);
+        while (std::getline(third, line))
+        {
+            std::vector<std::string> const values = DumpValues(line);
+            bool drop = false;
+            if (IsDumpOf(line, "character_inventory"))
+                drop = values.size() >= 4 && bankItems.count(values[3]);
+            else if (IsDumpOf(line, "item_instance") || IsDumpOf(line, "bonk_item_found"))
+                drop = !values.empty() && bankItems.count(values[0]);
+            if (!drop)
+                kept << line << '\n';
+        }
+        return kept.str();
     }
 
     bool CharacterRowExists(uint32 guid)
@@ -292,12 +347,12 @@ namespace
             s_pending.guid = low;
             return "";
         }
-        BonkPlayer::GatherAccountBank(AccountOfCharacter(low), low);
         return WriteExport(low);
     }
 
     std::string Load(uint32 accountId, std::string const& name, uint32 guid)
     {
+        WriteFile(DUMP_FILE, StripBank(ReadFile(DUMP_FILE)));
         PlayerDumpReader reader;
         DumpReturn const loaded = reader.LoadDump(DUMP_FILE, accountId, name, guid);
         if (loaded != DUMP_SUCCESS)
@@ -326,7 +381,7 @@ namespace
         {
             if (AccountOfCharacter(replaceGuid) != accountId)
                 return "error That character belongs to another account.";
-            DiscardAccountBank(accountId);
+            DiscardHeldBank(replaceGuid);
             Player::DeleteFromDB(old, accountId, true, true);
         }
         s_pending = Pending();
