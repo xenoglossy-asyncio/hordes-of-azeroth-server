@@ -1150,6 +1150,8 @@ bool BonkRun::Begin(std::string& error)
     BringBossEarlier();
     if (!m_sandbox)
         LogLoadout();
+    if (!m_sandbox && !IsCoopGuest())
+        BonkCoop::NoteHostRun(m_player, DescribeForLobby());
 
     if (m_player->IsGameMaster())
         m_player->SetGameMaster(false);
@@ -1162,6 +1164,17 @@ bool BonkRun::Begin(std::string& error)
     m_player->RemoveAurasDueToSpell(BONK_SPELL_DODGE);
 
     return m_sandbox ? TeleportToSandbox(error) : TeleportToStage(m_map, error);
+}
+
+std::string BonkRun::DescribeForLobby() const
+{
+    std::string text = m_player->GetBonkPlayer()->GetLevelName(m_difficultyLevel);
+    if (IsDungeon())
+        if (BonkMap const* dungeon = sBonkMgr.GetMap(m_dungeonId))
+            text += " \xC2\xB7 " + dungeon->name;
+    if (IsInvasion())
+        text += " \xC2\xB7 Invasion";
+    return text;
 }
 
 BonkMap const* BonkRun::ChooseNextMap()

@@ -103,6 +103,37 @@ namespace
 
     std::map<ObjectGuid, GroupSettings> s_settings;
 
+    char const* const HOST_SETTINGS_FILE = "coop/host-settings.txt";
+
+    std::map<std::string, std::string> ReadHostSettingsFile()
+    {
+        std::map<std::string, std::string> values;
+        std::ifstream in(HOST_SETTINGS_FILE, std::ios::binary);
+        std::string line;
+        while (std::getline(in, line))
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            size_t const tab = line.find('\t');
+            if (tab != std::string::npos)
+                values[line.substr(0, tab)] = line.substr(tab + 1);
+        }
+        return values;
+    }
+
+    void WriteHostSetting(std::string const& key, std::string const& value)
+    {
+        std::ifstream probe(HOST_SETTINGS_FILE, std::ios::binary);
+        if (!probe.good())
+            return;
+        probe.close();
+        std::map<std::string, std::string> values = ReadHostSettingsFile();
+        values[key] = value;
+        std::ofstream out(HOST_SETTINGS_FILE, std::ios::binary | std::ios::trunc);
+        for (auto const& pair : values)
+            out << pair.first << '\t' << pair.second << '\n';
+    }
+
     ObjectGuid SettingsHostOf(Player const* player)
     {
         Group const* group = player->GetGroup();
@@ -111,8 +142,20 @@ namespace
 
     GroupSettings SettingsOf(Player const* player)
     {
-        auto found = s_settings.find(SettingsHostOf(player));
-        return found != s_settings.end() ? found->second : GroupSettings();
+        ObjectGuid const host = SettingsHostOf(player);
+        auto found = s_settings.find(host);
+        if (found != s_settings.end())
+            return found->second;
+        std::map<std::string, std::string> const file = ReadHostSettingsFile();
+        if (file.empty())
+            return GroupSettings();
+        GroupSettings settings;
+        auto pause = file.find("pause");
+        auto xp = file.find("xp");
+        settings.sharedPause = pause == file.end() || pause->second != "0";
+        settings.sharedXp = xp == file.end() || xp->second != "0";
+        s_settings[host] = settings;
+        return settings;
     }
     std::map<ObjectGuid, std::set<ObjectGuid>> s_hiddenObjects;
 
@@ -561,8 +604,16 @@ void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage
     }
 }
 
+void BonkCoop::NoteHostRun(Player const* host, std::string const& playing)
+{
+    if (IsGuestAccount(host))
+        return;
+    WriteHostSetting("playing", playing);
+}
+
 void BonkCoop::OnHostFinished(Player* host)
 {
+    NoteHostRun(host, "");
     auto group = s_groups.find(host->GetObjectGuid());
     bool const wiped = group != s_groups.end() && group->second.wiped;
     for (Player* member : GroupMembers(host))
@@ -646,14 +697,18 @@ bool BonkCoop::SharesXp(Player const* player)
 
 void BonkCoop::SetSharedPause(Player* host, bool shared)
 {
+    s_settings[host->GetObjectGuid()] = SettingsOf(host);
     s_settings[host->GetObjectGuid()].sharedPause = shared;
+    WriteHostSetting("pause", shared ? "1" : "0");
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s sets pausing to %s", host->GetName(), shared ? "shared" : "none");
     TellSettingChanged(host, shared ? BONK_STRING_COOP_PAUSE_TURNED_ON : BONK_STRING_COOP_PAUSE_TURNED_OFF);
 }
 
 void BonkCoop::SetSharedXp(Player* host, bool shared)
 {
+    s_settings[host->GetObjectGuid()] = SettingsOf(host);
     s_settings[host->GetObjectGuid()].sharedXp = shared;
+    WriteHostSetting("xp", shared ? "1" : "0");
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Co-op: %s sets XP to %s", host->GetName(), shared ? "shared" : "individual");
     TellSettingChanged(host, shared ? BONK_STRING_COOP_XP_TURNED_SHARED : BONK_STRING_COOP_XP_TURNED_OWN);
 }

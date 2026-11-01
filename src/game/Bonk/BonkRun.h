@@ -129,6 +129,7 @@ class BonkRun
         bool IsDungeon() const { return m_dungeonId != 0; }
         bool IsChallenge() const { return m_dungeonId != 0 || m_invaderId != 0; }
         bool IsInvasion() const { return m_invaderId != 0; }
+        std::string DescribeForLobby() const;
 
         bool Begin(std::string& error);
         void FollowHost(ObjectGuid host) { m_coopHost = host; }

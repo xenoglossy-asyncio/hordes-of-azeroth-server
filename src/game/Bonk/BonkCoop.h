@@ -44,6 +44,7 @@ namespace BonkCoop
     void UpdateLeash(uint32 diff);
     void OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage);
     void OnHostFinished(Player* host);
+    void NoteHostRun(Player const* host, std::string const& playing);
     void BeginGroupRun(Player* host, uint32 players);
     bool Down(Player* player);
     bool IsDowned(Player const* player);
