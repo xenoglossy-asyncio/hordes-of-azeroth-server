@@ -333,9 +333,9 @@ class BonkRun
         void OnTalentDamage(Unit* victim, SpellEntry const* spell);
         bool ApplyKeyword(Creature* mob, BonkKeyword keyword, uint32 stacks, uint32 durationMs = 0, float damageScale = 1.0f, uint32 sourceSpellId = 0);
         void CreditDamageOverTime(Unit const* victim, uint32 spellId, uint32 damage, std::vector<std::pair<uint32, uint32>>& credits) const;
+        uint32 GetMeterPartSpell() const { return m_meterPartSpell; }
         uint32 GetKeywordStacks(Unit const* victim, BonkKeyword keyword) const;
         bool LimitStun(Creature* mob, int32& duration);
-        uint32 GetMeterPartSpell() const { return m_meterPartSpell; }
         bool LimitRoot(Creature* mob, int32& duration);
         void AddTelegraph(BonkTelegraphShape shape, float x, float y, float z, float orientation, float size, uint32 durationMs,
             std::function<void()> onFire = nullptr, bool lingers = false);
@@ -793,9 +793,9 @@ class BonkRun
         bool IsSkeleton(ObjectGuid const& guid) const;
         bool IsWarlockMinion(ObjectGuid const& guid) const;
         std::string DescribeGlyphStats() const;
+        void AddGlyphMeterSpells(std::set<uint32>& shown) const;
         std::string DescribeGlyphTotals(BonkGlyph const& glyph) const;
         struct RisenSkeleton
-        void AddGlyphMeterSpells(std::set<uint32>& shown) const;
         {
             ObjectGuid guid;
             uint32 untilMs = 0;
@@ -1106,9 +1106,9 @@ class BonkRun
         void UseAscension(OwnedWeapon const& owned);
         void ShowAllEvolutions(std::vector<Offer>& cards) const;
         std::string DescribeWeaponStats() const;
+        std::string DescribeOtherDamage() const;
         std::pair<uint64, uint32> GetOwnedSpellTotals(OwnedWeapon const& owned) const;
         std::string DescribeBuildTotals() const;
-        std::string DescribeOtherDamage() const;
         void ApplyStep(OwnedWeapon& owned, Offer const& offer);
         void EvolveWeapon(OwnedWeapon& owned, BonkWeapon const& evolved);
         bool RefreshKeptOffer(Offer& offer) const;
@@ -2116,9 +2116,9 @@ class BonkRun
         float GetPoisonDamageScale() const;
 
         bool m_keywordlessHits = false;
+        uint32 m_meterPartSpell = 0;
         void ClearHunterEvolutions();
         bool UsesShotSources() const;
-        uint32 m_meterPartSpell = 0;
         Creature* SummonShotSource();
         void WarmShotSources();
         Creature* TakeShotSource(float x, float y, float z);
