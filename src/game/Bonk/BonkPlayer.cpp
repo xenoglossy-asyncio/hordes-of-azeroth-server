@@ -2871,7 +2871,7 @@ void BonkPlayer::SendStats() const
     SendStatTotals(bonuses.passives, false);
 }
 
-void BonkPlayer::SendStatTotals(float const* totals, bool inRun) const
+void BonkPlayer::SendStatTotals(float const* totals, bool inRun, float const* afterCaps) const
 {
     std::string line = "stats~" + std::string(inRun ? "1" : "0") + "~";
     for (uint8 effect = 0; effect < MAX_BONK_PASSIVE_EFFECT; ++effect)
@@ -2881,7 +2881,18 @@ void BonkPlayer::SendStatTotals(float const* totals, bool inRun) const
             value += BONK_BASE_CRIT;
         line += (effect ? "," : "") + FormatStat(value);
     }
+    line += "~";
+    if (afterCaps)
+        for (uint8 effect = 0; effect < MAX_BONK_PASSIVE_EFFECT; ++effect)
+            line += (effect ? "," : "") + FormatStat(afterCaps[effect]);
     SendAddon(line);
+}
+
+void BonkPlayer::WatchStats(bool watching)
+{
+    m_watchingStats = watching;
+    if (watching)
+        SendStats();
 }
 
 void BonkPlayer::SendTierList() const

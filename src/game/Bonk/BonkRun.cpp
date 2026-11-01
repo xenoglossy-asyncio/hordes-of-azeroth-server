@@ -52,6 +52,7 @@ namespace
     uint32 const BONK_SUMMON_LIMIT         = 1000;
     uint32 const BONK_OBJECT_LIFETIME_SEC  = 3600;
     uint32 const BONK_MARKER_LOOK_CHECK_MS = 250;
+    uint32 const BONK_STATS_REFRESH_MS     = 1000;
     float const BONK_DROP_SIGHT            = VISIBILITY_DISTANCE_GIGANTIC;
 
     float const BONK_SPAWN_MAX_HEIGHT_DIFF = 20.0f;
@@ -1453,6 +1454,7 @@ void BonkRun::Update(uint32 diff)
 
     if (m_paused)
         HoldAuraTimers(diff);
+    RefreshWatchedStats(diff);
 
     switch (m_state)
     {
@@ -5718,7 +5720,28 @@ void BonkRun::SendStats() const
     float totals[MAX_BONK_PASSIVE_EFFECT];
     for (uint8 effect = 0; effect < MAX_BONK_PASSIVE_EFFECT; ++effect)
         totals[effect] = GetPassiveTotal(BonkPassiveEffect(effect)) - GetGearTotal(BonkPassiveEffect(effect));
-    m_player->GetBonkPlayer()->SendStatTotals(totals, true);
+    totals[BONK_PASSIVE_POWER] += GetBuffPower() + GetCardPower(nullptr) + GetGlyphPower() + GetTalentDamagePercent();
+    totals[BONK_PASSIVE_HASTE] += GetTalentHaste();
+
+    float afterCaps[MAX_BONK_PASSIVE_EFFECT] = {};
+    afterCaps[BONK_PASSIVE_HASTE] = GetBurstHaste();
+    afterCaps[BONK_PASSIVE_MOVE_SPEED] = GetBoostMoveSpeed() + GetDruidMoveSpeed();
+    afterCaps[BONK_PASSIVE_AMOUNT] = GetGlyphValue(BONK_GLYPH_MULTI_SHOT, 0);
+    m_player->GetBonkPlayer()->SendStatTotals(totals, true, afterCaps);
+}
+
+void BonkRun::RefreshWatchedStats(uint32 diff)
+{
+    if (!m_player->GetBonkPlayer()->IsWatchingStats())
+    {
+        m_statsRefreshTimer = 0;
+        return;
+    }
+    m_statsRefreshTimer += diff;
+    if (m_statsRefreshTimer < BONK_STATS_REFRESH_MS)
+        return;
+    m_statsRefreshTimer = 0;
+    SendStats();
 }
 
 float BonkRun::GetWeaponDamage(OwnedWeapon const& owned) const

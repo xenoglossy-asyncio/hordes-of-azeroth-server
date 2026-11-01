@@ -303,6 +303,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "banslot",        SEC_PLAYER,         false, &ChatHandler::HandleBonkBanSlotCommand,         "", nullptr },
         { "menu",           SEC_PLAYER,         false, &ChatHandler::HandleBonkMenuCommand,            "", nullptr },
         { "resync",         SEC_PLAYER,         false, &ChatHandler::HandleBonkResyncCommand,          "", nullptr },
+        { "stats",          SEC_PLAYER,         false, &ChatHandler::HandleBonkStatsCommand,           "", nullptr },
         { "vault",          SEC_PLAYER,         false, &ChatHandler::HandleBonkVaultCommand,           "", nullptr },
         { "title",          SEC_PLAYER,         false, &ChatHandler::HandleBonkTitleCommand,           "", nullptr },
         { "telegraph",      SEC_GAMEMASTER,     false, &ChatHandler::HandleBonkTelegraphCommand,       "", nullptr },

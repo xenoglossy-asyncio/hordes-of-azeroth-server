@@ -404,6 +404,13 @@ bool ChatHandler::HandleBonkResyncCommand(char* )
     return true;
 }
 
+bool ChatHandler::HandleBonkStatsCommand(char* args)
+{
+    char* watching = ExtractLiteralArg(&args);
+    m_session->GetPlayer()->GetBonkPlayer()->WatchStats(watching && !strcmp(watching, "on"));
+    return true;
+}
+
 bool ChatHandler::HandleBonkVaultCommand(char* args)
 {
     BonkRun* run = m_session->GetPlayer()->GetBonkPlayer()->GetRun();

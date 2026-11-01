@@ -1359,6 +1359,8 @@ class BonkRun
         std::string DescribeBoardEntry() const;
         void LogBossFight(Creature const* mob, BonkSpawnKind kind, BossArrival const& arrival);
         uint32 m_nextLogMinute = 1;
+        uint32 m_statsRefreshTimer = 0;
+        void RefreshWatchedStats(uint32 diff);
         uint32 m_minuteDamage = 0;
         uint32 m_minuteHealed = 0;
         uint32 m_minuteKills = 0;

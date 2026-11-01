@@ -315,7 +315,9 @@ class BonkPlayer
         void WriteMasteryPreset(uint8 slot, std::map<uint32, uint8> const& ranks);
         std::string DescribeMasteryPresets() const;
         void SendMasteryPresetRanks() const;
-        void SendStatTotals(float const* totals, bool inRun) const;
+        void SendStatTotals(float const* totals, bool inRun, float const* afterCaps = nullptr) const;
+        void WatchStats(bool watching);
+        bool IsWatchingStats() const { return m_watchingStats; }
         void OpenArena(Creature const* npc) const;
 
         void ResetCharacter();
@@ -377,6 +379,7 @@ class BonkPlayer
         std::unique_ptr<BonkRun> m_run;
         BonkTelegraphs m_previewTelegraphs;
         bool m_addonReady = false;
+        bool m_watchingStats = false;
         float m_leashFactor = 1.0f;
         uint32 m_otherEffects = 100;
         float m_leashDistance = 0.0f;
