@@ -864,6 +864,8 @@ void BonkRun::PlantTotemAt(OwnedWeapon& owned, ObjectGuid& guid, Creature* totem
     Creature* planted = SummonPet(owned, totem->GetEntry(), x, y, z, m_player->GetOrientation());
     if (!planted)
         return;
+    planted->SetObjectScale(totem->GetObjectScale());
+    planted->UpdateModelData();
     m_petStates.erase(guid);
     m_magmaIdleMs.erase(guid);
     totem->DespawnOrUnsummon();

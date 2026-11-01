@@ -9775,6 +9775,8 @@ Creature* BonkRun::SummonPet(OwnedWeapon const& owned, uint32 entry, float x, fl
     pet->SetFactionTemplateId(m_player->GetFactionTemplateId());
     pet->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
     DressWarlockPet(owned, pet);
+    if (IsPlanted(owned.weapon))
+        PlantHydra(pet);
     if (m_paused)
         HoldPet(pet, true, IsPlanted(owned.weapon));
     return pet;
