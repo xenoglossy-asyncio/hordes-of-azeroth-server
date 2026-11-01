@@ -864,6 +864,8 @@ bool BonkCoop::Down(Player* player)
     if (found == s_groups.end() || !host)
         return false;
     GroupRun& group = found->second;
+    if (player->GetClass() == CLASS_DRUID && player->GetDisplayId() != player->GetNativeDisplayId())
+        player->SetDisplayId(player->GetNativeDisplayId());
     Downed& downed = group.downed[player->GetObjectGuid()];
     downed = Downed();
     downed.spectator = group.pool == 0;

@@ -53,6 +53,9 @@ void WorldSession::HandleRepopRequestOpcode(NullClientPacket const& /*packet*/)
     if (_player->IsAlive() || _player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
         return;
 
+    if (_player->GetBonkPlayer())
+        return;
+
     // the world update order is sessions, players, creatures
     // the netcode runs in parallel with all of these
     // creatures can kill players

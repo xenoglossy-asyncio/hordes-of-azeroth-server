@@ -1290,9 +1290,9 @@ void Player::Update(uint32 update_diff, uint32 p_time)
     //   dungeons, battlegrounds, and raid instances.
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
     // not auto-free ghost from body in instances
-    if (GetDeathState() == CORPSE  && !GetMap()->Instanceable())
+    if (GetDeathState() == CORPSE  && !GetMap()->Instanceable() && !GetBonkPlayer())
 #else
-    if (GetDeathState() == CORPSE)
+    if (GetDeathState() == CORPSE && !GetBonkPlayer())
 #endif
     {
         if (p_time >= m_deathTimer)

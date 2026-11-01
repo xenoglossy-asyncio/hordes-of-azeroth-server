@@ -85,7 +85,7 @@ namespace
             if (slot.guid == guest->GetObjectGuid())
                 continue;
             if (Player* member = sObjectMgr.GetPlayer(slot.guid))
-                if (member->GetClass() == guest->GetClass())
+                if (member->GetClass() == guest->GetClass() && !BonkCoop::IsAway(member))
                     return true;
         }
         return false;
