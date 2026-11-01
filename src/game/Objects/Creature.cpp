@@ -1005,7 +1005,7 @@ void Creature::Update(uint32 update_diff, uint32 diff)
                         UpdateLeashExtensionTime();
 
                     // Leash prevents mobs from chasing any further than specified range
-                    if (m_leashDistance && !IsWithinDist3d(m_combatStartX, m_combatStartY, m_combatStartZ, m_leashDistance))
+                    if (m_leashDistance && !IsBonkEnemy() && !IsWithinDist3d(m_combatStartX, m_combatStartY, m_combatStartZ, m_leashDistance))
                         leash = true;
                     // Raid bosses do a periodic combat pulse
                     else if (HasCreatureState(CSTATE_COMBAT_WITH_ZONE))

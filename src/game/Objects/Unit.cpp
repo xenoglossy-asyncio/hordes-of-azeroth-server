@@ -686,6 +686,9 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
 #define SKIP_STEALTH (pVictim == this)
 #endif
 
+    if (IsTimeFrozen() || pVictim->IsTimeFrozen())
+        return 0;
+
     // remove affects from attacker at any non-DoT damage (including 0 damage)
     if (damagetype != DOT)
     {
@@ -2267,6 +2270,9 @@ void Unit::CalculateAbsorbResistBlock(SpellCaster* pCaster, SpellNonMeleeDamage*
 void Unit::AttackerStateUpdate(Unit* pVictim, WeaponAttackType attType, bool extra)
 {
     if (!pVictim->IsAlive())
+        return;
+
+    if (IsTimeFrozen() || pVictim->IsTimeFrozen())
         return;
 
     if (!extra && IsNonMeleeSpellCasted(false))
