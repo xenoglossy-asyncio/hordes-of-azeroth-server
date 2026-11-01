@@ -268,17 +268,19 @@ bool GOHello_go_bonk_shrine(Player* player, GameObject* go)
 bool GOHello_go_bonk_portal(Player* player, GameObject* go)
 {
     BonkRun* run = player->GetBonkPlayer()->GetRun();
-    if (!run || !run->IsOwnPortal(go))
+    BonkRun* portalRun = run && run->IsOwnPortal(go) ? run : BonkCoop::GroupPortalRun(player, go);
+    if (!portalRun)
         return true;
 
-    if (BonkMap const* next = run->GetNextMap())
+    if (BonkMap const* next = portalRun->GetNextMap())
     {
         std::string const mapName = run->Localize(BONK_FIELD_MAP_NAME, next->id, next->name);
-        std::string const text = run->GetStage() >= run->GetTier().stages ? run->GetString(BONK_STRING_PORTAL_FINALE, { mapName }) :
-            run->GetString(BONK_STRING_PORTAL_NEXT_STAGE, { std::to_string(run->GetStage() + 1), mapName });
+        std::string const text = portalRun->GetStage() >= portalRun->GetTier().stages ? run->GetString(BONK_STRING_PORTAL_FINALE, { mapName }) :
+            run->GetString(BONK_STRING_PORTAL_NEXT_STAGE, { std::to_string(portalRun->GetStage() + 1), mapName });
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_BATTLE, text.c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_NEXT);
     }
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, run->GetString(BONK_STRING_PORTAL_RETURN_HOME).c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME);
+    if (portalRun == run)
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TAXI, run->GetString(BONK_STRING_PORTAL_RETURN_HOME).c_str(), GOSSIP_SENDER_MAIN, PORTAL_ACTION_HOME);
     player->SEND_GOSSIP_MENU(BONK_TEXT_PORTAL, go->GetObjectGuid());
     return true;
 }
@@ -286,6 +288,12 @@ bool GOHello_go_bonk_portal(Player* player, GameObject* go)
 bool GOGossipSelect_go_bonk_portal(Player* player, GameObject* go, uint32 , uint32 action)
 {
     BonkRun* run = player->GetBonkPlayer()->GetRun();
+    if (run && action == PORTAL_ACTION_NEXT && BonkCoop::InGroupRun(player) && (run->IsOwnPortal(go) || BonkCoop::GroupPortalRun(player, go)))
+    {
+        player->CLOSE_GOSSIP_MENU();
+        BonkCoop::RequestNextStage(player);
+        return true;
+    }
     if (!run || !run->IsOwnPortal(go))
     {
         player->CLOSE_GOSSIP_MENU();

@@ -43,6 +43,7 @@ namespace
     struct ReadyCheck
     {
         ObjectGuid host;
+        ObjectGuid nextStageAsker;
         BonkTier const* tier = nullptr;
         BonkRunChoice choice;
         std::map<ObjectGuid, int> answers;
@@ -102,6 +103,7 @@ namespace
         uint32 cap = 0;
         uint32 sendTimer = 0;
         bool wiped = false;
+        bool arriving = false;
         bool sharedPause = true;
         bool sharedXp = true;
         uint32 waitSendMs = 0;
@@ -354,6 +356,8 @@ namespace
         Player* current = downed.watching.IsEmpty() ? nullptr : ObjectAccessor::FindPlayerNotInWorld(downed.watching);
         if (current && std::find(choices.begin(), choices.end(), current) != choices.end())
         {
+            if (downedPlayer->GetCamera().GetBody() != current)
+                downedPlayer->GetCamera().SetView(current);
             if (downed.watchChoices != choices.size())
             {
                 downed.watchChoices = choices.size();
@@ -395,6 +399,47 @@ namespace
         for (auto& entry : group.downed)
             ReleaseDowned(entry.first, entry.second, members);
         group.downed.clear();
+    }
+
+    void CarryDowned(GroupRun& group, std::vector<Player*> const& members)
+    {
+        for (auto& entry : group.downed)
+        {
+            ClearDownedLooks(entry.first, entry.second, members);
+            entry.second.reviveMs = 0;
+        }
+        group.arriving = !group.downed.empty();
+        group.sendTimer = DOWNED_SEND_MS;
+    }
+
+    void GiveAnotherChance(GroupRun& group, std::vector<Player*> const& members)
+    {
+        bool given = false;
+        for (auto& entry : group.downed)
+        {
+            Downed& downed = entry.second;
+            if (!downed.spectator)
+                continue;
+            downed.spectator = false;
+            downed.bleedMs = BLEEDOUT_MS;
+            downed.watching.Clear();
+            downed.watchChoices = 0;
+            if (Player* player = ObjectAccessor::FindPlayerNotInWorld(entry.first))
+                StopWatching(player);
+            given = true;
+        }
+        if (!given)
+            return;
+        for (Player* member : members)
+            member->GetBonkPlayer()->Notify(BONK_STRING_COOP_ANOTHER_CHANCE);
+    }
+
+    bool EveryoneArrived(std::vector<Player*> const& members)
+    {
+        for (Player* member : members)
+            if (!member->IsInWorld() || member->IsBeingTeleported())
+                return false;
+        return true;
     }
 
     void RaiseAllDowned(GroupRun& group, std::vector<Player*> const& members, bool missedBoss)
@@ -458,12 +503,34 @@ namespace
         return true;
     }
 
+    void ConcludeNextStage(ReadyCheck const& check, Player* host)
+    {
+        BonkRun* run = host ? host->GetBonkPlayer()->GetRun() : nullptr;
+        if (!run || !run->IsPortalOpen())
+            return;
+        for (auto const& answer : check.answers)
+        {
+            Player* member = answer.second == ANSWER_NO ? sObjectMgr.GetPlayer(answer.first) : nullptr;
+            if (!member)
+                continue;
+            for (Player* told : GroupMembers(host))
+                told->GetBonkPlayer()->Notify(BONK_STRING_COOP_NEXT_STAGE_NOT_READY, { member->GetName() });
+            return;
+        }
+        run->EnterNextStage();
+    }
+
     void Conclude(ReadyCheck const& check)
     {
         Player* host = sObjectMgr.GetPlayer(check.host);
         for (auto const& answer : check.answers)
             if (Player* guest = sObjectMgr.GetPlayer(answer.first))
                 guest->GetBonkPlayer()->SendAddon("coopreadyend");
+        if (!check.nextStageAsker.IsEmpty())
+        {
+            ConcludeNextStage(check, host);
+            return;
+        }
         if (!host || host->GetBonkPlayer()->GetRun())
             return;
 
@@ -798,25 +865,71 @@ void BonkCoop::UpdateReadyChecks(uint32 diff)
 void BonkCoop::OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage)
 {
     auto group = s_groups.find(host->GetObjectGuid());
-    if (group != s_groups.end() && !group->second.wiped)
-        RaiseAllDowned(group->second, GroupMembers(host), false);
+    std::vector<Player*> const members = GroupMembers(host);
+    if (group != s_groups.end())
+        CarryDowned(group->second, members);
     for (BonkRun* run : GuestRunsOf(host))
         run->FollowToStage(map, stage);
     if (group != s_groups.end() && group->second.pool < group->second.cap)
     {
         ++group->second.pool;
-        for (Player* member : GroupMembers(host))
+        for (Player* member : members)
             member->GetBonkPlayer()->Notify(BONK_STRING_COOP_STAGE_REVIVE);
     }
+    if (group != s_groups.end() && group->second.pool > 0)
+        GiveAnotherChance(group->second, members);
 }
 
-void BonkCoop::OnHostPortal(Player* host)
+void BonkCoop::OnHostPortal(Player* host, bool last)
 {
     auto group = s_groups.find(host->GetObjectGuid());
-    if (group != s_groups.end() && !group->second.wiped)
+    if (last && group != s_groups.end() && !group->second.wiped)
         RaiseAllDowned(group->second, GroupMembers(host), true);
     for (BonkRun* run : GuestRunsOf(host))
         run->FollowToPortal();
+}
+
+BonkRun* BonkCoop::GroupPortalRun(Player* player, GameObject const* portal)
+{
+    if (!InGroupRun(player) || !player->IsAlive())
+        return nullptr;
+    Player* host = ObjectAccessor::FindPlayerNotInWorld(HostOf(player));
+    BonkRun* run = host ? host->GetBonkPlayer()->GetRun() : nullptr;
+    return run && run->IsOwnPortal(portal) ? run : nullptr;
+}
+
+void BonkCoop::RequestNextStage(Player* player)
+{
+    Player* host = ObjectAccessor::FindPlayerNotInWorld(HostOf(player));
+    BonkRun* run = host ? host->GetBonkPlayer()->GetRun() : nullptr;
+    if (!run || !run->IsPortalOpen())
+        return;
+    for (ReadyCheck const& check : s_checks)
+        if (check.host == host->GetObjectGuid())
+        {
+            player->GetBonkPlayer()->Notify(BONK_STRING_COOP_STILL_ANSWERING);
+            return;
+        }
+
+    ReadyCheck check;
+    check.host = host->GetObjectGuid();
+    check.nextStageAsker = player->GetObjectGuid();
+    for (Player* member : GroupMembers(host))
+    {
+        if (member == player || !member->IsAlive() || IsAway(member))
+            continue;
+        check.answers[member->GetObjectGuid()] = ANSWER_WAITING;
+        BonkPlayer* bonk = member->GetBonkPlayer();
+        std::string const text = bonk->GetString(BONK_STRING_COOP_WANTS_NEXT_STAGE, { player->GetName() });
+        bonk->SendAddon("coopready~" + text + "~" + std::to_string(READY_CHECK_MS / IN_MILLISECONDS));
+    }
+    if (check.answers.empty())
+    {
+        run->EnterNextStage();
+        return;
+    }
+    s_checks.push_back(check);
+    player->GetBonkPlayer()->Notify(BONK_STRING_COOP_ASKING_READY);
 }
 
 void BonkCoop::OnHostEndless(Player* host, uint32 stage)
@@ -1158,6 +1271,12 @@ void BonkCoop::UpdateDowned(uint32 diff)
         if (group.wiped)
             continue;
         std::vector<Player*> const members = GroupMembers(host);
+        if (group.arriving)
+        {
+            if (!EveryoneArrived(members))
+                continue;
+            group.arriving = false;
+        }
         bool paused = false;
         for (Player* member : members)
             if (BonkRun* run = member->GetBonkPlayer()->GetRun())
@@ -1173,6 +1292,8 @@ void BonkCoop::UpdateDowned(uint32 diff)
                 continue;
             }
             Downed& downed = it->second;
+            if (!downed.spectator && !downed.lookKey)
+                ShowDownedLook(downedPlayer, downed, members);
             WatchStanding(downedPlayer, downed, members);
             ShowReviveRing(downedPlayer, downed, !downed.spectator && group.pool > 0, members);
             if (downed.spectator || paused)

@@ -5658,7 +5658,7 @@ void BonkRun::OpenPortal(Creature* boss)
             { bonk->GetLevelName(m_difficultyLevel) });
     SendState();
     if (!IsCoopGuest() && BonkCoop::InGroupRun(m_player))
-        BonkCoop::OnHostPortal(m_player);
+        BonkCoop::OnHostPortal(m_player, last);
 }
 
 void BonkRun::PlacePortal(float x, float y, float baseZ)

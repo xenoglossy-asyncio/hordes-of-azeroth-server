@@ -45,7 +45,9 @@ namespace BonkCoop
     void UpdateLeash(uint32 diff);
     void OnHostEnteredStage(Player* host, BonkMap const& map, uint32 stage);
     void OnHostFinished(Player* host);
-    void OnHostPortal(Player* host);
+    void OnHostPortal(Player* host, bool last);
+    BonkRun* GroupPortalRun(Player* player, GameObject const* portal);
+    void RequestNextStage(Player* player);
     void OnHostEndless(Player* host, uint32 stage);
     void NoteHostRun(Player const* host, std::string const& playing);
     void BeginGroupRun(Player* host, uint32 players);

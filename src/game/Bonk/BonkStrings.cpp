@@ -864,6 +864,9 @@ std::vector<BonkStringText> const& GetBonkStringTexts()
         { BONK_STRING_COOP_WATCHING,                           "You are watching {1}." },
         { BONK_STRING_COOP_RAISED_AFTER_BOSS,                  "You're back up. Chests and shrines stay closed to you this stage." },
         { BONK_STRING_COOP_CHESTS_CLOSED_AFTER_DOWN,           "You were down when the boss died. Chests and shrines open again next stage." },
+        { BONK_STRING_COOP_WANTS_NEXT_STAGE,                   "{1} wants to go to the next stage." },
+        { BONK_STRING_COOP_NEXT_STAGE_NOT_READY,               "{1} isn't ready. The party stays at the portal." },
+        { BONK_STRING_COOP_ANOTHER_CHANCE,                     "The new revive gives fallen players another chance. Stand in their ring to bring them back." },
     };
     return texts;
 }

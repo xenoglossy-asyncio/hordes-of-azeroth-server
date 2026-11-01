@@ -867,6 +867,9 @@ enum BonkString : uint32
     BONK_STRING_COOP_WATCHING                           = 955,
     BONK_STRING_COOP_RAISED_AFTER_BOSS                  = 956,
     BONK_STRING_COOP_CHESTS_CLOSED_AFTER_DOWN           = 957,
+    BONK_STRING_COOP_WANTS_NEXT_STAGE                   = 958,
+    BONK_STRING_COOP_NEXT_STAGE_NOT_READY               = 959,
+    BONK_STRING_COOP_ANOTHER_CHANCE                     = 960,
 };
 
 struct BonkStringText
