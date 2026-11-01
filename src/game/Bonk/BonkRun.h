@@ -778,6 +778,7 @@ class BonkRun
         std::string DescribeGlyphStats() const;
         std::string DescribeGlyphTotals(BonkGlyph const& glyph) const;
         struct RisenSkeleton
+        void AddGlyphMeterSpells(std::set<uint32>& shown) const;
         {
             ObjectGuid guid;
             uint32 untilMs = 0;
@@ -1080,6 +1081,7 @@ class BonkRun
         std::string DescribeWeaponStats() const;
         std::pair<uint64, uint32> GetOwnedSpellTotals(OwnedWeapon const& owned) const;
         std::string DescribeBuildTotals() const;
+        std::string DescribeOtherDamage() const;
         void ApplyStep(OwnedWeapon& owned, Offer const& offer);
         void EvolveWeapon(OwnedWeapon& owned, BonkWeapon const& evolved);
         bool RefreshKeptOffer(Offer& offer) const;

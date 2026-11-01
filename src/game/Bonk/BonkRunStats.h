@@ -7,6 +7,7 @@
 
 #include <deque>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,16 @@ struct BonkRunStats
     std::deque<BonkRecentHit> recentHits;
 };
 
+struct BonkOtherSource
+{
+    uint32 spellId = 0;
+    std::string icon;
+    std::string name;
+    uint64 damage = 0;
+    uint32 kills = 0;
+    std::string type;
+};
+
 struct BonkSummaryWeapon
 {
     uint32 spellId = 0;
@@ -62,6 +73,7 @@ namespace BonkStats
     BonkRunStats::Spell GetSpellStats(ObjectGuid player, uint32 spellId);
     std::string DescribeDamageTypes(ObjectGuid player, uint32 spellId);
     std::vector<uint32> GetWeaponSpells(BonkWeapon const& weapon);
+    std::vector<BonkOtherSource> GetOtherSources(Player* player, std::set<uint32> const& shown);
     void SendSummary(Player* player, std::vector<BonkSummaryWeapon> const& weapons);
 
     void UpdateBossBar(Player* player, uint32 diff);

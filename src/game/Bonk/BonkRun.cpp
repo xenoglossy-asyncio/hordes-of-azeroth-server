@@ -12912,7 +12912,7 @@ std::string BonkRun::DescribeWeaponStats() const
 std::pair<uint64, uint32> BonkRun::GetOwnedSpellTotals(OwnedWeapon const& owned) const
 {
     std::pair<uint64, uint32> totals{ 0, 0 };
-    for (uint32 spellId : IsShapeshift(owned) ? BonkStats::GetWeaponSpells(owned.weapon) : std::vector<uint32>{ owned.weapon.spellId })
+    for (uint32 spellId : BonkStats::GetWeaponSpells(owned.weapon))
     {
         BonkRunStats::Spell const part = BonkStats::GetSpellStats(m_player->GetObjectGuid(), spellId);
         totals.first += part.damage;
@@ -12967,6 +12967,7 @@ void BonkRun::SendLoadout() const
         if (BonkPassive const* passive = sBonkMgr.GetPassive(itr.first))
             line += "p:" + passive->icon + ":" + std::to_string(itr.second) + ":" + std::to_string(passive->maxRank) + ",";
     line += "~" + std::to_string(GetSpellSlots()) + "~" + std::to_string(GetPassiveSlots());
+    m_player->GetBonkPlayer()->SendAddon("xmeter~" + DescribeOtherDamage());
     BonkPlayer* bonk = m_player->GetBonkPlayer();
     bonk->SendAddon(line);
 
@@ -12992,6 +12993,19 @@ void BonkRun::SendLoadout() const
                 evolutionText = sBonkMgr.DescribeEvolutionAdds(*evolutions.front(), GetLocale());
             chanceText = DescribeEvolutionChance(owned, chance);
         }
+std::string BonkRun::DescribeOtherDamage() const
+{
+    std::set<uint32> shown;
+    for (OwnedWeapon const& owned : m_weapons)
+        for (uint32 spellId : BonkStats::GetWeaponSpells(owned.weapon))
+            shown.insert(spellId);
+    AddGlyphMeterSpells(shown);
+    std::string text;
+    for (BonkOtherSource const& other : BonkStats::GetOtherSources(m_player, shown))
+        text += other.icon + "~" + other.name + "~" + std::to_string(other.damage) + "~" + std::to_string(other.kills) + "~" + other.type + "~";
+    return text;
+}
+
         bonk->SendAddon("pwe~" + std::to_string(index) + "~" + evolution + "~" + evolutionText + "~" + evolvedFrom + "~" + chanceText + "~" +
             std::to_string(chance));
         if (!weapon.evolvesFrom && evolutions.size() > 1)

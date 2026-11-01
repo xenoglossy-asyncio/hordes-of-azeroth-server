@@ -409,6 +409,47 @@ std::vector<uint32> BonkStats::GetWeaponSpells(BonkWeapon const& weapon)
     return spellIds;
 }
 
+std::vector<BonkOtherSource> BonkStats::GetOtherSources(Player* player, std::set<uint32> const& shown)
+{
+    std::map<uint32, BonkRunStats::Spell> bySpell;
+    {
+        std::lock_guard<std::mutex> guard(s_lock);
+        auto stats = s_stats.find(player->GetObjectGuid());
+        if (stats == s_stats.end())
+            return {};
+        bySpell = stats->second.bySpell;
+    }
+
+    BonkPlayer* bonk = player->GetBonkPlayer();
+    std::vector<BonkOtherSource> sources;
+    for (auto const& itr : bySpell)
+    {
+        if (shown.count(itr.first) || (!itr.second.damage && !itr.second.kills))
+            continue;
+        BonkOtherSource source;
+        source.spellId = itr.first;
+        source.icon = "INV_Misc_QuestionMark";
+        source.name = bonk->GetString(BONK_STRING_SPELL_NUMBERED, { std::to_string(itr.first) });
+        if (!itr.first)
+        {
+            source.icon = "INV_Sword_04";
+            source.name = "Melee";
+        }
+        else if (BonkKeywordInfo const* keyword = sBonkMgr.GetKeywordBySpell(itr.first))
+        {
+            source.icon = keyword->icon.empty() ? source.icon : keyword->icon;
+            source.name = bonk->Localize(BONK_FIELD_KEYWORD_NAME, uint32(keyword->id), keyword->name);
+        }
+        else if (SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(itr.first))
+            source.name = spellInfo->SpellName[0];
+        source.damage = itr.second.damage;
+        source.kills = itr.second.kills;
+        source.type = DamageType(itr.first);
+        sources.push_back(std::move(source));
+    }
+    return sources;
+}
+
 void BonkStats::SendSummary(Player* player, std::vector<BonkSummaryWeapon> const& weapons)
 {
     BonkRunStats stats;
@@ -465,27 +506,8 @@ void BonkStats::SendSummary(Player* player, std::vector<BonkSummaryWeapon> const
         }
     }
 
-    for (auto const& itr : stats.bySpell)
-    {
-        if (sent.count(itr.first) || (!itr.second.damage && !itr.second.kills))
-            continue;
-        std::string icon = "INV_Misc_QuestionMark";
-        std::string name = bonk->GetString(BONK_STRING_SPELL_NUMBERED, { std::to_string(itr.first) });
-        if (!itr.first)
-        {
-            icon = "INV_Sword_04";
-            name = "Melee";
-        }
-        else if (BonkKeywordInfo const* keyword = sBonkMgr.GetKeywordBySpell(itr.first))
-        {
-            icon = keyword->icon.empty() ? icon : keyword->icon;
-            name = bonk->Localize(BONK_FIELD_KEYWORD_NAME, uint32(keyword->id), keyword->name);
-        }
-        else if (SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(itr.first))
-            name = spellInfo->SpellName[0];
-        bonk->SendAddon("sumw~" + icon + "~" + name + "~0~0~0~" + std::to_string(itr.second.damage) + "~" + std::to_string(itr.second.kills) + "~" +
-            DamageType(itr.first));
-    }
+    for (BonkOtherSource const& other : GetOtherSources(player, sent))
+        bonk->SendAddon("sumw~" + other.icon + "~" + other.name + "~0~0~0~" + std::to_string(other.damage) + "~" + std::to_string(other.kills) + "~" + other.type);
 
     bonk->SendAddon("sumend");
 }

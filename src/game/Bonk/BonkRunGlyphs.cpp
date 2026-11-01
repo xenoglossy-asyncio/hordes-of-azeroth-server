@@ -591,6 +591,13 @@ std::string BonkRun::DescribeGlyphStats() const
     return text;
 }
 
+void BonkRun::AddGlyphMeterSpells(std::set<uint32>& shown) const
+{
+    for (GlyphDamageSpell const& source : BONK_GLYPH_DAMAGE_SPELLS)
+        if (GetGlyph(source.effect))
+            shown.insert(source.spellId);
+}
+
 std::string BonkRun::DescribeGlyphTotals(BonkGlyph const& glyph) const
 {
     std::string text = std::to_string(glyph.id);
