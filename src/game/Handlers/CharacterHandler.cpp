@@ -403,7 +403,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPackets::Character::CharDelete co
 void WorldSession::HandlePlayerLoginOpcode(WorldPackets::Character::PlayerLogin const& packet)
 {
     if ((!sWorld.getConfig(CONFIG_BOOL_WORLD_AVAILABLE) && GetSecurity() == SEC_PLAYER) ||
-        PlayerLoading() || GetPlayer() != nullptr || !packet.guid.IsPlayer())
+        PlayerLoading() || GetPlayer() != nullptr || !packet.guid.IsPlayer() || BonkCoop::IsPlayingElsewhere(GetUsername()))
     {
         auto loginFailedPacket = std::make_unique<WorldPackets::Character::CharacterLoginFailed>();
         loginFailedPacket->result = 1;

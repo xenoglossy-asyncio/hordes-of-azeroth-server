@@ -55,6 +55,7 @@ namespace BonkCoop
     void ForgetHiddenObject(ObjectGuid object);
     void Record(Player const* guest, std::string const& entry);
     void UpdateLedger();
+    bool IsPlayingElsewhere(std::string const& username);
     void SyncGuest(Player* guest);
     void ForgetGuest(Player const* guest);
     void RecordMail(Player const* guest, uint32 entry, std::string const& subject, std::string const& body, BonkFoundGear const* found);

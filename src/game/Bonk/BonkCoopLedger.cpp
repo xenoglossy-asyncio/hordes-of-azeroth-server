@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -32,6 +33,7 @@ namespace
     size_t const MAX_GAME_LENGTH = 64;
     uint32 const GUEST_SYNC_MS = 5000;
     uint32 const HOME_MAIL_SENDER = 900009;
+    time_t const AWAY_FRESH_SECONDS = 30;
 
     struct MirroredTable
     {
@@ -787,6 +789,15 @@ void BonkCoop::RecordMail(Player const* guest, uint32 entry, std::string const& 
     if (!IsGuestAccount(guest))
         return;
     Record(guest, "mail\t" + std::to_string(entry) + "\t" + Escape(subject) + "\t" + Escape(body) + "\t" + (found ? WriteFound(*found) : std::string("-")));
+}
+
+bool BonkCoop::IsPlayingElsewhere(std::string const& username)
+{
+    std::ifstream in("coop/away-" + username + ".txt", std::ios::binary);
+    long long stamp = 0;
+    if (!(in >> stamp))
+        return false;
+    return time(nullptr) - time_t(stamp) < AWAY_FRESH_SECONDS;
 }
 
 void BonkCoop::UpdateLedger()
